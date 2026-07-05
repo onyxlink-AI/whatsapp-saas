@@ -81,6 +81,152 @@ workspace y actualizarla en YCloud — el `wsid` cambia con cada workspace nuevo
 la URL vieja queda huérfana y YCloud seguirá reintentando contra un endpoint
 que ya no resuelve a ningún workspace.
 
+### Issue 3
+
+Fecha:
+
+2026-07-05
+
+Descripción:
+
+El agente no podía consultar disponibilidad ni agendar en Google Calendar.
+Tanto `check_availability_google` como `schedule_google` fallaban en cada
+llamada con el error `Invalid time zone specified` (visible en los logs de
+Vercel como una tool con `"error":"Invalid time zone specified"`), y en el
+chat de WhatsApp el agente respondía "tengo un problema técnico para
+consultar la disponibilidad".
+
+Causa:
+
+El campo "Zona horaria" en `Settings → Integraciones → Google Calendar` es
+texto libre sin validación. Se guardó como
+`"Zona horaria de Madrid (GMT+2)"` en vez del identificador IANA real
+(`Europe/Madrid`). `google-calendar-client.ts` pasa ese valor directo a
+`Intl.DateTimeFormat(..., { timeZone })`, que lanza `RangeError: Invalid
+time zone specified` en cuanto el string no es un nombre de zona horaria
+IANA válido — y eso rompe tanto el cálculo de huecos libres como la
+creación del evento.
+
+Fix aplicado:
+
+1. Se corrigió el valor directamente en `integrations.config.timezone` del
+   workspace afectado, de `"Zona horaria de Madrid (GMT+2)"` a
+   `"Europe/Madrid"`.
+2. Se agregó validación server-side en
+   `src/app/api/workspace/[id]/integrations/route.ts` (PUT): si
+   `provider === "google_calendar"` y viene `config.timezone`, se prueba con
+   `new Intl.DateTimeFormat("en-US", { timeZone: tz })` antes de guardar; si
+   lanza, se devuelve 400 con un mensaje claro en vez de guardar un valor que
+   rompería las tools en tiempo de ejecución.
+3. Se añadió una nota bajo el campo en la UI (`integrations-tab.tsx`)
+   aclarando que debe ser un identificador IANA (`Europe/Madrid`,
+   `America/Mexico_City`), no una descripción.
+
+Resultado:
+
+Desplegado a producción. Consultar disponibilidad ya funcionó correctamente en
+una prueba real de WhatsApp (ver Issue 4 para el problema de agendamiento que
+apareció después).
+
+### Issue 4
+
+Fecha:
+
+2026-07-05
+
+Descripción:
+
+Tras arreglar el Issue 3, "Consultar disponibilidad" ya funcionaba en
+WhatsApp, pero el agente seguía sin agendar la cita: decía "no puedo hacer
+la reserva directamente" y ofrecía un "[Enlace de reserva]" que no llevaba a
+ningún sitio real.
+
+Causa:
+
+No era un bug de código — las tools `check_availability_google` y
+`schedule_google` ya estaban activas y funcionando (confirmado en
+`tool_configs`). El problema estaba en los **prompts publicados** de los
+modos `setter` (Carlos) y `agendamiento` (Andrés): se escribieron antes de
+que existiera la integración de Google Calendar, así que instruían
+explícitamente al agente a "nunca decir que ya agendaste" y a "ofrecer el
+enlace de agenda" — un enlace que corresponde a la tool "Agendamiento por
+link" (`schedule_link`), que está desactivada. El modelo seguía la
+instrucción del prompt al pie de la letra: consultaba disponibilidad (tool
+nueva, sí mencionada) pero para agendar cumplía la instrucción vieja de
+"pasa el enlace", y al no haber enlace configurado, lo alucinó.
+
+Fix aplicado:
+
+Se publicó una nueva versión de ambos prompts (`setter` v7, `agendamiento`
+v5) reemplazando la sección de citas: ahora indican explícitamente que el
+agente SÍ puede agendar directamente con la tool "Agendar en Google
+Calendar" tras consultar disponibilidad, y que no debe ofrecer ningún
+enlace porque no hay ninguno activo. Los archivos de referencia
+`PROMPT_CARLOS_MEJORADO.md` y `PROMPT_ANDRES_MEJORADO.md` en
+`CLIENTES/onyxlink/whatsapp-agent-workspace/` se actualizaron para que
+coincidan con lo publicado.
+
+Resultado:
+
+**Este fix no fue suficiente por sí solo — ver Issue 5.** El agente activo
+del workspace no era ninguno de estos dos.
+
+### Issue 5
+
+Fecha:
+
+2026-07-05
+
+Descripción:
+
+Después de publicar el fix del Issue 4, el agente seguía sin agendar y
+seguía ofreciendo un enlace inexistente, exactamente igual que antes.
+
+Causa:
+
+El fix del Issue 4 se aplicó a los prompts de los modos `setter` (Carlos) y
+`agendamiento` (Andrés) — pero el agente marcado como **activo**
+(`agents.is_active = true`) en este workspace es **`soporte` (Sofía)**.
+`getActiveAgent()` en `src/features/agents/services/active-agent.ts` lee el
+único agente con `is_active = true` por workspace y `resolveSystemPrompt()`
+usa `{ mode: activeAgent.type }`, así que todo el tráfico real de esta
+conversación se resolvía contra el prompt de Sofía — que tenía la misma
+instrucción obsoleta ("no puedes crear ni confirmar citas directamente...
+ofrece enlace de agenda") y nunca se había tocado.
+
+Confirmado consultando `agents` directamente: `soporte` (Sofía) tenía
+`is_active: true`, mientras `setter` (Carlos) y `agendamiento` (Andrés)
+tenían `is_active: false`.
+
+Fix aplicado:
+
+Se publicó una nueva versión del prompt de `soporte` (v8) con la misma
+sección de citas corregida (agendar directo por Google Calendar, sin
+enlace). Se sincronizó `PROMPT_SOFIA_MEJORADO.md`.
+
+De paso, se detectó un segundo problema real al revisar los logs de la
+tabla `events`: la tool `check_availability_google` se llamó dos veces con
+los mismos argumentos (`date_from=date_to=2026-07-06`), ambas con
+`result_ok: true` y sin ningún periodo ocupado real en el calendario (se
+verificó con una llamada directa a `freeBusy` fuera de la app) — pero en la
+segunda respuesta el agente le dijo al usuario "hasta las 15:30" en vez del
+rango real (9:00–17:30). No fue un bug de datos: el modelo resumió mal un
+resultado de tool que sí era correcto. Se publicó v9 del prompt de Sofía
+añadiendo la instrucción explícita de reportar el rango exactamente como lo
+devuelve la tool, sin redondear ni acortarlo.
+
+Resultado:
+
+Pendiente confirmar con una prueba real de agendamiento por WhatsApp usando
+el agente activo (Sofía).
+
+**Lección para la próxima vez:** cuando se corrige un prompt por un problema
+de comportamiento, primero hay que confirmar **cuál agente está realmente
+activo** (`agents.is_active = true` en ese workspace) antes de asumir que es
+el que "debería" estar manejando la conversación por el contexto de la
+charla — de lo contrario se puede arreglar el prompt equivocado y el
+síntoma persiste sin motivo aparente.
+
 ## Tipos de errores esperados
 
 - Variables faltantes.

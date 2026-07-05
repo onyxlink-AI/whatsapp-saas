@@ -24,6 +24,13 @@ const schema = z.object({
     .describe(
       "Teléfono del contacto en E.164 (ej: +5215512345678). Úsalo cuando el contacto no venga del chat.",
     ),
+  notes: z
+    .string()
+    .max(1000)
+    .optional()
+    .describe(
+      "Resumen breve (2-4 líneas) de los puntos clave de la conversación: qué necesita el cliente, qué problema quiere resolver, qué solución encaja y cualquier dato relevante para que la persona que atienda la llamada sepa qué preparar. Escríbelo tú a partir de la conversación, no se lo preguntes al cliente.",
+    ),
 });
 
 type Args = z.infer<typeof schema>;
@@ -45,13 +52,19 @@ async function run(args: Args, ctx: ToolContext): Promise<ToolResult> {
   const name = args.contact_name ?? "Contacto WhatsApp";
   const phone = args.contact_phone ?? "";
 
+  const descriptionLines = [
+    phone ? `Teléfono: ${phone}` : null,
+    args.notes ? `\n${args.notes}` : null,
+  ].filter((line): line is string => Boolean(line));
+
   try {
     const event = await createGoogleEvent({
       calendarId: cfg.calendarId,
       startIso: args.datetime_iso,
       durationMinutes: args.duration_minutes ?? cfg.slotMinutes,
       summary: `Cita — ${name}`,
-      description: phone ? `Teléfono: ${phone}` : undefined,
+      description:
+        descriptionLines.length > 0 ? descriptionLines.join("\n") : undefined,
     });
 
     return {
@@ -75,7 +88,7 @@ async function run(args: Args, ctx: ToolContext): Promise<ToolResult> {
 export const scheduleGoogleTool: Tool<Args> = {
   name: "schedule_google",
   description:
-    "Reserva una cita directamente en el Google Calendar del negocio. Úsalo cuando el cliente confirme una fecha y hora específicas. Llama primero a check_availability_google para ofrecer horarios reales.",
+    "Reserva una cita directamente en el Google Calendar del negocio. Úsalo cuando el cliente confirme una fecha y hora específicas. Llama primero a check_availability_google para ofrecer horarios reales. Incluye siempre 'notes' con un resumen de la conversación para que quien atienda la cita sepa qué preparar.",
   sensitivity: "write",
   schema,
   enabledFor: () => true,
