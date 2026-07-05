@@ -29,6 +29,7 @@ interface Props {
   initialIntegrations: unknown[];
   initialTemplates?: unknown[];
   initialAgents?: AgentDto[];
+  googleServiceAccountEmail?: string;
 }
 
 export function SettingsShell({
@@ -38,6 +39,7 @@ export function SettingsShell({
   initialIntegrations,
   initialTemplates = [],
   initialAgents = [],
+  googleServiceAccountEmail,
 }: Props) {
   const biForForm = initialBusinessInfo as {
     structured: Record<string, unknown>;
@@ -80,6 +82,7 @@ export function SettingsShell({
             <IntegrationsTab
               workspaceId={workspaceId}
               initialIntegrations={initialIntegrations}
+              googleServiceAccountEmail={googleServiceAccountEmail}
             />
           </div>
         </TabsContent>

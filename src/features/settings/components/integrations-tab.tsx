@@ -17,7 +17,7 @@ import { ModelPicker } from "@/features/agents/components/model-picker";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Provider = "ycloud" | "openrouter" | "highlevel";
+type Provider = "ycloud" | "openrouter" | "highlevel" | "google_calendar";
 
 type IntegrationData = {
   provider: Provider;
@@ -778,14 +778,218 @@ function HighLevelSection({
   );
 }
 
+// ─── Google Calendar section ──────────────────────────────────────────────────
+
+function GoogleCalendarSection({
+  workspaceId,
+  initial,
+  serviceAccountEmail,
+  onSaved,
+}: {
+  workspaceId: string;
+  initial: IntegrationData | undefined;
+  serviceAccountEmail: string;
+  onSaved: () => void;
+}) {
+  const [calendarId, setCalendarId] = useState(
+    (initial?.config?.calendar_id as string | undefined) ?? "",
+  );
+  const [timezone, setTimezone] = useState(
+    (initial?.config?.timezone as string | undefined) ?? "America/Mexico_City",
+  );
+  const [hoursStart, setHoursStart] = useState(
+    (initial?.config?.business_hours_start as number | undefined) ?? 9,
+  );
+  const [hoursEnd, setHoursEnd] = useState(
+    (initial?.config?.business_hours_end as number | undefined) ?? 18,
+  );
+  const [slotMinutes, setSlotMinutes] = useState(
+    (initial?.config?.slot_minutes as number | undefined) ?? 30,
+  );
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/workspace/${workspaceId}/integrations`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "google_calendar",
+          enabled: true,
+          config: {
+            calendar_id: calendarId,
+            timezone,
+            business_hours_start: hoursStart,
+            business_hours_end: hoursEnd,
+            slot_minutes: slotMinutes,
+          },
+        }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (json.ok) {
+        toast.success("Configuración de Google Calendar guardada");
+        onSaved();
+      } else {
+        toast.error(json.error ?? "Error al guardar");
+      }
+    } catch {
+      toast.error("Error de red al guardar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleTest() {
+    setTesting(true);
+    try {
+      const res = await fetch(
+        `/api/workspace/${workspaceId}/integrations/google/test`,
+        { method: "POST" },
+      );
+      const json = (await res.json()) as { ok: boolean; error?: string };
+      if (json.ok) {
+        toast.success("Google Calendar conectado");
+      } else {
+        toast.error(json.error ?? "Error al probar la conexión");
+      }
+    } catch {
+      toast.error("Error de red al probar la conexión");
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  return (
+    <Section
+      title="Google Calendar"
+      description="Consulta disponibilidad y agenda citas directo en un Google Calendar del cliente."
+    >
+      <div className="grid gap-4">
+        <div className="rounded-md border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
+          Pide al cliente que comparta su Google Calendar (permiso &quot;Hacer
+          cambios en eventos&quot;) con:
+          <div className="mt-1 flex items-center gap-2">
+            <code className="font-mono text-foreground">
+              {serviceAccountEmail || "(configura GOOGLE_SERVICE_ACCOUNT_EMAIL)"}
+            </code>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="gcal-id">Calendar ID</Label>
+          <Input
+            id="gcal-id"
+            placeholder="cliente@gmail.com o un ID largo de calendario"
+            value={calendarId}
+            onChange={(e) => setCalendarId(e.target.value)}
+            className="font-mono text-sm"
+          />
+          <p className="text-xs text-muted-foreground">
+            Google Calendar → Configuración del calendario → Integrar calendario
+            → &quot;ID de calendario&quot;.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="gcal-tz">Zona horaria</Label>
+            <Input
+              id="gcal-tz"
+              placeholder="America/Mexico_City"
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Identificador IANA exacto, ej: <code>Europe/Madrid</code>,{" "}
+              <code>America/Mexico_City</code> — no una descripción.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="gcal-slot">Duración de cita (min)</Label>
+            <Input
+              id="gcal-slot"
+              type="number"
+              min={5}
+              step={5}
+              value={slotMinutes}
+              onChange={(e) => setSlotMinutes(Number(e.target.value))}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="gcal-start">Horario laboral desde</Label>
+            <Input
+              id="gcal-start"
+              type="number"
+              min={0}
+              max={23}
+              value={hoursStart}
+              onChange={(e) => setHoursStart(Number(e.target.value))}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="gcal-end">Horario laboral hasta</Label>
+            <Input
+              id="gcal-end"
+              type="number"
+              min={0}
+              max={23}
+              value={hoursEnd}
+              onChange={(e) => setHoursEnd(Number(e.target.value))}
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleTest}
+            disabled={testing}
+            aria-busy={testing}
+          >
+            {testing && (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
+            )}
+            Probar conexión
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleSave}
+            disabled={saving}
+            aria-busy={saving}
+          >
+            {saving && (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
+            )}
+            Guardar
+          </Button>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface Props {
   workspaceId: string;
   initialIntegrations: unknown[];
+  googleServiceAccountEmail?: string;
 }
 
-export function IntegrationsTab({ workspaceId, initialIntegrations }: Props) {
+export function IntegrationsTab({
+  workspaceId,
+  initialIntegrations,
+  googleServiceAccountEmail,
+}: Props) {
   const [integrations, setIntegrations] = useState<IntegrationData[]>(
     initialIntegrations as IntegrationData[],
   );
@@ -803,6 +1007,7 @@ export function IntegrationsTab({ workspaceId, initialIntegrations }: Props) {
   const ycloud = findIntegration(integrations, "ycloud");
   const openrouter = findIntegration(integrations, "openrouter");
   const highlevel = findIntegration(integrations, "highlevel");
+  const googleCalendar = findIntegration(integrations, "google_calendar");
 
   return (
     <div className="space-y-6">
@@ -821,6 +1026,13 @@ export function IntegrationsTab({ workspaceId, initialIntegrations }: Props) {
       <HighLevelSection
         workspaceId={workspaceId}
         initial={highlevel}
+        onSaved={refresh}
+      />
+      <Separator />
+      <GoogleCalendarSection
+        workspaceId={workspaceId}
+        initial={googleCalendar}
+        serviceAccountEmail={googleServiceAccountEmail ?? ""}
         onSaved={refresh}
       />
     </div>

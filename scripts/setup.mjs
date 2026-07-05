@@ -63,9 +63,9 @@ const isPlaceholder = (v) => !v || v.trim() === "" || /your-/.test(v);
 // ── .env parsing / writing ──────────────────────────────────────────────────
 function parseEnv(text) {
   const out = {};
-  for (const line of text.split("\n")) {
+  for (const line of text.split(/\r?\n/)) {
     const m = /^([A-Z0-9_]+)=(.*)$/.exec(line);
-    if (m) out[m[1]] = m[2].replace(/\r$/, "");
+    if (m) out[m[1]] = m[2];
   }
   return out;
 }
@@ -80,7 +80,7 @@ function rewriteEnv(finalValues) {
   const base = existsSync(ENV_PATH) ? ENV_PATH : EXAMPLE_PATH;
   if (!existsSync(base)) fail(`No encuentro ${base}. ¿Estás en la raíz del repo?`);
   const seen = new Set();
-  const lines = readFileSync(base, "utf8").split("\n").map((line) => {
+  const lines = readFileSync(base, "utf8").split(/\r?\n/).map((line) => {
     const m = /^([A-Z0-9_]+)=(.*)$/.exec(line);
     if (m && finalValues[m[1]] !== undefined) {
       seen.add(m[1]);
@@ -102,7 +102,8 @@ function run(cmd, opts = {}) {
 
 function hasCli(name) {
   try {
-    execSync(`command -v ${name}`, { stdio: "ignore" });
+    const probe = process.platform === "win32" ? `where ${name}` : `command -v ${name}`;
+    execSync(probe, { stdio: "ignore" });
     return true;
   } catch {
     return false;
@@ -211,9 +212,22 @@ function cmdDbPush(args) {
   if (!ref) {
     fail("No pude derivar el project-ref desde NEXT_PUBLIC_SUPABASE_URL. Pásalo: db-push <ref>");
   }
-  log(`Linking Supabase project: ${ref}`);
-  log("(Si pide la DB password y corres esto sin interacción, exporta SUPABASE_DB_PASSWORD primero.)");
-  run(`supabase link --project-ref ${ref}`);
+  const linkedPath = resolve(ROOT, "supabase/.temp/linked-project.json");
+  let alreadyLinked = false;
+  if (existsSync(linkedPath)) {
+    try {
+      alreadyLinked = JSON.parse(readFileSync(linkedPath, "utf8")).ref === ref;
+    } catch {
+      alreadyLinked = false;
+    }
+  }
+  if (alreadyLinked) {
+    ok(`Ya estaba enlazado a ${ref}, salto 'supabase link'.`);
+  } else {
+    log(`Linking Supabase project: ${ref}`);
+    log("(Si pide la DB password y corres esto sin interacción, exporta SUPABASE_DB_PASSWORD primero.)");
+    run(`supabase link --project-ref ${ref}`);
+  }
   run("supabase db push");
   ok("Migraciones aplicadas (incluye pg_cron + pg_net).");
   log("➡️  Después del deploy: set-app-url <url> y luego cron-sql para agendar el buffer-flush.");

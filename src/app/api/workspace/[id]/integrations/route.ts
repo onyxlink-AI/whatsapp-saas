@@ -8,7 +8,7 @@ import {
 } from "@/lib/auth/workspace-access";
 
 const IntegrationSchema = z.object({
-  provider: z.enum(["ycloud", "openrouter", "highlevel"]),
+  provider: z.enum(["ycloud", "openrouter", "highlevel", "google_calendar"]),
   enabled: z.boolean().optional(),
   credentials: z.record(z.string(), z.string()).optional(),
   config: z.record(z.string(), z.unknown()).optional(),
@@ -104,6 +104,27 @@ export async function PUT(
   const parsed = IntegrationSchema.safeParse(parsedBody.body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  }
+
+  // Google Calendar's timezone must be a real IANA identifier (e.g.
+  // "Europe/Madrid") — Intl.DateTimeFormat throws at request time otherwise,
+  // which is a much worse failure mode than rejecting it here.
+  const tz = parsed.data.config?.timezone;
+  if (
+    parsed.data.provider === "google_calendar" &&
+    typeof tz === "string" &&
+    tz.length > 0
+  ) {
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    } catch {
+      return NextResponse.json(
+        {
+          error: `Zona horaria inválida: "${tz}". Usa un identificador IANA, ej: Europe/Madrid, America/Mexico_City.`,
+        },
+        { status: 400 },
+      );
+    }
   }
 
   const svc = svcClient(

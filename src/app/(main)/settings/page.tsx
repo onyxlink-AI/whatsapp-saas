@@ -120,6 +120,7 @@ export default async function SettingsPage() {
       initialTools={toolsWithEnabled}
       initialIntegrations={maskedIntegrations}
       initialAgents={initialAgents}
+      googleServiceAccountEmail={process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL}
     />
   );
 }
