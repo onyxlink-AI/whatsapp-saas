@@ -69,3 +69,52 @@ export async function decrypt(ciphertext: string): Promise<string> {
   const plainBuf = await crypto.subtle.decrypt({ name: ALG, iv }, key, ct);
   return new TextDecoder().decode(plainBuf);
 }
+
+// Matches this module's `${iv}:${ciphertext}:${version}` format (base64 + a
+// version tag) so decryptCredentials can tell an already-encrypted value
+// apart from legacy plaintext.
+const CIPHERTEXT_SHAPE = /^[A-Za-z0-9+/]+=*:[A-Za-z0-9+/]+=*:v\d+$/;
+
+/**
+ * Encrypts every string value of a credentials record (e.g. an
+ * `integrations.credentials` JSONB blob). Non-string values pass through
+ * unchanged; empty strings are left empty (nothing to protect).
+ */
+export async function encryptCredentials(
+  creds: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(creds)) {
+    if (typeof value === "string" && value.length > 0) {
+      out[key] = await encrypt(value);
+    } else {
+      out[key] = value;
+    }
+  }
+  return out;
+}
+
+/**
+ * Decrypts every string value of a credentials record. Values that don't
+ * match the ciphertext shape are returned as-is — this makes the change
+ * backward-compatible with rows saved before encryption was wired in: old
+ * plaintext keeps working and gets encrypted the next time it's saved.
+ */
+export async function decryptCredentials(
+  creds: Record<string, unknown> | null | undefined,
+): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(creds ?? {})) {
+    if (typeof value !== "string" || value.length === 0) continue;
+    if (CIPHERTEXT_SHAPE.test(value)) {
+      try {
+        out[key] = await decrypt(value);
+        continue;
+      } catch {
+        // Fall through to plaintext pass-through below.
+      }
+    }
+    out[key] = value;
+  }
+  return out;
+}

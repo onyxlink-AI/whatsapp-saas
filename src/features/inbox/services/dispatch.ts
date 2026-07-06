@@ -9,6 +9,7 @@ import { createClient as createSbClient } from "@supabase/supabase-js";
 import { sendText, sendTemplate } from "./ycloud-client";
 import type { TemplateParams } from "./ycloud-client";
 import { formatWhatsAppMarkdown } from "./text-formatter";
+import { decryptCredentials } from "@/shared/lib/crypto";
 
 function svc() {
   return createSbClient(
@@ -84,8 +85,9 @@ async function loadIntegration(
   }
 
   const row = data as IntegrationRow;
+  const creds = await decryptCredentials(row.credentials);
   return {
-    apiKey: (row.credentials.ycloud_api_key as string | undefined) ?? "",
+    apiKey: creds.ycloud_api_key ?? "",
     fromPhone: (row.config.phone_number as string | undefined) ?? "",
   };
 }

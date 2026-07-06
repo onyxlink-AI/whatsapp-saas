@@ -13,6 +13,7 @@ import {
   resolveWabaId,
   YCloudError,
 } from "@/features/inbox/services/ycloud-client";
+import { decryptCredentials } from "@/shared/lib/crypto";
 import {
   buildYCloudPayload,
   createTemplateSchema,
@@ -141,12 +142,11 @@ export async function POST(
     .eq("enabled", true)
     .maybeSingle();
 
-  const credentials = (integration?.credentials ?? {}) as Record<
-    string,
-    unknown
-  >;
+  const credentials = await decryptCredentials(
+    integration?.credentials as Record<string, unknown> | null,
+  );
   const config = (integration?.config ?? {}) as Record<string, unknown>;
-  const apiKey = (credentials.ycloud_api_key as string | undefined) ?? "";
+  const apiKey = credentials.ycloud_api_key ?? "";
   const phoneNumber = (config.phone_number as string | undefined) ?? "";
 
   if (!apiKey || apiKey === "placeholder") {

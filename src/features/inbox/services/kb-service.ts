@@ -186,58 +186,7 @@ export async function searchKb(
   });
 
   if (error) {
-    // Fallback: try raw SQL via execute if RPC doesn't exist yet
-    console.error(
-      "[kb-service] match_kb_chunks RPC error, attempting fallback:",
-      error,
-    );
-    return await searchKbFallback(supabase, workspaceId, queryEmbedding, topK);
-  }
-
-  return (data ?? []).map(
-    (row: {
-      chunk_content: string;
-      document_title: string;
-      document_id: string;
-      similarity: number;
-    }) => ({
-      chunk: row.chunk_content,
-      document_title: row.document_title,
-      document_id: row.document_id,
-      similarity: row.similarity,
-    }),
-  );
-}
-
-/**
- * Fallback search using Supabase's execute_sql RPC when the dedicated
- * match_kb_chunks function is not yet deployed.
- */
-async function searchKbFallback(
-  supabase: ReturnType<typeof svc>,
-  workspaceId: string,
-  queryEmbedding: number[],
-  topK: number,
-): Promise<KbSearchResult[]> {
-  const embeddingLiteral = `[${queryEmbedding.join(",")}]`;
-
-  const { data, error } = await supabase.rpc("execute_sql", {
-    sql: `
-      SELECT
-        kc.content        AS chunk_content,
-        kd.title          AS document_title,
-        kc.document_id    AS document_id,
-        1 - (kc.embedding <=> '${embeddingLiteral}'::vector) AS similarity
-      FROM kb_chunks kc
-      JOIN kb_documents kd ON kc.document_id = kd.id
-      WHERE kd.workspace_id = '${workspaceId}'
-      ORDER BY kc.embedding <=> '${embeddingLiteral}'::vector
-      LIMIT ${topK};
-    `,
-  });
-
-  if (error) {
-    console.error("[kb-service] fallback search error:", error);
+    console.error("[kb-service] match_kb_chunks RPC error:", error);
     return [];
   }
 

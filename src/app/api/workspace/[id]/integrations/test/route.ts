@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as svcClient } from "@supabase/supabase-js";
 import { requireWorkspaceMember } from "@/lib/auth/workspace-access";
-
-type YCloudCredentials = {
-  ycloud_api_key?: string;
-};
+import { decryptCredentials } from "@/shared/lib/crypto";
 
 type YCloudBalanceResponse = {
   balance?: number;
@@ -33,8 +30,10 @@ export async function POST(
     .eq("provider", "ycloud")
     .single();
 
-  const creds = data?.credentials as YCloudCredentials | null;
-  const apiKey = creds?.ycloud_api_key;
+  const creds = await decryptCredentials(
+    data?.credentials as Record<string, unknown> | null,
+  );
+  const apiKey = creds.ycloud_api_key as string | undefined;
 
   if (!apiKey) {
     return NextResponse.json({ ok: false, error: "No API key configured" });

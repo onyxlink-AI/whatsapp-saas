@@ -6,6 +6,7 @@ import {
   requireWorkspaceMember,
   readJsonBody,
 } from "@/lib/auth/workspace-access";
+import { encryptCredentials, decryptCredentials } from "@/shared/lib/crypto";
 
 const IntegrationSchema = z.object({
   provider: z.enum(["ycloud", "openrouter", "highlevel", "google_calendar"]),
@@ -54,35 +55,35 @@ export async function GET(
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
 
-  const masked = ((data ?? []) as IntegrationRow[]).map((row) => {
-    const base = {
-      id: row.id,
-      provider: row.provider,
-      enabled: row.enabled,
-      config: row.config ?? {},
-      credentials: maskRecord(row.credentials),
-      oauth_tokens: maskRecord(row.oauth_tokens),
-    };
-
-    // The HighLevel inbound-sync webhook token is low-sensitivity (it only
-    // authorizes inbound contact-sync), so expose it unmasked plus a prebuilt
-    // URL so the settings UI can render the webhook endpoint.
-    if (row.provider === "highlevel") {
-      const secret =
-        typeof row.credentials?.highlevel_webhook_secret === "string"
-          ? row.credentials.highlevel_webhook_secret
-          : "";
-      return {
-        ...base,
-        highlevel_webhook_secret: secret,
-        highlevel_webhook_url: secret
-          ? `${appUrl}/api/webhooks/highlevel?wsid=${workspaceId}&token=${secret}`
-          : "",
+  const masked = await Promise.all(
+    ((data ?? []) as IntegrationRow[]).map(async (row) => {
+      const base = {
+        id: row.id,
+        provider: row.provider,
+        enabled: row.enabled,
+        config: row.config ?? {},
+        credentials: maskRecord(row.credentials),
+        oauth_tokens: maskRecord(row.oauth_tokens),
       };
-    }
 
-    return base;
-  });
+      // The HighLevel inbound-sync webhook token is low-sensitivity (it only
+      // authorizes inbound contact-sync), so expose it unmasked (decrypted)
+      // plus a prebuilt URL so the settings UI can render the webhook endpoint.
+      if (row.provider === "highlevel") {
+        const decrypted = await decryptCredentials(row.credentials);
+        const secret = decrypted.highlevel_webhook_secret ?? "";
+        return {
+          ...base,
+          highlevel_webhook_secret: secret,
+          highlevel_webhook_url: secret
+            ? `${appUrl}/api/webhooks/highlevel?wsid=${workspaceId}&token=${secret}`
+            : "",
+        };
+      }
+
+      return base;
+    }),
+  );
 
   return NextResponse.json({ integrations: masked });
 }
@@ -146,8 +147,13 @@ export async function PUT(
       ([, v]) => v !== "••••••" && v !== "",
     ),
   );
+  // Decrypt the stored credentials before merging so the merge always
+  // operates on plaintext; the whole thing gets re-encrypted before upsert.
+  const existingCredsPlain = await decryptCredentials(
+    existing?.credentials as Record<string, unknown> | null,
+  );
   const mergedCreds: Record<string, unknown> = {
-    ...((existing?.credentials as object) ?? {}),
+    ...existingCredsPlain,
     ...newCreds,
   };
 
@@ -159,6 +165,7 @@ export async function PUT(
   ) {
     mergedCreds.highlevel_webhook_secret = randomBytes(24).toString("hex");
   }
+  const mergedCredsEncrypted = await encryptCredentials(mergedCreds);
   const mergedConfig = {
     ...((existing?.config as object) ?? {}),
     ...(parsed.data.config ?? {}),
@@ -169,7 +176,7 @@ export async function PUT(
       workspace_id: workspaceId,
       provider: parsed.data.provider,
       enabled: parsed.data.enabled ?? true,
-      credentials: mergedCreds,
+      credentials: mergedCredsEncrypted,
       config: mergedConfig,
       updated_at: new Date().toISOString(),
     },
