@@ -627,7 +627,7 @@ async function runSetterEvaluation(params: SetterEvalParams): Promise<void> {
       history.map((t) => `${t.role}: ${t.content}`).join("\n") +
       `\nuser: ${mergedText}`;
 
-    const evaluation = await evaluateLead(cfg, transcript);
+    const evaluation = await evaluateLead(cfg, transcript, workspaceId);
 
     // Persist score/qualified/summary on the contact (no migration needed).
     const nextCustomFields = {

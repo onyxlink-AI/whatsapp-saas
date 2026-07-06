@@ -4,6 +4,7 @@ import { createClient as createSbClient } from "@supabase/supabase-js";
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
+import { getOpenRouterApiKey } from "./openrouter";
 
 function svc() {
   return createSbClient(
@@ -12,10 +13,10 @@ function svc() {
   );
 }
 
-function getModel() {
+function getModel(apiKey: string) {
   const openai = createOpenAI({
     baseURL: "https://openrouter.ai/api/v1",
-    apiKey: process.env.OPENROUTER_API_KEY!,
+    apiKey,
     headers: {
       "HTTP-Referer":
         process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
@@ -116,6 +117,7 @@ export async function getSetterConfig(
 export async function evaluateLead(
   config: SetterConfig,
   conversationHistory: string,
+  workspaceId?: string,
 ): Promise<SetterEvaluation> {
   const questionsBlock = config.questions
     .map((q) => `- [${q.id}] ${q.text} (weight: ${q.weight}, type: ${q.type})`)
@@ -143,8 +145,9 @@ Evaluate the conversation against the qualification questions and knockout rules
 Compute a weighted score (0-100). Apply knockout rules first — if any knockout
 condition is met, set knocked_out=true. Return a structured evaluation.`;
 
+  const apiKey = await getOpenRouterApiKey(workspaceId);
   const { object } = await generateObject({
-    model: getModel(),
+    model: getModel(apiKey),
     schema: EvalSchema,
     prompt,
   });
