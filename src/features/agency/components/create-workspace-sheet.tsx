@@ -622,19 +622,44 @@ export function CreateWorkspaceSheet({
 
             {wantsCalendar && (
               <>
-                <div className="rounded-md border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
-                  Pide al cliente que comparta su Google Calendar (permiso
-                  &quot;Hacer cambios en eventos&quot;) con:
-                  <div className="mt-1">
-                    <code className="font-mono text-foreground">
-                      {googleServiceAccountEmail ||
-                        "(configura GOOGLE_SERVICE_ACCOUNT_EMAIL)"}
-                    </code>
-                  </div>
-                </div>
+                <ol className="space-y-3 rounded-md border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
+                  <li className="flex gap-2">
+                    <span className="shrink-0 font-mono text-foreground">1.</span>
+                    <span>
+                      El cliente entra a{" "}
+                      <span className="text-foreground">calendar.google.com</span>{" "}
+                      con la cuenta donde quiere que se agenden las citas.
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="shrink-0 font-mono text-foreground">2.</span>
+                    <span>
+                      En ese calendario → <b>Configuración y uso compartido</b> →{" "}
+                      <b>Compartir con determinadas personas</b> → agrega este
+                      email con permiso &quot;Hacer cambios en eventos&quot;:
+                      <div className="mt-1">
+                        <code className="font-mono text-foreground break-all">
+                          {googleServiceAccountEmail ||
+                            "(configura GOOGLE_SERVICE_ACCOUNT_EMAIL)"}
+                        </code>
+                      </div>
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="shrink-0 font-mono text-foreground">3.</span>
+                    <span>
+                      En esa misma pantalla, baja hasta{" "}
+                      <b>Integrar calendario</b> y copia el <b>&quot;ID de
+                      calendario&quot;</b> — normalmente es su propio email si
+                      es su calendario principal, o un ID largo terminado en{" "}
+                      <span className="font-mono">@group.calendar.google.com</span>{" "}
+                      si es un calendario secundario. Pégalo abajo.
+                    </span>
+                  </li>
+                </ol>
                 <div className="space-y-2">
                   <Label htmlFor="cal-id" className="text-sm font-medium text-foreground">
-                    Calendar ID
+                    Calendar ID (el que copió el cliente en el paso 3)
                   </Label>
                   <Input
                     id="cal-id"
