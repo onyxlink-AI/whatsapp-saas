@@ -332,6 +332,44 @@ declarado. Cuando se audite seguridad, buscar los helpers de
 seguridad (`grep` del nombre de la función) y confirmar quién los invoca de
 verdad.
 
+### Issue 8
+
+Fecha:
+
+2026-07-06
+
+Descripción:
+
+Al redactar la política de retención y borrado de datos (propuesta de
+mejoras), se detectó que borrar un cliente desde el panel de agencia no
+borraba de verdad todos sus datos.
+
+Causa:
+
+`deleteWorkspaceForClient` solo borraba la fila de `workspaces`, que
+efectivamente elimina en cascada todas las tablas con FK hacia ella
+(mensajes, contactos, prompts, credenciales, etc.). Pero los archivos del
+bucket de Storage `whatsapp-media` (audios, imágenes) no están referenciados
+por ninguna foreign key — son solo un prefijo de ruta
+(`{workspaceId}/{conversationId}/{archivo}`) — así que quedaban huérfanos en
+Storage para siempre después de "eliminar" un cliente.
+
+Fix aplicado:
+
+Se agregó `deleteWorkspaceMedia()` en `media-handler.ts`: lista cada carpeta
+de conversación bajo el prefijo del workspace (Supabase Storage marca las
+carpetas con `id: null` en la respuesta de `list()`), junta las rutas de
+archivo reales, y las borra en lotes de 100. Es best-effort: un error de
+listado o borrado en Storage queda registrado pero nunca bloquea el borrado
+del workspace en sí. Se verificó el recorrido de carpetas/archivos contra el
+bucket real en modo solo-lectura (sin borrar nada) antes de conectarlo al
+flujo de borrado.
+
+Resultado:
+
+Desplegado a producción. La política de retención ya puede afirmar, sin
+mentir, que borrar un workspace borra también sus archivos multimedia.
+
 ## Tipos de errores esperados
 
 - Variables faltantes.
