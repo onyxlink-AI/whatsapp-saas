@@ -8,6 +8,7 @@ import { TeamTab } from "./team-tab";
 import { TemplatesTab } from "./templates-tab";
 import { AutomationsTab } from "./automations-tab";
 import { KbTab } from "./kb-tab";
+import { AuditLogTab } from "./audit-log-tab";
 import { AgentsTab } from "@/features/agents/components/agents-tab";
 import type { AgentDto } from "@/features/agents/types";
 
@@ -65,6 +66,7 @@ export function SettingsShell({
             <TabsTrigger value="knowledge-base">Knowledge Base</TabsTrigger>
             <TabsTrigger value="equipo">Equipo</TabsTrigger>
             <TabsTrigger value="automatizaciones">Automatizaciones</TabsTrigger>
+            <TabsTrigger value="actividad">Actividad</TabsTrigger>
           </TabsList>
         </div>
 
@@ -125,6 +127,12 @@ export function SettingsShell({
         <TabsContent value="automatizaciones">
           <div className="p-6 space-y-6 rounded-lg border border-border/60 bg-card">
             <AutomationsTab workspaceId={workspaceId} />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="actividad">
+          <div className="p-6 space-y-6 rounded-lg border border-border/60 bg-card">
+            <AuditLogTab workspaceId={workspaceId} />
           </div>
         </TabsContent>
       </Tabs>

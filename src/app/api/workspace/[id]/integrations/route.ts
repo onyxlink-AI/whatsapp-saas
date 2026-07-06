@@ -8,6 +8,7 @@ import {
 } from "@/lib/auth/workspace-access";
 import { encryptCredentials, decryptCredentials } from "@/shared/lib/crypto";
 import { isValidIanaTimezone } from "@/shared/lib/timezone";
+import { logAudit } from "@/features/audit/services/audit-log";
 
 const IntegrationSchema = z.object({
   provider: z.enum(["ycloud", "openrouter", "highlevel", "google_calendar"]),
@@ -183,5 +184,24 @@ export async function PUT(
 
   if (error)
     return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Audit — record which fields changed, never the secret values themselves.
+  const changedCredFields = Object.keys(newCreds);
+  const changedConfigFields = Object.keys(parsed.data.config ?? {});
+  void logAudit({
+    workspaceId,
+    actorUserId: auth.userId,
+    action: "integration.update",
+    targetType: "integration",
+    targetId: parsed.data.provider,
+    summary: `Actualizó la integración de ${parsed.data.provider}`,
+    metadata: {
+      provider: parsed.data.provider,
+      credentialFieldsChanged: changedCredFields,
+      configFieldsChanged: changedConfigFields,
+      enabled: parsed.data.enabled ?? null,
+    },
+  });
+
   return NextResponse.json({ ok: true });
 }

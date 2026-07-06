@@ -6,6 +6,7 @@ import { createClient as createSbClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { configSchemaForTool } from "@/features/tools/lib/tool-config";
+import { logAudit } from "@/features/audit/services/audit-log";
 
 function svc() {
   return createSbClient(
@@ -144,7 +145,7 @@ export async function PATCH(
     // Find tool by key
     const { data: toolRow, error: toolError } = await supabase
       .from("tools")
-      .select("id")
+      .select("id, name")
       .eq("key", toolKey)
       .single();
 
@@ -171,6 +172,20 @@ export async function PATCH(
     );
 
     if (upsertError) throw upsertError;
+
+    const toolName = (toolRow.name as string) ?? toolKey;
+    void logAudit({
+      workspaceId,
+      actorUserId: auth.userId,
+      action: enabled !== undefined ? (enabled ? "tool.enable" : "tool.disable") : "tool.config_update",
+      targetType: "tool_config",
+      targetId: toolId,
+      summary:
+        enabled !== undefined
+          ? `${enabled ? "Activó" : "Desactivó"} la tool "${toolName}"`
+          : `Actualizó la configuración de la tool "${toolName}"`,
+      metadata: { toolKey, enabled: enabled ?? null, configChanged: validatedConfig !== undefined },
+    });
 
     return NextResponse.json({ data: { toolKey, enabled, config } });
   } catch (err) {

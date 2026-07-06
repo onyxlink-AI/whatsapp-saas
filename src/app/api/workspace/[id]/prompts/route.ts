@@ -3,12 +3,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createSbClient } from "@supabase/supabase-js";
 import {
   listPrompts,
   createPromptVersion,
   publishPromptVersion,
   upsertGlobalPrompt,
 } from "@/features/inbox/services/prompt-resolver";
+import { logAudit } from "@/features/audit/services/audit-log";
 
 const ALLOWED_SCOPES = [
   "global",
@@ -247,6 +249,43 @@ export async function PATCH(
 
   try {
     await publishPromptVersion(parsed.data.promptId, parsed.data.versionId);
+
+    // Audit — best-effort, never blocks the publish itself.
+    const svc = createSbClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    );
+    const [{ data: promptRow }, { data: versionRow }] = await Promise.all([
+      svc
+        .from("prompts")
+        .select("name, scope, scope_ref")
+        .eq("id", parsed.data.promptId)
+        .maybeSingle(),
+      svc
+        .from("prompt_versions")
+        .select("version")
+        .eq("id", parsed.data.versionId)
+        .maybeSingle(),
+    ]);
+    const promptLabel = promptRow?.scope_ref
+      ? `${promptRow.name} (${promptRow.scope_ref})`
+      : (promptRow?.name ?? "prompt");
+    void logAudit({
+      workspaceId,
+      actorUserId: user.id,
+      action: "prompt.publish",
+      targetType: "prompt_version",
+      targetId: parsed.data.versionId,
+      summary: `Publicó la versión ${versionRow?.version ?? "?"} de ${promptLabel}`,
+      metadata: {
+        promptId: parsed.data.promptId,
+        versionId: parsed.data.versionId,
+        version: versionRow?.version ?? null,
+        scope: promptRow?.scope ?? null,
+        scopeRef: promptRow?.scope_ref ?? null,
+      },
+    });
+
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[PATCH /api/workspace/[id]/prompts]:", err);

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as svcClient } from "@supabase/supabase-js";
 import { listAgents } from "@/features/agents/services/agent-queries";
+import { logAudit } from "@/features/audit/services/audit-log";
 
 // GET  /api/workspace/[id]/agents          → list the workspace's agents
 // PATCH /api/workspace/[id]/agents         → update fields and/or set active
@@ -90,6 +91,17 @@ export async function PATCH(
   }
   const { agentId, setActive, ...fields } = parsed.data;
 
+  // Look up the agent's current name/type once, for readable audit summaries below.
+  const { data: agentBefore } = await supabase
+    .from("agents")
+    .select("name, type")
+    .eq("id", agentId)
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
+  const agentLabel = agentBefore
+    ? `${agentBefore.name} (${agentBefore.type})`
+    : "agente";
+
   // Field updates: RLS enforces admin/manager + workspace membership.
   const updates: Record<string, unknown> = {};
   if (fields.name !== undefined) updates.name = fields.name;
@@ -107,6 +119,16 @@ export async function PATCH(
       .eq("workspace_id", workspaceId);
     if (error)
       return NextResponse.json({ error: error.message }, { status: 403 });
+
+    void logAudit({
+      workspaceId,
+      actorUserId: user.id,
+      action: "agent.update",
+      targetType: "agent",
+      targetId: agentId,
+      summary: `Editó ${Object.keys(updates).join(", ")} de ${agentLabel}`,
+      metadata: { fields: Object.keys(updates) },
+    });
   }
 
   if (setActive === true) {
@@ -128,6 +150,16 @@ export async function PATCH(
     });
     if (rpcError)
       return NextResponse.json({ error: rpcError.message }, { status: 500 });
+
+    void logAudit({
+      workspaceId,
+      actorUserId: user.id,
+      action: "agent.activate",
+      targetType: "agent",
+      targetId: agentId,
+      summary: `Activó a ${agentLabel} como agente de este workspace`,
+      metadata: {},
+    });
   }
 
   // Return the fresh row (with prompt body).
