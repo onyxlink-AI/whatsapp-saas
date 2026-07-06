@@ -227,6 +227,53 @@ el que "debería" estar manejando la conversación por el contexto de la
 charla — de lo contrario se puede arreglar el prompt equivocado y el
 síntoma persiste sin motivo aparente.
 
+### Issue 6
+
+Fecha:
+
+2026-07-06
+
+Descripción:
+
+Un cliente con su propia API key de OpenRouter configurada en
+`Settings → Integraciones → OpenRouter` seguía generando consumo en la
+cuenta de OpenRouter de la plataforma (Onyxlink), no en la suya.
+
+Causa:
+
+`getOpenRouterApiKey(workspaceId)` (en `openrouter.ts`) sí resuelve
+correctamente la key del workspace con fallback a la de plataforma, y ya la
+usaban las respuestas de chat y la comprensión de audio/imagen
+(`media-understanding.ts`). Pero dos rutas de gasto reales la ignoraban por
+completo y llamaban siempre a `process.env.OPENROUTER_API_KEY` directo:
+
+- `kb-service.ts`: embeddings al subir documentos a la Knowledge Base y en
+  cada búsqueda semántica (`searchKb`).
+- `setter.ts`: la evaluación/calificación de leads en modo setter
+  (`evaluateLead`).
+
+Fix aplicado:
+
+Ambos archivos ahora reciben la API key resuelta vía
+`getOpenRouterApiKey(workspaceId)` (mismo helper, mismo fallback a la key de
+plataforma si el workspace no configuró la suya) en vez de leer la variable
+de entorno directamente. `evaluateLead` ahora acepta `workspaceId` como
+parámetro opcional; su única llamada (en `buffer.ts`, evaluación de setter)
+ya tenía `workspaceId` disponible en scope.
+
+Resultado:
+
+Desplegado a producción. A partir de ahora, un workspace con su propia key
+de OpenRouter configurada factura ahí el 100% de su consumo: chat, audio/
+imagen, embeddings de KB y scoring de setter — no solo las respuestas del
+chat.
+
+**Lección para la próxima vez:** cuando se agregue una llamada nueva a un
+proveedor de IA, usar siempre el helper centralizado de resolución de key
+(`getOpenRouterApiKey`) en vez de leer la variable de entorno directo — es
+fácil que una ruta nueva se cuele sin la resolución por workspace y termine
+facturando a la cuenta equivocada sin que se note hasta revisar el consumo.
+
 ## Tipos de errores esperados
 
 - Variables faltantes.
