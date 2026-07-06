@@ -26,6 +26,7 @@ import type { WorkspaceWithStats } from "../types";
 
 interface Props {
   workspaces: WorkspaceWithStats[];
+  googleServiceAccountEmail?: string;
 }
 
 function formatDate(iso: string): string {
@@ -37,7 +38,10 @@ function formatDate(iso: string): string {
   }).format(new Date(iso));
 }
 
-export function WorkspacesTable({ workspaces }: Props) {
+export function WorkspacesTable({
+  workspaces,
+  googleServiceAccountEmail,
+}: Props) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -332,6 +336,7 @@ export function WorkspacesTable({ workspaces }: Props) {
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
         onCreated={handleCreated}
+        googleServiceAccountEmail={googleServiceAccountEmail}
       />
     </>
   );

@@ -124,7 +124,10 @@ export default async function AgencyWorkspacesPage() {
       )}
 
       {/* Table */}
-      <WorkspacesTable workspaces={workspaces} />
+      <WorkspacesTable
+        workspaces={workspaces}
+        googleServiceAccountEmail={process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL}
+      />
     </div>
   );
 }
