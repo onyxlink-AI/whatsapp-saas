@@ -274,6 +274,64 @@ proveedor de IA, usar siempre el helper centralizado de resolución de key
 fácil que una ruta nueva se cuele sin la resolución por workspace y termine
 facturando a la cuenta equivocada sin que se note hasta revisar el consumo.
 
+### Issue 7
+
+Fecha:
+
+2026-07-06
+
+Descripción:
+
+Auditoría de seguridad pedida por el usuario ("¿la app está protegida de
+hackers?"). Se encontró que `integrations.credentials` (API key de YCloud,
+webhook signing secret, API key de OpenRouter, PIT de HighLevel) se
+guardaba en **texto plano** en la base de datos.
+
+Causa:
+
+`ENCRYPTION_KEY`/`ENCRYPTION_KEY_VERSION` existían en `.env.local` con el
+comentario explícito "Encryption key for tenant credentials at rest
+(SEC-03)", y `src/shared/lib/crypto.ts` ya tenía un helper AES-256-GCM
+correctamente implementado (IV aleatorio por operación, cifrado
+autenticado) — pero **nunca se llamaba desde ningún lado**. SEC-03 se
+planeó pero nunca se conectó al flujo real de guardar/leer integraciones.
+
+De paso, se encontró una segunda cosa: `kb-service.ts` tenía una función de
+respaldo (`searchKbFallback`) que arma una consulta SQL pegando texto
+directamente (workspace_id y el vector de embedding interpolados en un
+string) y la manda a una RPC `execute_sql` que **nunca existió** en las
+migraciones — código muerto e inalcanzable hoy, pero con forma de inyección
+SQL real si algún día alguien creara esa RPC sin notar este llamador.
+
+Fix aplicado:
+
+1. Se agregaron `encryptCredentials`/`decryptCredentials` a `crypto.ts`.
+   `decryptCredentials` detecta por forma si un valor ya está cifrado
+   (`iv:ciphertext:version`) o es texto plano legado, y lo deja pasar tal
+   cual si no lo reconoce — migración sin downtime, sin necesitar tocar cada
+   fila manualmente.
+2. Se conectó en los 9 puntos reales que leen o escriben credenciales:
+   `Settings → Integraciones` (GET/PUT), los dos webhooks (verificación de
+   firma de YCloud, comparación de token de HighLevel), `dispatch.ts`,
+   `templates.ts` (listar + enviar), `openrouter.ts`, `highlevel-client.ts`.
+3. Se re-cifraron directamente las 2 filas reales que ya existían en
+   producción (YCloud, OpenRouter del workspace de Onyxlink) para que la
+   protección aplique de inmediato, no solo la próxima vez que alguien
+   guarde el formulario.
+4. Se eliminó `searchKbFallback` y la referencia a `execute_sql`.
+
+Resultado:
+
+Desplegado a producción. Verificado que el descifrado de las credenciales
+ya re-cifradas devuelve el valor original correcto.
+
+**Lección para la próxima vez:** una variable de entorno o un helper de
+seguridad que existe en el repo no significa que esté aplicado — hay que
+verificar que de verdad se llama desde el código, no solo que está
+declarado. Cuando se audite seguridad, buscar los helpers de
+seguridad (`grep` del nombre de la función) y confirmar quién los invoca de
+verdad.
+
 ## Tipos de errores esperados
 
 - Variables faltantes.
