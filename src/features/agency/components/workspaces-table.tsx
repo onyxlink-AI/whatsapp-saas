@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Settings,
   Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CreateWorkspaceSheet } from "./create-workspace-sheet";
 import { switchWorkspace } from "@/features/workspace/services/actions";
 import { deleteWorkspaceForClient } from "../services/agency-actions";
+import { formatTokens } from "../lib/cost-format";
 import { cn } from "@/lib/utils";
 import type { WorkspaceWithStats } from "../types";
 
@@ -111,7 +113,7 @@ export function WorkspacesTable({ workspaces }: Props) {
           className={cn(
             "hidden md:grid gap-4 px-4 py-2.5",
             "border-b border-border bg-muted/40",
-            "grid-cols-[2fr_1fr_1fr_1fr_1fr_auto]",
+            "grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_auto]",
           )}
         >
           {[
@@ -119,6 +121,7 @@ export function WorkspacesTable({ workspaces }: Props) {
             "Miembros",
             "Conversaciones",
             "YCloud",
+            "Tokens IA (30d)",
             "Creado",
             "",
           ].map((h) => (
@@ -164,7 +167,7 @@ export function WorkspacesTable({ workspaces }: Props) {
             key={workspace.id}
             className={cn(
               "flex flex-col gap-3 px-4 py-4",
-              "md:grid md:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] md:items-center md:gap-4 md:py-3",
+              "md:grid md:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_auto] md:items-center md:gap-4 md:py-3",
               "border-b border-border last:border-0",
               "hover:bg-muted/20 transition-colors duration-150",
             )}
@@ -221,6 +224,26 @@ export function WorkspacesTable({ workspaces }: Props) {
                   No conectado
                 </Badge>
               )}
+            </div>
+
+            {/* Tokens IA (30d) */}
+            <div className="flex items-center gap-2 md:block">
+              <span className="text-xs text-muted-foreground md:hidden">
+                Tokens IA (30d):
+              </span>
+              <div className="flex items-center gap-1.5">
+                <p className="font-mono text-sm text-foreground">
+                  {formatTokens(workspace.tokens_30d)}
+                </p>
+                {workspace.has_recent_cost_alert && (
+                  <span title="Este workspace cruzó el umbral de alerta de costo en los últimos 30 días">
+                    <AlertTriangle
+                      className="h-3.5 w-3.5 text-warning"
+                      aria-label="Alerta de costo reciente"
+                    />
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Fecha */}

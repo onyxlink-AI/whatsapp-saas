@@ -361,6 +361,19 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
     .eq("provider", "ycloud")
     .in("workspace_id", ids);
 
+  // LLM cost/usage — one query covers both the "today" and "last 30 days"
+  // columns, plus any cost_alert fired in that window (SEC-06).
+  const dayStart = new Date();
+  dayStart.setUTCHours(0, 0, 0, 0);
+  const last30Start = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+  const { data: usageEvents } = await service
+    .from("events")
+    .select("workspace_id, type, payload, created_at")
+    .in("workspace_id", ids)
+    .in("type", ["llm_usage", "cost_alert"])
+    .gte("created_at", last30Start.toISOString());
+
   // Build lookup maps
   const memberMap = new Map<string, number>();
   for (const m of memberships ?? []) {
@@ -380,6 +393,37 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
     ycloudMap.set(row.workspace_id, row.enabled);
   }
 
+  const tokensTodayMap = new Map<string, number>();
+  const tokens30dMap = new Map<string, number>();
+  const alertMap = new Map<string, boolean>();
+
+  for (const e of usageEvents ?? []) {
+    const row = e as {
+      workspace_id: string;
+      type: string;
+      payload: Record<string, unknown> | null;
+      created_at: string;
+    };
+
+    if (row.type === "cost_alert") {
+      alertMap.set(row.workspace_id, true);
+      continue;
+    }
+
+    const totalTokens = row.payload?.total_tokens;
+    const tokens = typeof totalTokens === "number" ? totalTokens : 0;
+    tokens30dMap.set(
+      row.workspace_id,
+      (tokens30dMap.get(row.workspace_id) ?? 0) + tokens,
+    );
+    if (new Date(row.created_at) >= dayStart) {
+      tokensTodayMap.set(
+        row.workspace_id,
+        (tokensTodayMap.get(row.workspace_id) ?? 0) + tokens,
+      );
+    }
+  }
+
   const result: WorkspaceWithStats[] = (
     workspaces as {
       id: string;
@@ -395,6 +439,9 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
     member_count: memberMap.get(w.id) ?? 0,
     conversation_count: convMap.get(w.id) ?? 0,
     ycloud_connected: ycloudMap.get(w.id) ?? false,
+    tokens_today: tokensTodayMap.get(w.id) ?? 0,
+    tokens_30d: tokens30dMap.get(w.id) ?? 0,
+    has_recent_cost_alert: alertMap.get(w.id) ?? false,
   }));
 
   return { workspaces: result };

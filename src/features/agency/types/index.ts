@@ -6,6 +6,12 @@ export interface WorkspaceWithStats {
   member_count: number;
   conversation_count: number;
   ycloud_connected: boolean;
+  /** LLM tokens consumed today (UTC calendar day), from events.type=llm_usage */
+  tokens_today: number;
+  /** LLM tokens consumed in the last 30 days */
+  tokens_30d: number;
+  /** true when a cost_alert event fired for this workspace in the last 30 days */
+  has_recent_cost_alert: boolean;
 }
 
 export type UseCase = "setter" | "soporte" | "agendamiento" | "general";

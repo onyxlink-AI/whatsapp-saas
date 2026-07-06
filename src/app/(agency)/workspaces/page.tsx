@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAllWorkspacesWithStats } from "@/features/agency/services/agency-actions";
 import { WorkspacesTable } from "@/features/agency/components/workspaces-table";
-import { Building2, Users, MessageCircle, Wifi } from "lucide-react";
+import { formatTokens, ESTIMATED_USD_PER_MILLION_TOKENS } from "@/features/agency/lib/cost-format";
+import { Building2, Users, MessageCircle, Wifi, Zap, DollarSign } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -34,27 +35,47 @@ export default async function AgencyWorkspacesPage() {
     0,
   );
   const connectedCount = workspaces.filter((w) => w.ycloud_connected).length;
+  const totalTokensToday = workspaces.reduce((sum, w) => sum + w.tokens_today, 0);
+  const totalTokens30d = workspaces.reduce((sum, w) => sum + w.tokens_30d, 0);
+  const estimatedCost30d = (totalTokens30d / 1_000_000) * ESTIMATED_USD_PER_MILLION_TOKENS;
 
-  const kpis = [
+  const kpis: {
+    label: string;
+    value: string;
+    icon: typeof Building2;
+    caption?: string;
+  }[] = [
     {
       label: "Workspaces",
-      value: workspaces.length,
+      value: String(workspaces.length),
       icon: Building2,
     },
     {
       label: "Miembros totales",
-      value: totalMembers,
+      value: String(totalMembers),
       icon: Users,
     },
     {
       label: "Conversaciones",
-      value: totalConversations,
+      value: String(totalConversations),
       icon: MessageCircle,
     },
     {
       label: "YCloud conectado",
-      value: connectedCount,
+      value: String(connectedCount),
       icon: Wifi,
+    },
+    {
+      label: "Tokens IA — hoy",
+      value: formatTokens(totalTokensToday),
+      icon: Zap,
+      caption: "Todos los workspaces, suma del día",
+    },
+    {
+      label: "Costo estimado (30 días)",
+      value: `$${estimatedCost30d.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      icon: DollarSign,
+      caption: `Estimado a ~$${ESTIMATED_USD_PER_MILLION_TOKENS}/millón de tokens, no es la factura real`,
     },
   ];
 
@@ -72,7 +93,7 @@ export default async function AgencyWorkspacesPage() {
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {kpis.map(({ label, value, icon: Icon }) => (
+        {kpis.map(({ label, value, icon: Icon, caption }) => (
           <div
             key={label}
             className="rounded-xl border border-border bg-card p-4 space-y-2"
@@ -84,6 +105,11 @@ export default async function AgencyWorkspacesPage() {
             <p className="font-mono text-2xl font-bold text-foreground">
               {value}
             </p>
+            {caption && (
+              <p className="text-[0.7rem] leading-snug text-muted-foreground">
+                {caption}
+              </p>
+            )}
           </div>
         ))}
       </div>
