@@ -7,6 +7,7 @@ import {
   readJsonBody,
 } from "@/lib/auth/workspace-access";
 import { encryptCredentials, decryptCredentials } from "@/shared/lib/crypto";
+import { isValidIanaTimezone } from "@/shared/lib/timezone";
 
 const IntegrationSchema = z.object({
   provider: z.enum(["ycloud", "openrouter", "highlevel", "google_calendar"]),
@@ -114,18 +115,15 @@ export async function PUT(
   if (
     parsed.data.provider === "google_calendar" &&
     typeof tz === "string" &&
-    tz.length > 0
+    tz.length > 0 &&
+    !isValidIanaTimezone(tz)
   ) {
-    try {
-      new Intl.DateTimeFormat("en-US", { timeZone: tz });
-    } catch {
-      return NextResponse.json(
-        {
-          error: `Zona horaria inválida: "${tz}". Usa un identificador IANA, ej: Europe/Madrid, America/Mexico_City.`,
-        },
-        { status: 400 },
-      );
-    }
+    return NextResponse.json(
+      {
+        error: `Zona horaria inválida: "${tz}". Usa un identificador IANA, ej: Europe/Madrid, America/Mexico_City.`,
+      },
+      { status: 400 },
+    );
   }
 
   const svc = svcClient(

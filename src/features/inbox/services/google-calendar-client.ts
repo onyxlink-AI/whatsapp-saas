@@ -187,7 +187,7 @@ function addDays(dateStr: string, days: number): string {
 // FreeBusy + slot generation
 // ──────────────────────────────────────────────────────────────────────────────
 
-interface BusyPeriod {
+export interface BusyPeriod {
   start: string;
   end: string;
 }
@@ -242,6 +242,45 @@ function overlapsBusy(
 }
 
 /**
+ * Pure slot-generation math, split out from getFreeSlotsGoogle so it can be
+ * unit-tested without a live Google Calendar/network call. Given the busy
+ * periods already fetched from freeBusy, walks [dateFrom, dateTo] in
+ * cfg.slotMinutes steps within business hours, skipping anything in the past
+ * or overlapping a busy period, capped at 30 slots total.
+ */
+export function computeFreeSlots(
+  cfg: GoogleCalendarConfig,
+  dateFrom: string,
+  dateTo: string,
+  busy: BusyPeriod[],
+  nowMs: number = Date.now(),
+): string[] {
+  const slots: string[] = [];
+  let day = dateFrom;
+  while (day <= dateTo) {
+    let hour = cfg.businessHoursStart;
+    let minute = 0;
+    while (hour < cfg.businessHoursEnd) {
+      const start = zonedDateTime(day, hour, minute, cfg.timezone);
+      const end = new Date(start.getTime() + cfg.slotMinutes * 60_000);
+      if (start.getTime() > nowMs && !overlapsBusy(start, end, busy)) {
+        slots.push(start.toISOString());
+      }
+      minute += cfg.slotMinutes;
+      if (minute >= 60) {
+        hour += Math.floor(minute / 60);
+        minute = minute % 60;
+      }
+      if (slots.length >= 30) break; // keep the prompt lean, same cap as HighLevel's tool
+    }
+    if (slots.length >= 30) break;
+    day = addDays(day, 1);
+  }
+
+  return slots;
+}
+
+/**
  * Returns free slot start times (ISO, with offset) within business hours for
  * each day in [dateFrom, dateTo], filtering out anything that overlaps a busy
  * period or that's already in the past.
@@ -261,30 +300,7 @@ export async function getFreeSlotsGoogle(
 
   const busy = await freeBusyQuery(cfg.calendarId, timeMin, timeMax);
 
-  const slots: string[] = [];
-  const now = Date.now();
-  let day = dateFrom;
-  while (day <= dateTo) {
-    let hour = cfg.businessHoursStart;
-    let minute = 0;
-    while (hour < cfg.businessHoursEnd) {
-      const start = zonedDateTime(day, hour, minute, cfg.timezone);
-      const end = new Date(start.getTime() + cfg.slotMinutes * 60_000);
-      if (start.getTime() > now && !overlapsBusy(start, end, busy)) {
-        slots.push(start.toISOString());
-      }
-      minute += cfg.slotMinutes;
-      if (minute >= 60) {
-        hour += Math.floor(minute / 60);
-        minute = minute % 60;
-      }
-      if (slots.length >= 30) break; // keep the prompt lean, same cap as HighLevel's tool
-    }
-    if (slots.length >= 30) break;
-    day = addDays(day, 1);
-  }
-
-  return slots;
+  return computeFreeSlots(cfg, dateFrom, dateTo, busy);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
