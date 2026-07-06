@@ -195,6 +195,78 @@ export async function getSignedUrl(
 }
 
 /**
+ * Permanently deletes every file stored under a workspace's prefix in the
+ * whatsapp-media bucket ({workspaceId}/{conversationId}/{filename}).
+ *
+ * Supabase Storage has no "delete by prefix" call, so this lists each
+ * conversation "folder" under the workspace, collects the full file paths,
+ * and removes them in batches. Best-effort: logs and keeps going on a
+ * per-conversation listing/removal error rather than aborting, since the
+ * caller (workspace deletion) should not be blocked by a Storage hiccup.
+ *
+ * Returns the number of files actually removed.
+ */
+export async function deleteWorkspaceMedia(
+  workspaceId: string,
+): Promise<{ filesDeleted: number; errors: string[] }> {
+  const supabase = svc();
+  const errors: string[] = [];
+  let filesDeleted = 0;
+
+  const { data: conversationFolders, error: listConvError } =
+    await supabase.storage.from(BUCKET).list(workspaceId, { limit: 1000 });
+
+  if (listConvError) {
+    errors.push(`list ${workspaceId}: ${listConvError.message}`);
+    return { filesDeleted, errors };
+  }
+
+  const allPaths: string[] = [];
+
+  for (const entry of conversationFolders ?? []) {
+    // Supabase Storage represents sub-folders as entries with id === null.
+    if (entry.id !== null) continue; // stray file directly under the workspace prefix (unexpected, skip)
+
+    const folderPath = `${workspaceId}/${entry.name}`;
+    const { data: files, error: listFilesError } = await supabase.storage
+      .from(BUCKET)
+      .list(folderPath, { limit: 1000 });
+
+    if (listFilesError) {
+      errors.push(`list ${folderPath}: ${listFilesError.message}`);
+      continue;
+    }
+
+    for (const file of files ?? []) {
+      allPaths.push(`${folderPath}/${file.name}`);
+    }
+  }
+
+  const BATCH_SIZE = 100;
+  for (let i = 0; i < allPaths.length; i += BATCH_SIZE) {
+    const batch = allPaths.slice(i, i + BATCH_SIZE);
+    const { data: removed, error: removeError } = await supabase.storage
+      .from(BUCKET)
+      .remove(batch);
+
+    if (removeError) {
+      errors.push(`remove batch starting at ${i}: ${removeError.message}`);
+      continue;
+    }
+    filesDeleted += removed?.length ?? batch.length;
+  }
+
+  if (errors.length > 0) {
+    console.error(
+      `[media-handler] deleteWorkspaceMedia(${workspaceId}) finished with errors:`,
+      errors,
+    );
+  }
+
+  return { filesDeleted, errors };
+}
+
+/**
  * Updates messages.meta with MediaMeta after a successful download.
  * Intended to run fire-and-forget after processInbound().
  */

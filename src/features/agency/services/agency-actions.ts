@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { provisionWorkspaceUser } from "@/lib/auth/provision-user";
+import { deleteWorkspaceMedia } from "@/features/inbox/services/media-handler";
 import type {
   ClientCredentials,
   CreateWorkspaceResult,
@@ -287,6 +288,21 @@ export async function deleteWorkspaceForClient(
 ): Promise<{ error?: string; ok?: boolean }> {
   const userId = await assertSuperAdmin();
   if (!userId) return { error: "No autorizado" };
+
+  // Clean up Storage first — DB row deletion below cascades every table via
+  // FK, but whatsapp-media files aren't referenced by a foreign key, so they
+  // would otherwise be orphaned forever. Best-effort: a Storage hiccup here
+  // must not block deleting the workspace itself.
+  const { filesDeleted, errors: mediaErrors } =
+    await deleteWorkspaceMedia(workspaceId);
+  if (mediaErrors.length > 0) {
+    console.error(
+      `[agency] deleteWorkspaceForClient(${workspaceId}): ${mediaErrors.length} Storage cleanup error(s), proceeding with workspace delete anyway`,
+    );
+  }
+  console.info(
+    `[agency] deleteWorkspaceForClient(${workspaceId}): removed ${filesDeleted} media file(s) from Storage`,
+  );
 
   const service = svc();
   const { error } = await service
