@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   Building2,
+  Kanban,
   LayoutDashboard,
   LogOut,
   MessageCircle,
@@ -128,6 +129,17 @@ export default async function MainLayout({
             </Button>
           </Link>
 
+          <Link href="/pipeline">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Kanban className="h-4 w-4" aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only sm:ml-2">Pipeline</span>
+            </Button>
+          </Link>
+
           <Link href="/settings">
             <Button
               variant="ghost"
@@ -178,6 +190,14 @@ export default async function MainLayout({
         >
           <LayoutDashboard className="h-5 w-5" aria-hidden="true" />
           <span>Dashboard</span>
+        </Link>
+
+        <Link
+          href="/pipeline"
+          className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+        >
+          <Kanban className="h-5 w-5" aria-hidden="true" />
+          <span>Pipeline</span>
         </Link>
 
         <Link

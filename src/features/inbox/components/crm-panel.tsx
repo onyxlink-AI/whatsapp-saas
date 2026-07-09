@@ -6,7 +6,8 @@
  */
 
 import { useState, useTransition, KeyboardEvent } from "react";
-import { User, RefreshCw, Save, ChevronDown, ChevronUp, X } from "lucide-react";
+import { User, RefreshCw, Save, ChevronDown, ChevronUp, X, Kanban } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -316,6 +317,17 @@ export function CrmPanel({
         >
           <RefreshCw className="h-3.5 w-3.5" />
           Sync HighLevel
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          asChild
+          className="w-full h-7 text-xs gap-1.5"
+        >
+          <Link href={`/pipeline?createFor=${contact.id}`}>
+            <Kanban className="h-3.5 w-3.5" />
+            Crear deal
+          </Link>
         </Button>
       </div>
 
