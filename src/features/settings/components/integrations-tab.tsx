@@ -17,7 +17,12 @@ import { ModelPicker } from "@/features/agents/components/model-picker";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Provider = "ycloud" | "openrouter" | "highlevel" | "google_calendar";
+type Provider =
+  | "ycloud"
+  | "openrouter"
+  | "highlevel"
+  | "google_calendar"
+  | "airtable";
 
 type IntegrationData = {
   provider: Provider;
@@ -977,6 +982,190 @@ function GoogleCalendarSection({
   );
 }
 
+// ─── Airtable section ─────────────────────────────────────────────────────────
+
+function AirtableSection({
+  workspaceId,
+  initial,
+  onSaved,
+}: {
+  workspaceId: string;
+  initial: IntegrationData | undefined;
+  onSaved: () => void;
+}) {
+  const [pat, setPat] = useState(initial?.credentials?.airtable_pat ?? "");
+  const [baseId, setBaseId] = useState(
+    (initial?.config?.base_id as string | undefined) ?? "",
+  );
+  const [tableName, setTableName] = useState(
+    (initial?.config?.table_name as string | undefined) ?? "",
+  );
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/workspace/${workspaceId}/integrations`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "airtable",
+          enabled: true,
+          credentials: { airtable_pat: pat },
+          config: { base_id: baseId, table_name: tableName },
+        }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (json.ok) {
+        toast.success("Configuración de Airtable guardada");
+        onSaved();
+      } else {
+        toast.error(json.error ?? "Error al guardar");
+      }
+    } catch {
+      toast.error("Error de red al guardar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleTest() {
+    setTesting(true);
+    try {
+      const res = await fetch(
+        `/api/workspace/${workspaceId}/integrations/airtable/test`,
+        { method: "POST" },
+      );
+      const json = (await res.json()) as { ok: boolean; error?: string };
+      if (json.ok) {
+        toast.success("Airtable conectado");
+      } else {
+        toast.error(json.error ?? "Error al probar la conexión");
+      }
+    } catch {
+      toast.error("Error de red al probar la conexión");
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  return (
+    <Section
+      title="Airtable"
+      description="Guarda cada contacto que escribe al bot como una fila en una tabla de Airtable del cliente."
+    >
+      <div className="grid gap-4">
+        <div className="rounded-md border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
+          En la tabla de Airtable, crea estas columnas con el nombre exacto:{" "}
+          <code className="font-mono text-foreground">Nombre</code>,{" "}
+          <code className="font-mono text-foreground">Teléfono</code>,{" "}
+          <code className="font-mono text-foreground">Email</code>,{" "}
+          <code className="font-mono text-foreground">Último mensaje</code>,{" "}
+          <code className="font-mono text-foreground">Última actividad</code>.
+          &quot;Teléfono&quot; es la clave: cada mensaje nuevo del mismo
+          contacto actualiza su misma fila en vez de crear otra.
+          <br />
+          <strong className="text-foreground">
+            Importante:
+          </strong>{" "}
+          &quot;Teléfono&quot; debe ser de tipo{" "}
+          <strong className="text-foreground">
+            &quot;Texto de línea única&quot;
+          </strong>
+          , no &quot;Número de teléfono&quot; — Airtable no permite usar ese
+          tipo como clave de actualización y la sincronización fallará con un
+          error 422.
+          <br />
+          <strong className="text-foreground">Opcional</strong> (solo si el
+          agente activo es modo &quot;setter&quot; / calificación de leads):
+          agrega también{" "}
+          <code className="font-mono text-foreground">Sector</code>,{" "}
+          <code className="font-mono text-foreground">
+            Problema_principal
+          </code>{" "}
+          y <code className="font-mono text-foreground">Proximo_paso</code>{" "}
+          (texto de línea única). Se llenan solo cuando el lead califica o
+          queda descartado, no en cada mensaje.
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="at-pat">Personal Access Token</Label>
+          <Input
+            id="at-pat"
+            type="password"
+            placeholder="pat..."
+            value={pat}
+            onChange={(e) => setPat(e.target.value)}
+            autoComplete="off"
+          />
+          <p className="text-xs text-muted-foreground">
+            Airtable → icono de cuenta → Developer hub → Personal access
+            tokens → crea uno con permisos{" "}
+            <code className="font-mono">data.records:read</code> y{" "}
+            <code className="font-mono">data.records:write</code> sobre la
+            base del cliente.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="at-base">Base ID</Label>
+          <Input
+            id="at-base"
+            placeholder="appXXXXXXXXXXXXXX"
+            value={baseId}
+            onChange={(e) => setBaseId(e.target.value)}
+            className="font-mono text-sm"
+          />
+          <p className="text-xs text-muted-foreground">
+            En la base de Airtable → Ayuda → API documentation, aparece al
+            inicio como <code className="font-mono">app…</code>.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="at-table">Nombre de la tabla</Label>
+          <Input
+            id="at-table"
+            placeholder="Contactos"
+            value={tableName}
+            onChange={(e) => setTableName(e.target.value)}
+            className="font-mono text-sm"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleTest}
+            disabled={testing}
+            aria-busy={testing}
+          >
+            {testing && (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
+            )}
+            Probar conexión
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleSave}
+            disabled={saving}
+            aria-busy={saving}
+          >
+            {saving && (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
+            )}
+            Guardar
+          </Button>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface Props {
@@ -1008,6 +1197,7 @@ export function IntegrationsTab({
   const openrouter = findIntegration(integrations, "openrouter");
   const highlevel = findIntegration(integrations, "highlevel");
   const googleCalendar = findIntegration(integrations, "google_calendar");
+  const airtable = findIntegration(integrations, "airtable");
 
   return (
     <div className="space-y-6">
@@ -1033,6 +1223,12 @@ export function IntegrationsTab({
         workspaceId={workspaceId}
         initial={googleCalendar}
         serviceAccountEmail={googleServiceAccountEmail ?? ""}
+        onSaved={refresh}
+      />
+      <Separator />
+      <AirtableSection
+        workspaceId={workspaceId}
+        initial={airtable}
         onSaved={refresh}
       />
     </div>

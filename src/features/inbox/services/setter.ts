@@ -66,6 +66,24 @@ const EvalSchema = z.object({
     .string()
     .nullable()
     .describe("Reason if knocked out, else null"),
+  sector: z
+    .string()
+    .nullable()
+    .describe(
+      "The lead's business sector/industry, in a few words, if mentioned or clearly inferable from the conversation — else null",
+    ),
+  problema_principal: z
+    .string()
+    .nullable()
+    .describe(
+      "The lead's main problem or pain point, in a short phrase — else null",
+    ),
+  proximo_paso: z
+    .string()
+    .nullable()
+    .describe(
+      "The recommended next step/action for this lead (e.g. 'Agendar demo', 'Enviar propuesta') — else null",
+    ),
 });
 
 export type SetterEvaluation = z.infer<typeof EvalSchema>;
@@ -143,7 +161,9 @@ ${conversationHistory}
 
 Evaluate the conversation against the qualification questions and knockout rules.
 Compute a weighted score (0-100). Apply knockout rules first — if any knockout
-condition is met, set knocked_out=true. Return a structured evaluation.`;
+condition is met, set knocked_out=true. Also extract the lead's business sector,
+main problem/pain point, and recommended next step when they can be inferred from
+the conversation. Return a structured evaluation.`;
 
   const apiKey = await getOpenRouterApiKey(workspaceId);
   const { object } = await generateObject({

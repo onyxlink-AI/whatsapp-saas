@@ -11,7 +11,13 @@ import { isValidIanaTimezone } from "@/shared/lib/timezone";
 import { logAudit } from "@/features/audit/services/audit-log";
 
 const IntegrationSchema = z.object({
-  provider: z.enum(["ycloud", "openrouter", "highlevel", "google_calendar"]),
+  provider: z.enum([
+    "ycloud",
+    "openrouter",
+    "highlevel",
+    "google_calendar",
+    "airtable",
+  ]),
   enabled: z.boolean().optional(),
   credentials: z.record(z.string(), z.string()).optional(),
   config: z.record(z.string(), z.unknown()).optional(),
@@ -122,6 +128,23 @@ export async function PUT(
     return NextResponse.json(
       {
         error: `Zona horaria inválida: "${tz}". Usa un identificador IANA, ej: Europe/Madrid, America/Mexico_City.`,
+      },
+      { status: 400 },
+    );
+  }
+
+  // Airtable's base id always starts with "app" — catches a pasted table/view
+  // URL or record id before it ever reaches the sync job.
+  const baseId = parsed.data.config?.base_id;
+  if (
+    parsed.data.provider === "airtable" &&
+    typeof baseId === "string" &&
+    baseId.length > 0 &&
+    !/^app[a-zA-Z0-9]+$/.test(baseId)
+  ) {
+    return NextResponse.json(
+      {
+        error: `Base ID inválido: "${baseId}". Debe empezar con "app" (Airtable → base → Ayuda → API docs).`,
       },
       { status: 400 },
     );

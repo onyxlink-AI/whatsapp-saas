@@ -18,6 +18,7 @@ import {
   transcribeAudio,
   describeImage,
 } from "@/features/inbox/services/media-understanding";
+import { syncContactToAirtable } from "@/features/inbox/services/airtable-client";
 import { decryptCredentials } from "@/shared/lib/crypto";
 
 // Keep the function alive long enough for the best-effort fast path below
@@ -196,6 +197,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!message) {
       return NextResponse.json({ received: true, dedup: true });
     }
+
+    // Best-effort mirror to the workspace's Airtable base (if connected).
+    // Fired independently of the AI/rate-limit branches below — every real
+    // inbound message should refresh the contact's row, even when the AI
+    // doesn't reply. syncContactToAirtable never throws (self-contained
+    // try/catch), so no extra guarding is needed here.
+    after(() =>
+      syncContactToAirtable(workspaceId, contact, conversation, normalized.text),
+    );
 
     // Media handling (download + AI understanding) runs AFTER the response so
     // the webhook stays fast. transcript/description land in meta before the

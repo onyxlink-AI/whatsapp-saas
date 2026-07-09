@@ -25,6 +25,7 @@ import {
   type ConversationTurn,
 } from "./conversation-history";
 import { getSetterConfig, evaluateLead } from "./setter";
+import { syncQualificationToAirtable } from "./airtable-client";
 import { syncContactToHL, createHLOpportunity } from "./highlevel-client";
 
 const DEFAULT_SILENCE_MS = 30_000; // 30 seconds silence window
@@ -597,7 +598,7 @@ async function runSetterEvaluation(params: SetterEvalParams): Promise<void> {
     // Load contact for the idempotency guard + tag merge in one read.
     const { data: contactRow } = await supabase
       .from("contacts")
-      .select("tags, custom_fields, stage")
+      .select("phone, tags, custom_fields, stage")
       .eq("id", contactId)
       .maybeSingle();
 
@@ -635,6 +636,9 @@ async function runSetterEvaluation(params: SetterEvalParams): Promise<void> {
       lead_score: evaluation.score,
       lead_qualified: evaluation.qualified,
       lead_summary: evaluation.summary,
+      lead_sector: evaluation.sector ?? null,
+      lead_problema_principal: evaluation.problema_principal ?? null,
+      lead_proximo_paso: evaluation.proximo_paso ?? null,
       setter_knocked_out: evaluation.knocked_out,
       setter_knockout_reason: evaluation.knockout_reason ?? null,
       setter_config_id: cfg.id,
@@ -650,6 +654,17 @@ async function runSetterEvaluation(params: SetterEvalParams): Promise<void> {
       else if (evaluation.qualified) update.stage = "qualified";
     }
     await supabase.from("contacts").update(update).eq("id", contactId);
+
+    // Mirror the qualification result to Airtable (if connected) — only once
+    // the lead reaches a terminal outcome, not on every partial evaluation.
+    const phone = contactRow?.phone as string | undefined;
+    if (phone && (evaluation.qualified || evaluation.knocked_out)) {
+      await syncQualificationToAirtable(workspaceId, phone, {
+        sector: evaluation.sector,
+        problemaPrincipal: evaluation.problema_principal,
+        proximoPaso: evaluation.proximo_paso,
+      });
+    }
 
     // Observability event (surfaces in the conversation timeline).
     await supabase.from("events").insert({
