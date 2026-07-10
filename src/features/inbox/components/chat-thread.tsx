@@ -35,12 +35,15 @@ import type {
   ConversationWithContact,
   MessageRow,
 } from "@/features/inbox/types";
+import type { ContactMemory } from "@/features/inbox/services/contact-memory";
 
 interface ChatThreadProps {
   conversation: ConversationWithContact;
   initialMessages: MessageRow[];
   currentUserId: string;
   role?: WorkspaceRole;
+  advancedMemoryEnabled?: boolean;
+  initialMemory?: ContactMemory | null;
 }
 
 export function ChatThread({
@@ -48,6 +51,8 @@ export function ChatThread({
   initialMessages,
   currentUserId: _currentUserId,
   role = "agent",
+  advancedMemoryEnabled = false,
+  initialMemory = null,
 }: ChatThreadProps) {
   const messages = useRealtimeMessages(conversation.id, initialMessages);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -448,6 +453,8 @@ export function ChatThread({
         <CrmPanel
           contact={conversation.contact}
           conversationId={conversation.id}
+          advancedMemoryEnabled={advancedMemoryEnabled}
+          initialMemory={initialMemory}
         />
       )}
 

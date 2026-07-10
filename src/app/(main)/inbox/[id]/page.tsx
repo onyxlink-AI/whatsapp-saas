@@ -9,6 +9,7 @@ import type {
   MessageRow,
 } from "@/features/inbox/types";
 import type { WorkspaceRole } from "@/features/inbox/hooks/use-role";
+import type { ContactMemory } from "@/features/inbox/services/contact-memory";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -46,6 +47,26 @@ export default async function InboxDetailPage({ params }: PageProps) {
   if (!convData) notFound();
 
   const convWithContact = convData as ConversationRow & { contact: ContactRow };
+
+  // 3b. Memoria Inteligente Avanzada (opt-in): only fetch the contact's
+  // memory when the workspace has it enabled — RLS-scoped read, same client
+  // as everything else on this page (no service-role here).
+  const { data: wsData } = await supabase
+    .from("workspaces")
+    .select("advanced_memory_enabled")
+    .eq("id", convWithContact.workspace_id)
+    .maybeSingle();
+  const advancedMemoryEnabled = wsData?.advanced_memory_enabled === true;
+
+  let initialMemory: ContactMemory | null = null;
+  if (advancedMemoryEnabled) {
+    const { data: memData } = await supabase
+      .from("contact_memories")
+      .select("*")
+      .eq("contact_id", convWithContact.contact.id)
+      .maybeSingle();
+    initialMemory = (memData as ContactMemory | null) ?? null;
+  }
 
   // 4. Fetch messages (ASC, limit 100)
   const { data: messagesData } = await supabase
@@ -126,6 +147,8 @@ export default async function InboxDetailPage({ params }: PageProps) {
         initialMessages={messages}
         currentUserId={user.id}
         role={role}
+        advancedMemoryEnabled={advancedMemoryEnabled}
+        initialMemory={initialMemory}
       />
     </InboxLayout>
   );
