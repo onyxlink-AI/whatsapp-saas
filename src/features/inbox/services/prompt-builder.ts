@@ -7,7 +7,7 @@
  * Order (guardrails go LAST — models obey end-of-prompt instructions most):
  *   now → summary → contact memory → relevant recuerdos → business info →
  *   knowledge base → response style → prompt base → WhatsApp format note →
- *   strict rules/restrictions
+ *   strict rules/restrictions → scope guardrail (very last, non-negotiable)
  */
 
 export type ResponseStyle = "concise" | "balanced" | "detailed";
@@ -65,6 +65,22 @@ const MEDIA_CAPABILITY_NOTE =
   "Respóndelo con normalidad. NUNCA digas que no puedes escuchar audios/notas " +
   "de voz ni ver imágenes — sí puedes, ya te llegan convertidos a texto.";
 
+// System-enforced, not part of any editable prompt/guardrails config — a
+// client's custom prompt can never accidentally remove this. Placed after
+// the custom guardrailsBlock (i.e. absolute last) so it has final say: the
+// agent must never answer questions unrelated to the business, no matter
+// how capable the underlying model is at the topic.
+const SCOPE_GUARDRAIL =
+  "=== ALCANCE DE LA CONVERSACIÓN (cumple SIEMPRE, sin excepción) ===\n" +
+  "SOLO debes responder preguntas relacionadas con este negocio: sus " +
+  "productos, servicios, precios, citas, horarios o el proceso de " +
+  "contratación. Si te preguntan algo que NO tiene relación con este " +
+  "negocio (temas personales, consejos generales de otra índole, otras " +
+  "empresas, cultura general, etc.), responde brevemente que eso no está " +
+  "dentro de tu conocimiento y redirige la conversación hacia cómo puedes " +
+  "ayudar con este negocio. NUNCA respondas la pregunta fuera de tema, " +
+  "aunque sepas la respuesta.";
+
 export function substituteVars(text: string, vars?: SystemPromptVars): string {
   if (!vars) return text;
   return text
@@ -120,6 +136,7 @@ export function buildSystemPrompt(parts: BuildSystemPromptParts): string {
     WHATSAPP_FORMAT_NOTE,
     MEDIA_CAPABILITY_NOTE,
     guardrailsBlock,
+    SCOPE_GUARDRAIL,
   ]
     .filter(Boolean)
     .join("\n\n");
