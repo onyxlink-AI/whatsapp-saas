@@ -29,6 +29,8 @@ import {
   isPipelineAiEnabled,
   runPipelineClassification,
 } from "@/features/pipeline/services/pipeline-suggestion";
+import { isAdvancedMemoryEnabled } from "@/features/inbox/services/contact-memory";
+import { extractContactMemory } from "@/features/inbox/services/memory-extraction";
 
 function svc() {
   return createSbClient(
@@ -263,10 +265,29 @@ export async function POST(req: NextRequest) {
 
       const callText = transcript ?? summary;
       if (callText) {
-        const pipelineEnabled = await isPipelineAiEnabled(workspace.id as string);
+        const [pipelineEnabled, memoryEnabled] = await Promise.all([
+          isPipelineAiEnabled(workspace.id as string),
+          isAdvancedMemoryEnabled(workspace.id as string),
+        ]);
+
         if (pipelineEnabled) {
           // Fire-and-forget — don't hold up the webhook response on the LLM call.
           void runPipelineClassification({
+            workspaceId: workspace.id as string,
+            conversationId: null,
+            contactId: contact.id,
+            history: [],
+            mergedText: callText,
+            replyText: "",
+          });
+        }
+
+        // Memoria Inteligente Avanzada is per-CONTACT, not per-channel — this
+        // is what actually "conecta" el asistente de voz con WhatsApp: once
+        // this runs, the WhatsApp agent's next reply to this same contact
+        // already has whatever this call revealed, and vice versa.
+        if (memoryEnabled) {
+          void extractContactMemory({
             workspaceId: workspace.id as string,
             conversationId: null,
             contactId: contact.id,

@@ -10,6 +10,12 @@ import { insertMemoryItems, type NewMemoryItem } from "./contact-memory-items";
 // y útil. Modelo barato (mismo que auto-tagging.ts). Fire-and-forget desde
 // buffer.ts, dormant a menos que el workspace tenga advanced_memory_enabled —
 // nunca lanza hacia processNextBatch.
+//
+// También lo llama el webhook de Vapi (src/app/api/webhooks/vapi/route.ts)
+// tras cada llamada de voz — la memoria es por CONTACTO, no por canal, así
+// que esto es lo que conecta el asistente de voz con WhatsApp: si alguien
+// llama y luego escribe (o al revés), el agente que responda ya sabe lo que
+// se dijo en el otro canal, sin duplicar nada.
 
 const CHEAP_MODEL = "openai/gpt-4o-mini";
 
@@ -95,10 +101,13 @@ Si el cliente comparte algo de esto, ignóralo por completo — no lo copies ni 
 
 interface ExtractParams {
   workspaceId: string;
-  conversationId: string;
+  /** null when the source isn't a WhatsApp conversation (e.g. a Vapi voice call). */
+  conversationId: string | null;
   contactId: string;
   history: ConversationTurn[];
+  /** For WhatsApp: the latest inbound message. For a voice call: the full transcript. */
   mergedText: string;
+  /** For WhatsApp: the agent's reply. Leave "" when mergedText already contains the whole exchange (e.g. a call transcript). */
   replyText: string;
 }
 
@@ -112,10 +121,14 @@ export async function extractContactMemory(
   try {
     const existing = await getContactMemory(contactId);
 
+    // Voice calls pass the full transcript as mergedText with no history/reply
+    // — use it verbatim instead of wrapping it in a fake user/assistant turn.
     const transcript =
-      history.map((t) => `${t.role}: ${t.content}`).join("\n") +
-      `\nuser: ${mergedText}` +
-      `\nassistant: ${replyText}`;
+      history.length === 0 && !replyText
+        ? mergedText
+        : history.map((t) => `${t.role}: ${t.content}`).join("\n") +
+          `\nuser: ${mergedText}` +
+          `\nassistant: ${replyText}`;
 
     const reply = await generateChatReply({
       model: CHEAP_MODEL,
@@ -220,7 +233,7 @@ export async function extractContactMemory(
       itemsAdded = await insertMemoryItems({
         workspaceId,
         contactId,
-        conversationId,
+        conversationId: conversationId ?? undefined,
         items: newItems,
       });
       if (itemsAdded > 0) {

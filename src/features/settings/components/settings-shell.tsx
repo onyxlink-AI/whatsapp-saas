@@ -124,6 +124,7 @@ export function SettingsShell({
             <VapiAssistantField
               workspaceId={workspaceId}
               initialAssistantId={initialVapiAssistantId}
+              isSuperAdmin={isSuperAdmin}
             />
             <BusinessInfoForm workspaceId={workspaceId} initial={biForForm} />
           </div>
