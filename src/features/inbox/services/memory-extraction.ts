@@ -2,12 +2,14 @@ import { createClient as createSbClient } from "@supabase/supabase-js";
 import { generateChatReply } from "./openrouter";
 import type { ConversationTurn } from "./conversation-history";
 import { getContactMemory, type ContactMemory } from "./contact-memory";
+import { insertMemoryItems, type NewMemoryItem } from "./contact-memory-items";
 
-// memory-extraction.ts — Memoria Inteligente Avanzada (Fase 1): extractor
-// post-batch que actualiza la memoria del contacto solo cuando detecta
-// información nueva y útil. Modelo barato (mismo que auto-tagging.ts).
-// Fire-and-forget desde buffer.ts, dormant a menos que el workspace tenga
-// advanced_memory_enabled — nunca lanza hacia processNextBatch.
+// memory-extraction.ts — Memoria Inteligente Avanzada (Fase 1 + Fase 3):
+// extractor post-batch que actualiza la memoria estructurada del contacto Y
+// añade recuerdos atómicos embebibles, solo cuando detecta información nueva
+// y útil. Modelo barato (mismo que auto-tagging.ts). Fire-and-forget desde
+// buffer.ts, dormant a menos que el workspace tenga advanced_memory_enabled —
+// nunca lanza hacia processNextBatch.
 
 const CHEAP_MODEL = "openai/gpt-4o-mini";
 
@@ -80,11 +82,12 @@ Responde SOLO con un objeto JSON con estos campos, sin texto fuera del JSON:
 - "objections": array de objeciones u obstáculos que ha mencionado.
 - "lead_status": estado del lead en una frase corta (ej: "interesado, esperando precio").
 - "next_step": siguiente paso recomendado con este contacto.
-- "metadata": objeto con cualquier otro dato estructurado relevante.
+- "metadata": objeto clave-valor SOLO para datos estructurados simples y breves que no encajen arriba (ej: {"num_empleados": 5}). NO uses metadata para anécdotas, relaciones, referidos o hechos narrativos — esos van en new_items.
+- "new_items": array de recuerdos atómicos NUEVOS detectados en esta conversación (no repitas los que ya estaban en la memoria actual). Úsalo para cualquier hecho, anécdota, relación, referido o detalle puntual que no sea un interés/objeción/preferencia simple de una palabra — cosas que ayudarían a un humano a recordar la conversación con más profundidad. Cada uno es un objeto { "content": "frase corta y autocontenida", "category": "interest" | "objection" | "preference" | "fact" }. Ejemplos: { "content": "Prefiere que le llamen por las tardes, por las mañanas está en el almacén sin cobertura", "category": "preference" }, { "content": "Le refirió su hermano, que tiene una tienda parecida en Sevilla", "category": "fact" }. Deja el array vacío si no hay recuerdos nuevos.
 
 Si la transcripción NO aporta ninguna información nueva o útil respecto a la memoria actual, responde exactamente: {"no_update": true}
 
-REGLAS ESTRICTAS — NUNCA debes incluir en ningún campo:
+REGLAS ESTRICTAS — NUNCA debes incluir en ningún campo ni en new_items:
 - Contraseñas, PINs, códigos de verificación.
 - Números de tarjeta, cuentas bancarias, IBAN u otros datos financieros.
 - Documentos de identidad, pasaportes u otra información sensible innecesaria para el seguimiento comercial.
@@ -123,7 +126,7 @@ export async function extractContactMemory(
           content: `Memoria actual:\n${currentMemoryAsJson(existing)}\n\nTranscripción:\n${transcript}`,
         },
       ],
-      maxOutputTokens: 400,
+      maxOutputTokens: 600,
       workspaceId,
     });
 
@@ -135,7 +138,31 @@ export async function extractContactMemory(
     for (const field of MEMORY_FIELDS) {
       if (field in parsed) next[field] = parsed[field];
     }
-    if (Object.keys(next).length === 0) return;
+
+    // Fase 3: atomic recuerdos, validated + sensitive-data-filtered separately
+    // from the structured fields above — capped so one turn can't flood the table.
+    const rawItems = Array.isArray(parsed.new_items) ? parsed.new_items : [];
+    const droppedItemCount = { sensitive: 0 };
+    const newItems: NewMemoryItem[] = rawItems
+      .filter(
+        (item): item is { content: unknown; category?: unknown } =>
+          typeof item === "object" && item !== null && "content" in item,
+      )
+      .map((item) => ({
+        content: typeof item.content === "string" ? item.content.trim() : "",
+        category: typeof item.category === "string" ? item.category : null,
+      }))
+      .filter((item) => item.content.length > 0)
+      .filter((item) => {
+        if (containsSensitiveData(item.content)) {
+          droppedItemCount.sensitive += 1;
+          return false;
+        }
+        return true;
+      })
+      .slice(0, 10);
+
+    if (Object.keys(next).length === 0 && newItems.length === 0) return;
 
     // Defense in depth: strip any field that still looks sensitive.
     const droppedFields: string[] = [];
@@ -151,42 +178,71 @@ export async function extractContactMemory(
         droppedFields.push(key);
       }
     }
-    if (droppedFields.length > 0) {
+    if (droppedFields.length > 0 || droppedItemCount.sensitive > 0) {
       await db.from("events").insert({
         type: "contact_memory_sensitive_data_dropped",
         level: "warn",
         workspace_id: workspaceId,
         conversation_id: conversationId,
-        payload: { contact_id: contactId, fields: droppedFields },
+        payload: {
+          contact_id: contactId,
+          fields: droppedFields,
+          items_dropped: droppedItemCount.sensitive,
+        },
       });
     }
-    if (Object.keys(next).length === 0) return;
 
-    const row = {
-      workspace_id: workspaceId,
-      contact_id: contactId,
-      summary: next.summary ?? existing?.summary ?? null,
-      interests: next.interests ?? existing?.interests ?? [],
-      preferences: next.preferences ?? existing?.preferences ?? {},
-      objections: next.objections ?? existing?.objections ?? [],
-      lead_status: next.lead_status ?? existing?.lead_status ?? null,
-      next_step: next.next_step ?? existing?.next_step ?? null,
-      metadata: next.metadata ?? existing?.metadata ?? {},
-    };
+    if (Object.keys(next).length > 0) {
+      const row = {
+        workspace_id: workspaceId,
+        contact_id: contactId,
+        summary: next.summary ?? existing?.summary ?? null,
+        interests: next.interests ?? existing?.interests ?? [],
+        preferences: next.preferences ?? existing?.preferences ?? {},
+        objections: next.objections ?? existing?.objections ?? [],
+        lead_status: next.lead_status ?? existing?.lead_status ?? null,
+        next_step: next.next_step ?? existing?.next_step ?? null,
+        metadata: next.metadata ?? existing?.metadata ?? {},
+      };
 
-    await db.from("contact_memories").upsert(row, { onConflict: "contact_id" });
+      await db
+        .from("contact_memories")
+        .upsert(row, { onConflict: "contact_id" });
 
-    console.info(
-      `[memory] updated contact_memories for contact ${contactId} (workspace ${workspaceId}), fields: ${Object.keys(next).join(", ")}`,
-    );
+      console.info(
+        `[memory] updated contact_memories for contact ${contactId} (workspace ${workspaceId}), fields: ${Object.keys(next).join(", ")}`,
+      );
+    }
 
-    await db.from("events").insert({
-      type: "contact_memory_updated",
-      level: "info",
-      workspace_id: workspaceId,
-      conversation_id: conversationId,
-      payload: { contact_id: contactId, fields_updated: Object.keys(next) },
-    });
+    // Fase 3: embed + store the new atomic recuerdos, if any survived filtering.
+    let itemsAdded = 0;
+    if (newItems.length > 0) {
+      itemsAdded = await insertMemoryItems({
+        workspaceId,
+        contactId,
+        conversationId,
+        items: newItems,
+      });
+      if (itemsAdded > 0) {
+        console.info(
+          `[memory] added ${itemsAdded} recuerdo(s) for contact ${contactId} (workspace ${workspaceId})`,
+        );
+      }
+    }
+
+    if (Object.keys(next).length > 0 || itemsAdded > 0) {
+      await db.from("events").insert({
+        type: "contact_memory_updated",
+        level: "info",
+        workspace_id: workspaceId,
+        conversation_id: conversationId,
+        payload: {
+          contact_id: contactId,
+          fields_updated: Object.keys(next),
+          items_added: itemsAdded,
+        },
+      });
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "unknown error";
     console.error("[memory] extractContactMemory failed:", msg);

@@ -33,6 +33,10 @@ import {
   formatMemoryContext,
 } from "./contact-memory";
 import { extractContactMemory } from "./memory-extraction";
+import {
+  searchContactMemories,
+  formatMemoryItemsContext,
+} from "./contact-memory-items";
 
 const DEFAULT_SILENCE_MS = 30_000; // 30 seconds silence window
 const MAX_BATCH_RETRIES = 3;
@@ -347,19 +351,34 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
     const advancedMemoryEnabled = await isAdvancedMemoryEnabled(
       batch.workspace_id,
     );
-    const [resolvedPrompt, businessInfo, kbResults, kbLinks, contactMemory] =
-      await Promise.all([
-        resolveSystemPrompt(
-          batch.workspace_id,
-          activeAgent ? { mode: activeAgent.type } : {},
-        ),
-        getBusinessInfo(batch.workspace_id),
-        searchKb(batch.workspace_id, mergedText, 3),
-        listKbSourceLinks(batch.workspace_id),
-        advancedMemoryEnabled
-          ? getContactMemory(conversation.contact_id as string)
-          : Promise.resolve(null),
-      ]);
+    const [
+      resolvedPrompt,
+      businessInfo,
+      kbResults,
+      kbLinks,
+      contactMemory,
+      memoryItems,
+    ] = await Promise.all([
+      resolveSystemPrompt(
+        batch.workspace_id,
+        activeAgent ? { mode: activeAgent.type } : {},
+      ),
+      getBusinessInfo(batch.workspace_id),
+      searchKb(batch.workspace_id, mergedText, 3),
+      listKbSourceLinks(batch.workspace_id),
+      advancedMemoryEnabled
+        ? getContactMemory(conversation.contact_id as string)
+        : Promise.resolve(null),
+      // Fase 3: only the recuerdos relevant to THIS message, not the whole history.
+      advancedMemoryEnabled
+        ? searchContactMemories(
+            batch.workspace_id,
+            conversation.contact_id as string,
+            mergedText,
+            5,
+          )
+        : Promise.resolve([]),
+    ]);
 
     const kbContext = [
       formatKbContext(kbResults),
@@ -390,6 +409,7 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
       promptBase,
       summary,
       memoryContext: formatMemoryContext(contactMemory),
+      memoryItemsContext: formatMemoryItemsContext(memoryItems),
       kbContext,
       responseStyle: activeAgent?.config.responseStyle ?? null,
       guardrails: resolvedPrompt?.guardrails ?? null,

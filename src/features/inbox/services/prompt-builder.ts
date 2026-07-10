@@ -5,8 +5,8 @@
  * so they never drift. Pure string assembly — no DB, no "use server".
  *
  * Order (guardrails go LAST — models obey end-of-prompt instructions most):
- *   now → summary → contact memory → business info → knowledge base →
- *   response style → prompt base → WhatsApp format note →
+ *   now → summary → contact memory → relevant recuerdos → business info →
+ *   knowledge base → response style → prompt base → WhatsApp format note →
  *   strict rules/restrictions
  */
 
@@ -32,6 +32,8 @@ export interface BuildSystemPromptParts {
   summary?: string | null;
   /** Memoria Inteligente Avanzada (opt-in, ver contact-memory.ts) — "" cuando está desactivada. */
   memoryContext?: string | null;
+  /** Fase 3: recuerdos individuales relevantes al mensaje actual (ver contact-memory-items.ts) — "" cuando está desactivada. */
+  memoryItemsContext?: string | null;
   kbContext?: string | null;
   responseStyle?: ResponseStyle | null;
   guardrails?: PromptGuardrails | null;
@@ -110,6 +112,7 @@ export function buildSystemPrompt(parts: BuildSystemPromptParts): string {
     parts.nowContext,
     summaryBlock,
     parts.memoryContext ?? "",
+    parts.memoryItemsContext ?? "",
     parts.bizContext,
     parts.kbContext ?? "",
     styleBlock,

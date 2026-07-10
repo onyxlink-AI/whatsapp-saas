@@ -12,7 +12,7 @@ function svc() {
   );
 }
 
-function getEmbeddingModel(apiKey: string) {
+export function getEmbeddingModel(apiKey: string) {
   const openai = createOpenAI({
     baseURL: "https://openrouter.ai/api/v1",
     apiKey,
@@ -46,7 +46,7 @@ function chunkText(text: string): string[] {
  * Graceful degradation when neither the workspace nor the platform has a
  * real (non-placeholder) OpenRouter key configured.
  */
-function isEmbeddingDisabled(apiKey: string): boolean {
+export function isEmbeddingDisabled(apiKey: string): boolean {
   return !apiKey || apiKey === "placeholder";
 }
 
