@@ -1,5 +1,13 @@
+import { createClient as createSbClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Tool, ToolContext, ToolResult } from "../core/tool";
+
+function svc() {
+  return createSbClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
 const schema = z.object({
   datetime_iso: z
@@ -66,6 +74,26 @@ async function run(args: Args, ctx: ToolContext): Promise<ToolResult> {
       description:
         descriptionLines.length > 0 ? descriptionLines.join("\n") : undefined,
     });
+
+    // Track the booking locally so the appointment-reminders cron has
+    // something to scan — schedule_google only writes to Google Calendar,
+    // this is the sole DB record of it.
+    if (ctx.contactId) {
+      await svc()
+        .from("appointments")
+        .insert({
+          workspace_id: ctx.workspaceId,
+          contact_id: ctx.contactId,
+          conversation_id: ctx.conversationId || null,
+          scheduled_at: args.datetime_iso,
+          status: "booked",
+          meta: {
+            source: "google_calendar",
+            event_id: event.id,
+            html_link: event.htmlLink,
+          },
+        });
+    }
 
     return {
       ok: true,

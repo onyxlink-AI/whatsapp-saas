@@ -144,10 +144,27 @@ async function run(args: Args, ctx: ToolContext): Promise<ToolResult> {
   }
 
   const data = (await res.json()) as HLAppointmentResponse;
+  const hlAppointmentId = data.id ?? data.appointment?.id ?? null;
+
+  // Track the booking locally so the appointment-reminders cron has
+  // something to scan — this tool only writes to HighLevel, this is the
+  // sole DB record of it.
+  if (dbContactId) {
+    await supabase.from("appointments").insert({
+      workspace_id: ctx.workspaceId,
+      contact_id: dbContactId,
+      conversation_id: ctx.conversationId || null,
+      scheduled_at: args.datetime_iso,
+      status: "booked",
+      hl_appointment_id: hlAppointmentId,
+      meta: { source: "highlevel", calendar_id: calendarId },
+    });
+  }
+
   return {
     ok: true,
     output: {
-      appointment_id: data.id ?? data.appointment?.id,
+      appointment_id: hlAppointmentId,
       datetime: args.datetime_iso,
     },
   };
