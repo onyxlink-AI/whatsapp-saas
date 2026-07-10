@@ -27,6 +27,8 @@ const CreateWorkspaceSchema = z.object({
   advancedMemoryEnabled: z.boolean().optional(),
   pipelineAiEnabled: z.boolean().optional(),
   coldLeadRecoveryEnabled: z.boolean().optional(),
+  vapiAssistantId: z.string().trim().min(1).max(100).optional(),
+  crossChannelMemoryEnabled: z.boolean().optional(),
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -86,6 +88,8 @@ export async function createWorkspaceForClient(
     advancedMemoryEnabled,
     pipelineAiEnabled,
     coldLeadRecoveryEnabled,
+    vapiAssistantId,
+    crossChannelMemoryEnabled,
   } = parsed.data;
   const service = svc();
   let clientCredentials: ClientCredentials | null = null;
@@ -104,12 +108,17 @@ export async function createWorkspaceForClient(
       advanced_memory_enabled: advancedMemoryEnabled ?? false,
       pipeline_ai_enabled: pipelineAiEnabled ?? false,
       cold_lead_recovery_enabled: coldLeadRecoveryEnabled ?? false,
+      vapi_assistant_id: vapiAssistantId ?? null,
+      cross_channel_memory_enabled: crossChannelMemoryEnabled ?? false,
     })
     .select("id")
     .single();
 
   if (wsError || !workspace) {
     console.error("[agency] workspace insert error:", wsError);
+    if (wsError?.code === "23505" && vapiAssistantId) {
+      return { error: "Ese assistant de Vapi ya está vinculado a otro workspace" };
+    }
     return { error: "Error al crear el workspace" };
   }
 

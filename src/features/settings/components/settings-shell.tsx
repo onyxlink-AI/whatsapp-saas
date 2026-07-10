@@ -6,6 +6,7 @@ import { AdvancedMemoryToggle } from "./advanced-memory-toggle";
 import { PipelineAiToggle } from "./pipeline-ai-toggle";
 import { ColdLeadRecoveryToggle } from "./cold-lead-recovery-toggle";
 import { VapiAssistantField } from "./vapi-assistant-field";
+import { CrossChannelMemoryToggle } from "./cross-channel-memory-toggle";
 import { ToolsCatalog } from "./tools-catalog";
 import { IntegrationsTab } from "./integrations-tab";
 import { TeamTab } from "./team-tab";
@@ -39,6 +40,7 @@ interface Props {
   initialPipelineAiEnabled?: boolean;
   initialColdLeadRecoveryEnabled?: boolean;
   initialVapiAssistantId?: string | null;
+  initialCrossChannelMemoryEnabled?: boolean;
   /** Only Onyxlink (platform super admin) can toggle the paid add-ons below. */
   isSuperAdmin?: boolean;
 }
@@ -55,6 +57,7 @@ export function SettingsShell({
   initialPipelineAiEnabled = false,
   initialColdLeadRecoveryEnabled = false,
   initialVapiAssistantId = null,
+  initialCrossChannelMemoryEnabled = false,
   isSuperAdmin = false,
 }: Props) {
   const biForForm = initialBusinessInfo as {
@@ -124,6 +127,11 @@ export function SettingsShell({
             <VapiAssistantField
               workspaceId={workspaceId}
               initialAssistantId={initialVapiAssistantId}
+              isSuperAdmin={isSuperAdmin}
+            />
+            <CrossChannelMemoryToggle
+              workspaceId={workspaceId}
+              initialEnabled={initialCrossChannelMemoryEnabled}
               isSuperAdmin={isSuperAdmin}
             />
             <BusinessInfoForm workspaceId={workspaceId} initial={biForForm} />

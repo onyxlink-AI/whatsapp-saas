@@ -40,6 +40,23 @@ export async function isAdvancedMemoryEnabled(
   return data?.advanced_memory_enabled === true;
 }
 
+/**
+ * Independent from advanced_memory_enabled and vapi_assistant_id — controls
+ * whether a Vapi call's transcript is ALSO fed into this same contact
+ * memory. See src/app/api/webhooks/vapi/route.ts.
+ */
+export async function isCrossChannelMemoryEnabled(
+  workspaceId: string,
+): Promise<boolean> {
+  const supabase = svc();
+  const { data } = await supabase
+    .from("workspaces")
+    .select("cross_channel_memory_enabled")
+    .eq("id", workspaceId)
+    .maybeSingle();
+  return data?.cross_channel_memory_enabled === true;
+}
+
 export async function getContactMemory(
   contactId: string,
 ): Promise<ContactMemory | null> {

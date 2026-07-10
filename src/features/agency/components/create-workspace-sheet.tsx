@@ -123,6 +123,8 @@ export function CreateWorkspaceSheet({
   const [wantsAdvancedMemory, setWantsAdvancedMemory] = useState(false);
   const [wantsPipelineAi, setWantsPipelineAi] = useState(false);
   const [wantsColdLeadRecovery, setWantsColdLeadRecovery] = useState(false);
+  const [vapiAssistantId, setVapiAssistantId] = useState("");
+  const [wantsCrossChannelMemory, setWantsCrossChannelMemory] = useState(false);
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<{
@@ -155,6 +157,8 @@ export function CreateWorkspaceSheet({
     setWantsAdvancedMemory(false);
     setWantsPipelineAi(false);
     setWantsColdLeadRecovery(false);
+    setVapiAssistantId("");
+    setWantsCrossChannelMemory(false);
     setWorkspaceId(null);
     setWebhookUrl(null);
     setCredentials(null);
@@ -201,6 +205,8 @@ export function CreateWorkspaceSheet({
         advancedMemoryEnabled: wantsAdvancedMemory,
         pipelineAiEnabled: wantsPipelineAi,
         coldLeadRecoveryEnabled: wantsColdLeadRecovery,
+        vapiAssistantId: vapiAssistantId.trim() || undefined,
+        crossChannelMemoryEnabled: wantsCrossChannelMemory,
       });
 
       if (result.error || !result.workspaceId) {
@@ -475,6 +481,45 @@ export function CreateWorkspaceSheet({
                   a cuáles merece la pena reenganchar, enviando una plantilla
                   aprobada por WhatsApp con un mensaje personalizado. Se puede
                   activar o desactivar después en Settings.
+                </span>
+              </span>
+            </label>
+
+            <div className="rounded-lg border border-border/60 p-3">
+              <label htmlFor="vapi-assistant-id-create" className="text-sm text-foreground">
+                Asistente AI (agente de voz, Vapi) — opcional
+              </label>
+              <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+                Si este cliente ya tiene un agente de voz en Vapi, pega su
+                assistant ID para activar la sección &quot;Asistente AI&quot;
+                desde el alta. Si no, se puede vincular después en Settings.
+              </p>
+              <input
+                id="vapi-assistant-id-create"
+                type="text"
+                className="w-full rounded-md border border-border/60 bg-background px-2.5 py-1.5 font-mono text-xs"
+                placeholder="ej. 4ca5c330-4093-4be0-a787-c2eb05f478f3"
+                value={vapiAssistantId}
+                onChange={(e) => setVapiAssistantId(e.target.value)}
+                disabled={saving}
+              />
+            </div>
+
+            <label className="flex items-start gap-2.5 rounded-lg border border-border/60 p-3">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={wantsCrossChannelMemory}
+                onChange={(e) => setWantsCrossChannelMemory(e.target.checked)}
+                disabled={saving}
+              />
+              <span className="text-sm text-foreground">
+                Activar Memoria compartida entre canales
+                <span className="block text-xs text-muted-foreground mt-0.5">
+                  Conecta la memoria del Asistente de voz con la de WhatsApp
+                  — solo tiene efecto si además activas Memoria Inteligente
+                  Avanzada y vinculas un Asistente de voz. Se puede activar
+                  o desactivar después en Settings.
                 </span>
               </span>
             </label>

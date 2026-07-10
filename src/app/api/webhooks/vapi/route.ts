@@ -29,7 +29,10 @@ import {
   isPipelineAiEnabled,
   runPipelineClassification,
 } from "@/features/pipeline/services/pipeline-suggestion";
-import { isAdvancedMemoryEnabled } from "@/features/inbox/services/contact-memory";
+import {
+  isAdvancedMemoryEnabled,
+  isCrossChannelMemoryEnabled,
+} from "@/features/inbox/services/contact-memory";
 import { extractContactMemory } from "@/features/inbox/services/memory-extraction";
 
 function svc() {
@@ -265,9 +268,10 @@ export async function POST(req: NextRequest) {
 
       const callText = transcript ?? summary;
       if (callText) {
-        const [pipelineEnabled, memoryEnabled] = await Promise.all([
+        const [pipelineEnabled, memoryEnabled, crossChannelEnabled] = await Promise.all([
           isPipelineAiEnabled(workspace.id as string),
           isAdvancedMemoryEnabled(workspace.id as string),
+          isCrossChannelMemoryEnabled(workspace.id as string),
         ]);
 
         if (pipelineEnabled) {
@@ -285,8 +289,11 @@ export async function POST(req: NextRequest) {
         // Memoria Inteligente Avanzada is per-CONTACT, not per-channel — this
         // is what actually "conecta" el asistente de voz con WhatsApp: once
         // this runs, the WhatsApp agent's next reply to this same contact
-        // already has whatever this call revealed, and vice versa.
-        if (memoryEnabled) {
+        // already has whatever this call revealed, and vice versa. Gated on
+        // its OWN flag (cross_channel_memory_enabled), independent of
+        // advanced_memory_enabled — a client can have WhatsApp memory and
+        // the voice assistant active without the two being connected.
+        if (memoryEnabled && crossChannelEnabled) {
           void extractContactMemory({
             workspaceId: workspace.id as string,
             conversationId: null,
