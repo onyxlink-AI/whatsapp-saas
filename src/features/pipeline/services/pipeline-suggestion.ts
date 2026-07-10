@@ -16,6 +16,12 @@ import type { DealStage } from "@/features/pipeline/types";
 // antes): exploración → interés → listo_para_comprar → cliente. "lost" sigue
 // existiendo como estado manual/terminal, pero el clasificador nunca lo
 // asigna — solo avanza el embudo hacia adelante.
+//
+// También lo llama el webhook de Vapi (src/app/api/webhooks/vapi/route.ts)
+// tras cada llamada de voz — incluso el mismo contacto/deal, sin importar si
+// llegó por WhatsApp o por llamada, mismo pipeline. Ahí no hay "agente activo"
+// (no es WhatsApp), así que ese caso solo se gatea por pipeline_ai_enabled,
+// sin el check de setterFunctions.
 
 const CHEAP_MODEL = "openai/gpt-4o-mini";
 
@@ -143,10 +149,13 @@ NUNCA incluyas contraseñas, datos bancarios completos ni información sensible 
 
 interface ClassifyParams {
   workspaceId: string;
-  conversationId: string;
+  /** null when the source isn't a WhatsApp conversation (e.g. a Vapi voice call). */
+  conversationId: string | null;
   contactId: string;
   history: ConversationTurn[];
+  /** For WhatsApp: the latest inbound message. For a voice call: the full transcript. */
   mergedText: string;
+  /** For WhatsApp: the agent's reply. Leave "" when mergedText already contains the whole exchange (e.g. a call transcript). */
   replyText: string;
 }
 
@@ -167,10 +176,14 @@ export async function runPipelineClassification(
       .limit(1)
       .maybeSingle();
 
+    // Voice calls pass the full transcript as mergedText with no history/reply
+    // — use it verbatim instead of wrapping it in a fake user/assistant turn.
     const transcript =
-      history.map((t) => `${t.role}: ${t.content}`).join("\n") +
-      `\nuser: ${mergedText}` +
-      `\nassistant: ${replyText}`;
+      history.length === 0 && !replyText
+        ? mergedText
+        : history.map((t) => `${t.role}: ${t.content}`).join("\n") +
+          `\nuser: ${mergedText}` +
+          `\nassistant: ${replyText}`;
 
     const reply = await generateChatReply({
       model: CHEAP_MODEL,
