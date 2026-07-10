@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LoginForm } from "@/features/auth/components/login-form";
 
 export const metadata: Metadata = {
-  title: "Iniciar sesión — Agente WhatsApp",
+  title: "Iniciar sesión — Agente Onyxlink",
 };
 
 export default async function LoginPage({

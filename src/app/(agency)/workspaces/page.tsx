@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { getAllWorkspacesWithStats } from "@/features/agency/services/agency-actions";
 import { WorkspacesTable } from "@/features/agency/components/workspaces-table";
 import { formatTokens, ESTIMATED_USD_PER_MILLION_TOKENS } from "@/features/agency/lib/cost-format";
 import { Building2, Users, MessageCircle, Wifi, Zap, DollarSign } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -44,11 +46,13 @@ export default async function AgencyWorkspacesPage() {
     value: string;
     icon: typeof Building2;
     caption?: string;
+    accent?: boolean;
   }[] = [
     {
       label: "Workspaces",
       value: String(workspaces.length),
       icon: Building2,
+      accent: true,
     },
     {
       label: "Miembros totales",
@@ -76,11 +80,22 @@ export default async function AgencyWorkspacesPage() {
       value: `$${estimatedCost30d.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: DollarSign,
       caption: `Estimado a ~$${ESTIMATED_USD_PER_MILLION_TOKENS}/millón de tokens, no es la factura real`,
+      accent: true,
     },
   ];
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
+      {/* Brand banner */}
+      <Image
+        src="/brand/onyxlink-banner.jpg"
+        alt="Onyxlink"
+        width={580}
+        height={580}
+        className="w-full max-w-lg mx-auto rounded-2xl object-cover glass"
+        priority
+      />
+
       {/* Page header */}
       <div>
         <h1 className="font-display text-2xl font-semibold text-foreground tracking-tight">
@@ -93,10 +108,13 @@ export default async function AgencyWorkspacesPage() {
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {kpis.map(({ label, value, icon: Icon, caption }) => (
+        {kpis.map(({ label, value, icon: Icon, caption, accent }) => (
           <div
             key={label}
-            className="rounded-xl border border-border bg-card p-4 space-y-2"
+            className={cn(
+              "rounded-xl p-4 space-y-2",
+              accent ? "glass-accent" : "border border-border bg-card",
+            )}
           >
             <div className="flex items-center gap-2 text-muted-foreground">
               <Icon className="h-4 w-4" aria-hidden="true" />

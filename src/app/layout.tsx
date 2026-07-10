@@ -14,7 +14,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Agente WhatsApp",
+  title: "Agente Onyxlink",
   description: "Plataforma de inbox conversacional para WhatsApp con IA",
 };
 

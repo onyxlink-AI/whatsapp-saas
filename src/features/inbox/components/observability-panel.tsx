@@ -128,7 +128,7 @@ export function ObservabilityPanel({
   const events = data?.events ?? [];
 
   return (
-    <div className="glass flex flex-col gap-3 rounded-xl border border-border bg-muted/30 p-4 backdrop-blur-md">
+    <div className="glass flex flex-col gap-3 rounded-xl p-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="font-display text-sm font-semibold text-foreground">

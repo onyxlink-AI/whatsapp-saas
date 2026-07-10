@@ -6,6 +6,7 @@ import {
   listMemberships,
 } from "@/features/workspace/services/active-workspace";
 import { WorkspaceSwitcher } from "@/features/workspace/components/workspace-switcher";
+import Image from "next/image";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -60,7 +61,7 @@ export default async function MainLayout({
         {/* Left: brand + workspace name */}
         <div className="flex items-center gap-2 min-w-0">
           <span className="font-display text-base font-semibold text-primary tracking-tight shrink-0">
-            Agente WA
+            Agente Onyxlink
           </span>
           {workspaceName && (
             <>
@@ -77,6 +78,15 @@ export default async function MainLayout({
                     name: m.name,
                   }))}
                   activeId={activeId}
+                />
+              ) : workspaceName.toLowerCase() === "onyxlink" ? (
+                <Image
+                  src="/brand/onyxlink-logo.png"
+                  alt="Onyxlink"
+                  width={90}
+                  height={20}
+                  className="h-4 w-auto shrink-0"
+                  priority
                 />
               ) : (
                 <span

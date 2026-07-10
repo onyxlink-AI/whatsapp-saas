@@ -31,9 +31,8 @@ function KpiCard({ label, value, icon, accent = false }: KpiCardProps) {
   return (
     <div
       className={cn(
-        "rounded-xl border p-5 flex items-start gap-4",
-        "bg-card transition-colors",
-        accent ? "border-primary/20 bg-primary/5" : "border-border/50",
+        "rounded-xl p-5 flex items-start gap-4 transition-colors",
+        accent ? "glass-accent" : "border border-border/50 bg-card",
       )}
     >
       <div

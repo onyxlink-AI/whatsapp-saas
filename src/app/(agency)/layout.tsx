@@ -39,7 +39,7 @@ export default async function AgencyLayout({
       >
         <div className="flex items-center gap-2.5">
           <span className="font-display text-base font-semibold text-primary tracking-tight">
-            Agente WA
+            Agente Onyxlink
           </span>
           <Badge
             variant="outline"
@@ -77,7 +77,7 @@ export default async function AgencyLayout({
 
       {/* Agency sub-nav */}
       <nav
-        className="border-b border-border/50 bg-background/60 px-3 sm:px-6"
+        className="glass border-b border-border/50 px-3 sm:px-6"
         aria-label="Navegación de agencia"
       >
         <div className="flex items-center gap-0.5 h-10">

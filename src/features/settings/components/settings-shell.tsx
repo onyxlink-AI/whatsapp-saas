@@ -57,7 +57,7 @@ export function SettingsShell({
         {/* Scroll the tab strip within its own track instead of letting 11 tabs
             push horizontal overflow onto the whole page. */}
         <div className="mb-6 -mx-1 overflow-x-auto px-1 pb-1">
-          <TabsList className="w-max">
+          <TabsList className="glass w-max">
             <TabsTrigger value="agentes">Agentes</TabsTrigger>
             <TabsTrigger value="integraciones">Integraciones</TabsTrigger>
             <TabsTrigger value="negocio">Negocio</TabsTrigger>
@@ -71,7 +71,7 @@ export function SettingsShell({
         </div>
 
         <TabsContent value="agentes">
-          <div className="p-6 space-y-6 rounded-lg border border-border/60 bg-card">
+          <div className="p-6 space-y-6 rounded-lg glass">
             <AgentsTab
               workspaceId={workspaceId}
               initialAgents={initialAgents}
@@ -80,7 +80,7 @@ export function SettingsShell({
         </TabsContent>
 
         <TabsContent value="integraciones">
-          <div className="p-6 space-y-6 rounded-lg border border-border/60 bg-card">
+          <div className="p-6 space-y-6 rounded-lg glass">
             <IntegrationsTab
               workspaceId={workspaceId}
               initialIntegrations={initialIntegrations}
@@ -90,13 +90,13 @@ export function SettingsShell({
         </TabsContent>
 
         <TabsContent value="negocio">
-          <div className="p-6 space-y-6 rounded-lg border border-border/60 bg-card">
+          <div className="p-6 space-y-6 rounded-lg glass">
             <BusinessInfoForm workspaceId={workspaceId} initial={biForForm} />
           </div>
         </TabsContent>
 
         <TabsContent value="tools">
-          <div className="p-6 space-y-6 rounded-lg border border-border/60 bg-card">
+          <div className="p-6 space-y-6 rounded-lg glass">
             <ToolsCatalog
               workspaceId={workspaceId}
               initialTools={initialTools}
@@ -105,7 +105,7 @@ export function SettingsShell({
         </TabsContent>
 
         <TabsContent value="templates">
-          <div className="p-6 rounded-lg border border-border/60 bg-card">
+          <div className="p-6 rounded-lg glass">
             <TemplatesTab
               workspaceId={workspaceId}
               initialTemplates={initialTemplates}
@@ -113,25 +113,25 @@ export function SettingsShell({
           </div>
         </TabsContent>
         <TabsContent value="knowledge-base">
-          <div className="p-6 space-y-6 rounded-lg border border-border/60 bg-card">
+          <div className="p-6 space-y-6 rounded-lg glass">
             <KbTab workspaceId={workspaceId} />
           </div>
         </TabsContent>
 
         <TabsContent value="equipo">
-          <div className="p-6 space-y-6 rounded-lg border border-border/60 bg-card">
+          <div className="p-6 space-y-6 rounded-lg glass">
             <TeamTab workspaceId={workspaceId} />
           </div>
         </TabsContent>
 
         <TabsContent value="automatizaciones">
-          <div className="p-6 space-y-6 rounded-lg border border-border/60 bg-card">
+          <div className="p-6 space-y-6 rounded-lg glass">
             <AutomationsTab workspaceId={workspaceId} />
           </div>
         </TabsContent>
 
         <TabsContent value="actividad">
-          <div className="p-6 space-y-6 rounded-lg border border-border/60 bg-card">
+          <div className="p-6 space-y-6 rounded-lg glass">
             <AuditLogTab workspaceId={workspaceId} />
           </div>
         </TabsContent>
