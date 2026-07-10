@@ -27,6 +27,12 @@ import {
 import { getSetterConfig, evaluateLead } from "./setter";
 import { syncQualificationToAirtable } from "./airtable-client";
 import { syncContactToHL, createHLOpportunity } from "./highlevel-client";
+import {
+  isAdvancedMemoryEnabled,
+  getContactMemory,
+  formatMemoryContext,
+} from "./contact-memory";
+import { extractContactMemory } from "./memory-extraction";
 
 const DEFAULT_SILENCE_MS = 30_000; // 30 seconds silence window
 const MAX_BATCH_RETRIES = 3;
@@ -335,7 +341,13 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
     // The active agent (if any) selects its mode-scoped published prompt; the
     // resolver falls back to the global prompt when there is no active agent.
     const activeAgent = await getActiveAgent(batch.workspace_id);
-    const [resolvedPrompt, businessInfo, kbResults, kbLinks] =
+    // Memoria Inteligente Avanzada (opt-in, F1): dormant unless the workspace
+    // has advanced_memory_enabled — zero extra queries otherwise, so a
+    // workspace without it opted in behaves exactly as before.
+    const advancedMemoryEnabled = await isAdvancedMemoryEnabled(
+      batch.workspace_id,
+    );
+    const [resolvedPrompt, businessInfo, kbResults, kbLinks, contactMemory] =
       await Promise.all([
         resolveSystemPrompt(
           batch.workspace_id,
@@ -344,6 +356,9 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
         getBusinessInfo(batch.workspace_id),
         searchKb(batch.workspace_id, mergedText, 3),
         listKbSourceLinks(batch.workspace_id),
+        advancedMemoryEnabled
+          ? getContactMemory(conversation.contact_id as string)
+          : Promise.resolve(null),
       ]);
 
     const kbContext = [
@@ -374,6 +389,7 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
       bizContext,
       promptBase,
       summary,
+      memoryContext: formatMemoryContext(contactMemory),
       kbContext,
       responseStyle: activeAgent?.config.responseStyle ?? null,
       guardrails: resolvedPrompt?.guardrails ?? null,
@@ -482,6 +498,19 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
         contactId: conversation.contact_id as string,
         history,
         mergedText,
+      });
+    }
+
+    // ── 10e. Memoria Inteligente Avanzada (opt-in, F1): fire-and-forget extractor,
+    // dormant unless advanced_memory_enabled — no latency added to the reply.
+    if (advancedMemoryEnabled) {
+      void extractContactMemory({
+        workspaceId: batch.workspace_id,
+        conversationId: batch.conversation_id,
+        contactId: conversation.contact_id as string,
+        history,
+        mergedText,
+        replyText: reply.text,
       });
     }
 
