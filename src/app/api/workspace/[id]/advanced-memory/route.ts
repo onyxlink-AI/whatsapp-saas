@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   requireWorkspaceMember,
+  requireSuperAdmin,
   readJsonBody,
 } from "@/lib/auth/workspace-access";
 import { createClient as createSbClient } from "@supabase/supabase-js";
@@ -53,7 +54,10 @@ export async function PATCH(
 ) {
   const { id: workspaceId } = await params;
 
-  const auth = await requireWorkspaceMember(workspaceId, { minRole: "manager" });
+  // Paid add-on — only Onyxlink can activate it, never the client's own
+  // workspace admin (see requireSuperAdmin's doc comment for why role alone
+  // isn't enough here).
+  const auth = await requireSuperAdmin();
   if (!auth.ok) return auth.response;
 
   const parsedBody = await readJsonBody<unknown>(req);

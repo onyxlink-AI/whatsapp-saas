@@ -4,14 +4,20 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Lock } from "lucide-react";
 
 interface Props {
   workspaceId: string;
   initialEnabled: boolean;
+  /** Only Onyxlink (platform super admin) can toggle this paid add-on. */
+  isSuperAdmin?: boolean;
 }
 
-export function ColdLeadRecoveryToggle({ workspaceId, initialEnabled }: Props) {
+export function ColdLeadRecoveryToggle({
+  workspaceId,
+  initialEnabled,
+  isSuperAdmin = false,
+}: Props) {
   const [enabled, setEnabled] = useState(initialEnabled);
   const [saving, setSaving] = useState(false);
 
@@ -54,12 +60,18 @@ export function ColdLeadRecoveryToggle({ workspaceId, initialEnabled }: Props) {
             WhatsApp aprobada con un mensaje personalizado. Requiere al menos
             una plantilla de marketing aprobada por Meta.
           </p>
+          {!isSuperAdmin && (
+            <p className="mt-2 flex items-center gap-1.5 text-[11px] text-[hsl(var(--electric-lime))]">
+              <Lock className="h-3 w-3" aria-hidden="true" />
+              Función premium — contacta a tu gestor de Onyxlink para activarla.
+            </p>
+          )}
         </div>
       </div>
       <Switch
         checked={enabled}
         onCheckedChange={handleToggle}
-        disabled={saving}
+        disabled={saving || !isSuperAdmin}
         aria-label="Activar Recuperación de Leads Fríos con IA"
       />
     </div>

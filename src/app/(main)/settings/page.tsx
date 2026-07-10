@@ -46,6 +46,7 @@ export default async function SettingsPage() {
     { data: toolConfigsData },
     { data: integrationsData },
     { data: workspaceData },
+    { data: userRowForAddons },
   ] = await Promise.all([
     svc
       .from("business_info")
@@ -63,10 +64,18 @@ export default async function SettingsPage() {
       .eq("workspace_id", workspaceId),
     svc
       .from("workspaces")
-      .select("advanced_memory_enabled, pipeline_ai_enabled, cold_lead_recovery_enabled")
+      .select("advanced_memory_enabled, pipeline_ai_enabled, cold_lead_recovery_enabled, vapi_assistant_id")
       .eq("id", workspaceId)
       .single(),
+    svc.from("users").select("is_super_admin").eq("id", user.id).maybeSingle(),
   ]);
+
+  // Paid add-ons (Memoria Avanzada / Pipeline IA / Recuperación de leads) are
+  // only togglable by Onyxlink — the client's own workspace "admin" role
+  // isn't enough to tell them apart from an agency operator (see
+  // requireSuperAdmin's doc comment). The toggles stay visible to the client
+  // for transparency, just locked.
+  const isSuperAdmin = userRowForAddons?.is_super_admin === true;
 
   const initialAgents = await listAgents(svc, workspaceId);
 
@@ -130,6 +139,8 @@ export default async function SettingsPage() {
       initialAdvancedMemoryEnabled={workspaceData?.advanced_memory_enabled === true}
       initialPipelineAiEnabled={workspaceData?.pipeline_ai_enabled === true}
       initialColdLeadRecoveryEnabled={workspaceData?.cold_lead_recovery_enabled === true}
+      initialVapiAssistantId={(workspaceData?.vapi_assistant_id as string | null) ?? null}
+      isSuperAdmin={isSuperAdmin}
     />
   );
 }

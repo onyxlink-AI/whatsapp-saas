@@ -4,14 +4,20 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Lock } from "lucide-react";
 
 interface Props {
   workspaceId: string;
   initialEnabled: boolean;
+  /** Only Onyxlink (platform super admin) can toggle this paid add-on. */
+  isSuperAdmin?: boolean;
 }
 
-export function PipelineAiToggle({ workspaceId, initialEnabled }: Props) {
+export function PipelineAiToggle({
+  workspaceId,
+  initialEnabled,
+  isSuperAdmin = false,
+}: Props) {
   const [enabled, setEnabled] = useState(initialEnabled);
   const [saving, setSaving] = useState(false);
 
@@ -55,12 +61,18 @@ export function PipelineAiToggle({ workspaceId, initialEnabled }: Props) {
             cuando el agente activo tiene &ldquo;Funciones de Setter&rdquo; activadas en
             su configuración.
           </p>
+          {!isSuperAdmin && (
+            <p className="mt-2 flex items-center gap-1.5 text-[11px] text-[hsl(var(--electric-lime))]">
+              <Lock className="h-3 w-3" aria-hidden="true" />
+              Función premium — contacta a tu gestor de Onyxlink para activarla.
+            </p>
+          )}
         </div>
       </div>
       <Switch
         checked={enabled}
         onCheckedChange={handleToggle}
-        disabled={saving}
+        disabled={saving || !isSuperAdmin}
         aria-label="Activar Sugerencias de Pipeline con IA"
       />
     </div>
