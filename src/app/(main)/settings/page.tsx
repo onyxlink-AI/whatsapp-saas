@@ -63,7 +63,7 @@ export default async function SettingsPage() {
       .eq("workspace_id", workspaceId),
     svc
       .from("workspaces")
-      .select("advanced_memory_enabled, pipeline_ai_enabled")
+      .select("advanced_memory_enabled, pipeline_ai_enabled, cold_lead_recovery_enabled")
       .eq("id", workspaceId)
       .single(),
   ]);
@@ -129,6 +129,7 @@ export default async function SettingsPage() {
       googleServiceAccountEmail={process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL}
       initialAdvancedMemoryEnabled={workspaceData?.advanced_memory_enabled === true}
       initialPipelineAiEnabled={workspaceData?.pipeline_ai_enabled === true}
+      initialColdLeadRecoveryEnabled={workspaceData?.cold_lead_recovery_enabled === true}
     />
   );
 }

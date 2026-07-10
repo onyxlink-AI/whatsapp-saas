@@ -122,6 +122,7 @@ export function CreateWorkspaceSheet({
   const [useCase, setUseCase] = useState<UseCase>("general");
   const [wantsAdvancedMemory, setWantsAdvancedMemory] = useState(false);
   const [wantsPipelineAi, setWantsPipelineAi] = useState(false);
+  const [wantsColdLeadRecovery, setWantsColdLeadRecovery] = useState(false);
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<{
@@ -153,6 +154,7 @@ export function CreateWorkspaceSheet({
     setUseCase("general");
     setWantsAdvancedMemory(false);
     setWantsPipelineAi(false);
+    setWantsColdLeadRecovery(false);
     setWorkspaceId(null);
     setWebhookUrl(null);
     setCredentials(null);
@@ -198,6 +200,7 @@ export function CreateWorkspaceSheet({
         clientPassword: clientPassword || undefined,
         advancedMemoryEnabled: wantsAdvancedMemory,
         pipelineAiEnabled: wantsPipelineAi,
+        coldLeadRecoveryEnabled: wantsColdLeadRecovery,
       });
 
       if (result.error || !result.workspaceId) {
@@ -452,6 +455,25 @@ export function CreateWorkspaceSheet({
                   contacto — nunca mueve nada solo, siempre requiere
                   aprobación manual. Se puede activar o desactivar después en
                   Settings.
+                </span>
+              </span>
+            </label>
+
+            <label className="flex items-start gap-2.5 rounded-lg border border-border/60 p-3">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={wantsColdLeadRecovery}
+                onChange={(e) => setWantsColdLeadRecovery(e.target.checked)}
+                disabled={saving}
+              />
+              <span className="text-sm text-foreground">
+                Activar Recuperación de Leads Fríos con IA
+                <span className="block text-xs text-muted-foreground mt-0.5">
+                  Cada día, la IA revisa los contactos sin respuesta y decide
+                  a cuáles merece la pena reenganchar, enviando una plantilla
+                  aprobada por WhatsApp con un mensaje personalizado. Se puede
+                  activar o desactivar después en Settings.
                 </span>
               </span>
             </label>

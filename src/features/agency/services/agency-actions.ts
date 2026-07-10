@@ -26,6 +26,7 @@ const CreateWorkspaceSchema = z.object({
     .or(z.literal("")),
   advancedMemoryEnabled: z.boolean().optional(),
   pipelineAiEnabled: z.boolean().optional(),
+  coldLeadRecoveryEnabled: z.boolean().optional(),
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -84,6 +85,7 @@ export async function createWorkspaceForClient(
     clientPassword,
     advancedMemoryEnabled,
     pipelineAiEnabled,
+    coldLeadRecoveryEnabled,
   } = parsed.data;
   const service = svc();
   let clientCredentials: ClientCredentials | null = null;
@@ -101,6 +103,7 @@ export async function createWorkspaceForClient(
       slug,
       advanced_memory_enabled: advancedMemoryEnabled ?? false,
       pipeline_ai_enabled: pipelineAiEnabled ?? false,
+      cold_lead_recovery_enabled: coldLeadRecoveryEnabled ?? false,
     })
     .select("id")
     .single();

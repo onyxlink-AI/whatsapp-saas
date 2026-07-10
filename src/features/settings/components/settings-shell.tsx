@@ -4,6 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { BusinessInfoForm } from "./business-info-form";
 import { AdvancedMemoryToggle } from "./advanced-memory-toggle";
 import { PipelineAiToggle } from "./pipeline-ai-toggle";
+import { ColdLeadRecoveryToggle } from "./cold-lead-recovery-toggle";
 import { ToolsCatalog } from "./tools-catalog";
 import { IntegrationsTab } from "./integrations-tab";
 import { TeamTab } from "./team-tab";
@@ -35,6 +36,7 @@ interface Props {
   googleServiceAccountEmail?: string;
   initialAdvancedMemoryEnabled?: boolean;
   initialPipelineAiEnabled?: boolean;
+  initialColdLeadRecoveryEnabled?: boolean;
 }
 
 export function SettingsShell({
@@ -47,6 +49,7 @@ export function SettingsShell({
   googleServiceAccountEmail,
   initialAdvancedMemoryEnabled = false,
   initialPipelineAiEnabled = false,
+  initialColdLeadRecoveryEnabled = false,
 }: Props) {
   const biForForm = initialBusinessInfo as {
     structured: Record<string, unknown>;
@@ -104,6 +107,10 @@ export function SettingsShell({
             <PipelineAiToggle
               workspaceId={workspaceId}
               initialEnabled={initialPipelineAiEnabled}
+            />
+            <ColdLeadRecoveryToggle
+              workspaceId={workspaceId}
+              initialEnabled={initialColdLeadRecoveryEnabled}
             />
             <BusinessInfoForm workspaceId={workspaceId} initial={biForForm} />
           </div>
