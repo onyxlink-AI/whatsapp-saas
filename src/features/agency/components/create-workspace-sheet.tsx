@@ -451,10 +451,11 @@ export function CreateWorkspaceSheet({
               <span className="text-sm text-foreground">
                 Activar Sugerencias de Pipeline con IA
                 <span className="block text-xs text-muted-foreground mt-0.5">
-                  El agente sugiere en qué etapa del pipeline encaja cada
-                  contacto — nunca mueve nada solo, siempre requiere
-                  aprobación manual. Se puede activar o desactivar después en
-                  Settings.
+                  El agente mueve al contacto por el pipeline en tiempo real
+                  (exploración → interés → listo para comprar → cliente)
+                  según la conversación. Solo actúa el agente activo que
+                  tenga &ldquo;Funciones de Setter&rdquo; activadas en su configuración.
+                  Se puede activar o desactivar después en Settings.
                 </span>
               </span>
             </label>

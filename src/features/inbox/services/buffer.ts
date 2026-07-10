@@ -39,7 +39,7 @@ import {
 } from "./contact-memory-items";
 import {
   isPipelineAiEnabled,
-  suggestPipelineStage,
+  runPipelineClassification,
 } from "@/features/pipeline/services/pipeline-suggestion";
 
 const DEFAULT_SILENCE_MS = 30_000; // 30 seconds silence window
@@ -539,11 +539,13 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
     }
 
     // ── 10f. Sugerencias de Pipeline con IA (opt-in, add-on): fire-and-forget,
-    // dormant unless pipeline_ai_enabled. Only ever writes a suggestion — never
-    // moves/creates a deal by itself.
+    // real-time — moves/creates the deal directly, no approval step. Dormant
+    // unless the workspace has pipeline_ai_enabled AND the active agent has
+    // "Funciones de Setter" on (config.setterFunctions) — independent of the
+    // agent's `type`, doesn't have to be a "setter".
     const pipelineAiEnabled = await isPipelineAiEnabled(batch.workspace_id);
-    if (pipelineAiEnabled) {
-      void suggestPipelineStage({
+    if (pipelineAiEnabled && activeAgent?.config.setterFunctions === true) {
+      void runPipelineClassification({
         workspaceId: batch.workspace_id,
         conversationId: batch.conversation_id,
         contactId: conversation.contact_id as string,

@@ -4,7 +4,6 @@ import { getActiveWorkspace } from "@/features/workspace/services/active-workspa
 import { getDealsForBoard, listWorkspaceMembers } from "@/features/pipeline/services/deal-actions";
 import { listTasks } from "@/features/pipeline/services/task-actions";
 import { getContactSummary } from "@/features/pipeline/services/contact-lookup";
-import { getContactsWithDealSuggestions } from "@/features/pipeline/services/deal-suggestion-actions";
 import { PipelineBoard } from "@/features/pipeline/components/pipeline-board";
 import { TaskList } from "@/features/pipeline/components/task-list";
 import {
@@ -43,14 +42,12 @@ export default async function PipelinePage({
 
   const { createFor } = await searchParams;
 
-  const [deals, tasks, members, initialContact, dealSuggestions] =
-    await Promise.all([
-      getDealsForBoard(membership.workspace_id),
-      listTasks(membership.workspace_id),
-      listWorkspaceMembers(membership.workspace_id),
-      createFor ? getContactSummary(createFor) : Promise.resolve(null),
-      getContactsWithDealSuggestions(membership.workspace_id),
-    ]);
+  const [deals, tasks, members, initialContact] = await Promise.all([
+    getDealsForBoard(membership.workspace_id),
+    listTasks(membership.workspace_id),
+    listWorkspaceMembers(membership.workspace_id),
+    createFor ? getContactSummary(createFor) : Promise.resolve(null),
+  ]);
 
   return (
     <div className="p-4 sm:p-6 h-full flex flex-col">
@@ -66,7 +63,6 @@ export default async function PipelinePage({
             initialDeals={deals}
             members={members}
             initialContact={initialContact}
-            initialDealSuggestions={dealSuggestions}
           />
         </TabsContent>
 

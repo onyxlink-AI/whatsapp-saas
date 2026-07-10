@@ -19,22 +19,15 @@ import {
   type DealStage,
   type DealWithContact,
 } from "@/features/pipeline/types";
-import {
-  moveDealStage,
-  reorderDeals,
-  acceptPipelineSuggestion,
-  dismissPipelineSuggestion,
-} from "@/features/pipeline/services/deal-actions";
+import { moveDealStage, reorderDeals } from "@/features/pipeline/services/deal-actions";
 import { usePipelineFiltersStore } from "@/features/pipeline/store/pipeline-filters-store";
 import { PipelineColumn } from "./pipeline-column";
 import { DealDetailDialog } from "./deal-detail-dialog";
 import { CreateDealDialog } from "./create-deal-dialog";
-import { PipelineSuggestionsBanner } from "./pipeline-suggestions-banner";
 import type { WorkspaceMember } from "@/features/pipeline/services/deal-actions";
-import type { ContactDealSuggestion } from "@/features/pipeline/services/deal-suggestion-actions";
 import type { ContactSummary } from "@/features/pipeline/types";
 
-const CLOSED_STAGES: DealStage[] = ["won", "lost"];
+const CLOSED_STAGES: DealStage[] = ["cliente", "lost"];
 const OPEN_STAGES = DEAL_STAGES.filter((s) => !CLOSED_STAGES.includes(s));
 
 interface PipelineBoardProps {
@@ -42,7 +35,6 @@ interface PipelineBoardProps {
   initialDeals: DealWithContact[];
   members: WorkspaceMember[];
   initialContact?: ContactSummary | null;
-  initialDealSuggestions?: ContactDealSuggestion[];
 }
 
 export function PipelineBoard({
@@ -50,7 +42,6 @@ export function PipelineBoard({
   initialDeals,
   members,
   initialContact,
-  initialDealSuggestions = [],
 }: PipelineBoardProps) {
   const [deals, setDeals] = useState(initialDeals);
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
@@ -151,7 +142,7 @@ export function PipelineBoard({
   function handleDealCreated(created: DealWithContact) {
     setDeals((prev) => [...prev, created]);
     // Open the detail dialog right away so the user can immediately edit
-    // fields or move it straight to won/lost without a second click.
+    // fields or move it straight to cliente/lost without a second click.
     setSelectedDealId(created.id);
   }
 
@@ -159,54 +150,8 @@ export function PipelineBoard({
     setDeals((prev) => prev.filter((d) => d.id !== dealId));
   }
 
-  function handleAcceptSuggestion(dealId: string) {
-    startTransition(async () => {
-      const result = await acceptPipelineSuggestion(dealId);
-      if (!result.ok) {
-        toast.error(result.error ?? "Error al aplicar la sugerencia");
-        return;
-      }
-      setDeals((prev) =>
-        prev.map((d) =>
-          d.id === dealId
-            ? {
-                ...d,
-                stage: result.data.stage,
-                ai_suggested_stage: null,
-                ai_suggested_reason: null,
-                ai_suggested_at: null,
-              }
-            : d,
-        ),
-      );
-      toast.success("Sugerencia aplicada");
-    });
-  }
-
-  function handleDismissSuggestion(dealId: string) {
-    startTransition(async () => {
-      const result = await dismissPipelineSuggestion(dealId);
-      if (!result.ok) {
-        toast.error(result.error ?? "Error al descartar la sugerencia");
-        return;
-      }
-      setDeals((prev) =>
-        prev.map((d) =>
-          d.id === dealId
-            ? { ...d, ai_suggested_stage: null, ai_suggested_reason: null, ai_suggested_at: null }
-            : d,
-        ),
-      );
-    });
-  }
-
   return (
     <div className="flex flex-col gap-3 h-full">
-      <PipelineSuggestionsBanner
-        initialSuggestions={initialDealSuggestions}
-        onDealCreated={handleDealCreated}
-      />
-
       <div className="flex items-center gap-3 flex-wrap">
         <Input
           value={search}
@@ -238,8 +183,6 @@ export function PipelineBoard({
                 (a, b) => a.position - b.position,
               )}
               onSelectDeal={setSelectedDealId}
-              onAcceptSuggestion={handleAcceptSuggestion}
-              onDismissSuggestion={handleDismissSuggestion}
             />
           ))}
         </div>

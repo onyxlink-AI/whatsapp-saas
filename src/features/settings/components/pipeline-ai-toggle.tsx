@@ -49,10 +49,11 @@ export function PipelineAiToggle({ workspaceId, initialEnabled }: Props) {
             Sugerencias de Pipeline con IA
           </Label>
           <p className="mt-1 text-xs text-muted-foreground max-w-md">
-            El agente analiza cada conversación y sugiere en qué etapa del
-            pipeline encaja el contacto (o si conviene crear una nueva
-            oportunidad). Nunca mueve nada por su cuenta — siempre requiere
-            aprobación manual desde el tablero Pipeline.
+            El agente mueve al contacto por el pipeline en tiempo real
+            (Exploración → Interés → Listo para comprar → Cliente) según la
+            conversación, y crea la oportunidad si aún no existe. Solo actúa
+            cuando el agente activo tiene &ldquo;Funciones de Setter&rdquo; activadas en
+            su configuración.
           </p>
         </div>
       </div>

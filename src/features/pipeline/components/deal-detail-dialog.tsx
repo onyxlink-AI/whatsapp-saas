@@ -56,7 +56,7 @@ export function DealDetailDialog({
   const [deal, setDeal] = useState<DealWithContact | null>(null);
   const [tasks, setTasks] = useState<TaskRowType[]>([]);
   const [title, setTitle] = useState("");
-  const [stage, setStage] = useState<DealStage>("new");
+  const [stage, setStage] = useState<DealStage>("exploracion");
   const [value, setValue] = useState("");
   const [expectedCloseDate, setExpectedCloseDate] = useState("");
   const [notes, setNotes] = useState("");

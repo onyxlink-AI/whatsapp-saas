@@ -60,6 +60,9 @@ export function AgentConfigSheet({
   const [sleepOnManual, setSleepOnManual] = useState(
     agent.config.sleepOnManualMessage !== false,
   );
+  const [setterFunctions, setSetterFunctions] = useState(
+    Boolean(agent.config.setterFunctions),
+  );
   const [saving, setSaving] = useState(false);
   const router = useRouter();
 
@@ -84,6 +87,7 @@ export function AgentConfigSheet({
             summarize,
             responseStyle,
             sleepOnManualMessage: sleepOnManual,
+            setterFunctions,
           },
         }),
       });
@@ -198,6 +202,23 @@ export function AgentConfigSheet({
                   checked={sleepOnManual}
                   onCheckedChange={setSleepOnManual}
                   aria-label="Pausar IA con mensaje manual"
+                />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    Funciones de Setter
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Permite que este agente mueva contactos por el Pipeline en
+                    tiempo real (requiere activar Sugerencias de Pipeline con
+                    IA en Settings). No depende del tipo de agente.
+                  </p>
+                </div>
+                <Switch
+                  checked={setterFunctions}
+                  onCheckedChange={setSetterFunctions}
+                  aria-label="Funciones de Setter"
                 />
               </div>
             </div>

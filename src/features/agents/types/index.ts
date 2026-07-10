@@ -16,6 +16,8 @@ export interface AgentConfig {
   responseStyle?: ResponseStyle;
   /** Pause the AI when a human sends a manual message (default true). */
   sleepOnManualMessage?: boolean;
+  /** Lets this agent move contacts through the Pipeline in real time (Sugerencias de Pipeline con IA), regardless of its `type`. */
+  setterFunctions?: boolean;
   /** config is open JSON; allow arbitrary extra keys. */
   [key: string]: unknown;
 }

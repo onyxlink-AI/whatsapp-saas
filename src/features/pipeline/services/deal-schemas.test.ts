@@ -54,7 +54,7 @@ describe("UpdateDealSchema", () => {
   });
 
   it("accepts a valid stage transition", () => {
-    const result = UpdateDealSchema.safeParse({ stage: "won" });
+    const result = UpdateDealSchema.safeParse({ stage: "cliente" });
     expect(result.success).toBe(true);
   });
 
@@ -66,7 +66,7 @@ describe("UpdateDealSchema", () => {
 
 describe("ReorderSchema", () => {
   it("requires at least one ordered id", () => {
-    const result = ReorderSchema.safeParse({ stage: "new", ordered_ids: [] });
+    const result = ReorderSchema.safeParse({ stage: "exploracion", ordered_ids: [] });
     expect(result.success).toBe(false);
   });
 
@@ -80,7 +80,7 @@ describe("ReorderSchema", () => {
 
   it("accepts a valid reorder payload", () => {
     const result = ReorderSchema.safeParse({
-      stage: "contacted",
+      stage: "interes",
       ordered_ids: [validContactId],
     });
     expect(result.success).toBe(true);

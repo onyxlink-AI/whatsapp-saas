@@ -1,9 +1,8 @@
 export type DealStage =
-  | "new"
-  | "contacted"
-  | "proposal_sent"
-  | "negotiation"
-  | "won"
+  | "exploracion"
+  | "interes"
+  | "listo_para_comprar"
+  | "cliente"
   | "lost";
 
 export type TaskStatus = "pending" | "in_progress" | "done" | "cancelled";
@@ -40,9 +39,6 @@ export interface DealRow {
   position: number;
   notes: string | null;
   source: string | null;
-  ai_suggested_stage: DealStage | null;
-  ai_suggested_reason: string | null;
-  ai_suggested_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -70,20 +66,18 @@ export interface TaskRow {
 }
 
 export const DEAL_STAGES: DealStage[] = [
-  "new",
-  "contacted",
-  "proposal_sent",
-  "negotiation",
-  "won",
+  "exploracion",
+  "interes",
+  "listo_para_comprar",
+  "cliente",
   "lost",
 ];
 
 export const DEAL_STAGE_LABELS: Record<DealStage, string> = {
-  new: "Nuevo",
-  contacted: "Contactado",
-  proposal_sent: "Propuesta enviada",
-  negotiation: "Negociación",
-  won: "Ganado",
+  exploracion: "Exploración",
+  interes: "Interés",
+  listo_para_comprar: "Listo para comprar",
+  cliente: "Cliente",
   lost: "Perdido",
 };
 

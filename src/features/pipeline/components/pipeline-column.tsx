@@ -10,39 +10,31 @@ interface PipelineColumnProps {
   stage: DealStage;
   deals: DealWithContact[];
   onSelectDeal: (dealId: string) => void;
-  onAcceptSuggestion?: (dealId: string) => void;
-  onDismissSuggestion?: (dealId: string) => void;
 }
 
 const STAGE_COLORS: Record<
   DealStage,
   { header: string; border: string; text: string; dot: string }
 > = {
-  new: {
+  exploracion: {
     header: "bg-sky-500/15",
     border: "border-sky-500/40",
     text: "text-sky-400",
     dot: "bg-sky-400",
   },
-  contacted: {
+  interes: {
     header: "bg-violet-500/15",
     border: "border-violet-500/40",
     text: "text-violet-400",
     dot: "bg-violet-400",
   },
-  proposal_sent: {
+  listo_para_comprar: {
     header: "bg-amber-500/15",
     border: "border-amber-500/40",
     text: "text-amber-400",
     dot: "bg-amber-400",
   },
-  negotiation: {
-    header: "bg-orange-500/15",
-    border: "border-orange-500/40",
-    text: "text-orange-400",
-    dot: "bg-orange-400",
-  },
-  won: {
+  cliente: {
     header: "bg-emerald-500/15",
     border: "border-emerald-500/40",
     text: "text-emerald-400",
@@ -56,13 +48,7 @@ const STAGE_COLORS: Record<
   },
 };
 
-export function PipelineColumn({
-  stage,
-  deals,
-  onSelectDeal,
-  onAcceptSuggestion,
-  onDismissSuggestion,
-}: PipelineColumnProps) {
+export function PipelineColumn({ stage, deals, onSelectDeal }: PipelineColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: stage });
   const colors = STAGE_COLORS[stage];
 
@@ -107,12 +93,6 @@ export function PipelineColumn({
               key={deal.id}
               deal={deal}
               onClick={() => onSelectDeal(deal.id)}
-              onAcceptSuggestion={
-                onAcceptSuggestion ? () => onAcceptSuggestion(deal.id) : undefined
-              }
-              onDismissSuggestion={
-                onDismissSuggestion ? () => onDismissSuggestion(deal.id) : undefined
-              }
             />
           ))}
         </SortableContext>

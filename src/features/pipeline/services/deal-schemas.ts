@@ -36,4 +36,4 @@ export const ReorderSchema = z.object({
   ordered_ids: z.array(z.string().uuid()).min(1),
 });
 
-export const CLOSED_STAGES: DealStage[] = ["won", "lost"];
+export const CLOSED_STAGES: DealStage[] = ["cliente", "lost"];
