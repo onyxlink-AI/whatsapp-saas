@@ -58,6 +58,52 @@ export async function isPipelineAiEnabled(
   return data?.pipeline_ai_enabled === true;
 }
 
+const MAX_NOTES_LENGTH = 4000;
+
+// Appends a timestamped entry instead of overwriting, so notes build into a
+// running log a human can scroll through — trims the oldest entries once the
+// log gets too long instead of growing forever.
+function appendNote(existing: string | null | undefined, newNote: string): string {
+  const timestamp = new Date().toLocaleString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const entry = `[${timestamp}] ${newNote}`;
+  const lines = existing ? [...existing.split("\n"), entry] : [entry];
+  while (lines.join("\n").length > MAX_NOTES_LENGTH && lines.length > 1) {
+    lines.shift();
+  }
+  return lines.join("\n");
+}
+
+// Replaces the deal's "next step" task: cancels whatever was still open
+// (superseded now that the phase advanced) and opens a fresh one, so the
+// Tareas list always shows exactly one current action instead of piling up.
+async function refreshNextStepTask(
+  db: ReturnType<typeof svc>,
+  opts: { workspaceId: string; dealId: string; contactId: string; nextStep: string },
+): Promise<void> {
+  const { workspaceId, dealId, contactId, nextStep } = opts;
+  if (!nextStep) return;
+
+  await db
+    .from("tasks")
+    .update({ status: "cancelled" })
+    .eq("deal_id", dealId)
+    .in("status", ["pending", "in_progress"]);
+
+  await db.from("tasks").insert({
+    workspace_id: workspaceId,
+    deal_id: dealId,
+    contact_id: contactId,
+    title: nextStep.slice(0, 200),
+    task_type: "follow_up",
+    status: "pending",
+  });
+}
+
 function safeParseJson(text: string): Record<string, unknown> | null {
   try {
     const cleaned = text.replace(/```json/gi, "").replace(/```/g, "").trim();
@@ -86,8 +132,14 @@ Fases (en orden):
 4. "cliente" — el pago ya se ha realizado.
    Señales: dice explícitamente que ya ha pagado; envía un comprobante o justificante de pago; indica que la transferencia, Bizum o pago ya está hecho; menciona que el dinero ya ha sido enviado; cualquier mensaje cuyo significado implique claramente que el pago ya se ha completado, aunque no use exactamente la expresión "he pagado".
 
-Responde SOLO con un objeto JSON: { "phase": "exploracion" | "interes" | "listo_para_comprar" | "cliente", "reason": "motivo breve" }
-NUNCA incluyas contraseñas, datos bancarios completos ni información sensible innecesaria en "reason".`;
+Responde SOLO con un objeto JSON con estos campos:
+{
+  "phase": "exploracion" | "interes" | "listo_para_comprar" | "cliente",
+  "reason": "motivo breve de por qué está en esa fase",
+  "notes": "1-3 frases con el contexto importante para dar seguimiento comercial: qué necesita el cliente, qué preguntó, objeciones, fechas, cualquier detalle útil para quien retome la conversación",
+  "next_step": "acción concreta y breve que el equipo debe hacer a continuación (ej: 'Confirmar que el pago fue recibido', 'Llamar para resolver duda sobre el precio', 'Enviar recordatorio de la cita')"
+}
+NUNCA incluyas contraseñas, datos bancarios completos ni información sensible innecesaria en ningún campo.`;
 
 interface ClassifyParams {
   workspaceId: string;
@@ -139,7 +191,14 @@ export async function runPipelineClassification(
 
     const reason =
       typeof parsed.reason === "string" ? parsed.reason.trim().slice(0, 300) : "";
-    if (reason && containsSensitiveData(reason)) {
+    const noteText =
+      typeof parsed.notes === "string" ? parsed.notes.trim().slice(0, 500) : "";
+    const nextStep =
+      typeof parsed.next_step === "string" ? parsed.next_step.trim().slice(0, 200) : "";
+
+    if (
+      [reason, noteText, nextStep].some((v) => v && containsSensitiveData(v))
+    ) {
       await db.from("events").insert({
         type: "pipeline_classification_sensitive_data_dropped",
         level: "warn",
@@ -174,6 +233,7 @@ export async function runPipelineClassification(
           title: `Oportunidad — ${contactRow?.name || contactRow?.phone || "sin nombre"}`,
           stage: phase,
           position: count ?? 0,
+          notes: noteText ? appendNote(null, noteText) : null,
         })
         .select("id")
         .single();
@@ -181,6 +241,15 @@ export async function runPipelineClassification(
       if (createError || !created) {
         console.error("[pipeline-suggestion] deal creation failed:", createError?.message);
         return;
+      }
+
+      if (nextStep) {
+        await refreshNextStepTask(db, {
+          workspaceId,
+          dealId: created.id,
+          contactId,
+          nextStep,
+        });
       }
 
       console.info(
@@ -191,7 +260,14 @@ export async function runPipelineClassification(
         level: "info",
         workspace_id: workspaceId,
         conversation_id: conversationId,
-        payload: { contact_id: contactId, deal_id: created.id, action: "create", phase, reason },
+        payload: {
+          contact_id: contactId,
+          deal_id: created.id,
+          action: "create",
+          phase,
+          reason,
+          next_step: nextStep || null,
+        },
       });
       return;
     }
@@ -207,6 +283,12 @@ export async function runPipelineClassification(
       .eq("workspace_id", workspaceId)
       .eq("stage", phase);
 
+    const { data: dealRow } = await db
+      .from("deals")
+      .select("notes")
+      .eq("id", existingDeal.id)
+      .maybeSingle();
+
     await db
       .from("deals")
       .update({
@@ -214,8 +296,18 @@ export async function runPipelineClassification(
         position: count ?? 0,
         closed_at: phase === "cliente" ? new Date().toISOString() : null,
         updated_at: new Date().toISOString(),
+        notes: noteText ? appendNote(dealRow?.notes, noteText) : dealRow?.notes,
       })
       .eq("id", existingDeal.id);
+
+    if (nextStep) {
+      await refreshNextStepTask(db, {
+        workspaceId,
+        dealId: existingDeal.id,
+        contactId,
+        nextStep,
+      });
+    }
 
     console.info(
       `[pipeline-suggestion] moved deal ${existingDeal.id} from "${existingDeal.stage}" to "${phase}" (contact ${contactId})`,
@@ -232,6 +324,7 @@ export async function runPipelineClassification(
         from: existingDeal.stage,
         phase,
         reason,
+        next_step: nextStep || null,
       },
     });
   } catch (err) {
