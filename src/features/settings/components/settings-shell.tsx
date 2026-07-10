@@ -2,6 +2,7 @@
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { BusinessInfoForm } from "./business-info-form";
+import { AdvancedMemoryToggle } from "./advanced-memory-toggle";
 import { ToolsCatalog } from "./tools-catalog";
 import { IntegrationsTab } from "./integrations-tab";
 import { TeamTab } from "./team-tab";
@@ -31,6 +32,7 @@ interface Props {
   initialTemplates?: unknown[];
   initialAgents?: AgentDto[];
   googleServiceAccountEmail?: string;
+  initialAdvancedMemoryEnabled?: boolean;
 }
 
 export function SettingsShell({
@@ -41,6 +43,7 @@ export function SettingsShell({
   initialTemplates = [],
   initialAgents = [],
   googleServiceAccountEmail,
+  initialAdvancedMemoryEnabled = false,
 }: Props) {
   const biForForm = initialBusinessInfo as {
     structured: Record<string, unknown>;
@@ -91,6 +94,10 @@ export function SettingsShell({
 
         <TabsContent value="negocio">
           <div className="p-6 space-y-6 rounded-lg glass">
+            <AdvancedMemoryToggle
+              workspaceId={workspaceId}
+              initialEnabled={initialAdvancedMemoryEnabled}
+            />
             <BusinessInfoForm workspaceId={workspaceId} initial={biForForm} />
           </div>
         </TabsContent>

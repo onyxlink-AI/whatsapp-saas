@@ -45,6 +45,7 @@ export default async function SettingsPage() {
     { data: toolsData },
     { data: toolConfigsData },
     { data: integrationsData },
+    { data: workspaceData },
   ] = await Promise.all([
     svc
       .from("business_info")
@@ -60,6 +61,11 @@ export default async function SettingsPage() {
       .from("integrations")
       .select("provider, enabled, credentials, oauth_tokens, config")
       .eq("workspace_id", workspaceId),
+    svc
+      .from("workspaces")
+      .select("advanced_memory_enabled")
+      .eq("id", workspaceId)
+      .single(),
   ]);
 
   const initialAgents = await listAgents(svc, workspaceId);
@@ -121,6 +127,7 @@ export default async function SettingsPage() {
       initialIntegrations={maskedIntegrations}
       initialAgents={initialAgents}
       googleServiceAccountEmail={process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL}
+      initialAdvancedMemoryEnabled={workspaceData?.advanced_memory_enabled === true}
     />
   );
 }

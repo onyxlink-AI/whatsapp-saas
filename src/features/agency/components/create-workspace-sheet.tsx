@@ -120,6 +120,7 @@ export function CreateWorkspaceSheet({
   const [clientEmail, setClientEmail] = useState("");
   const [clientPassword, setClientPassword] = useState("");
   const [useCase, setUseCase] = useState<UseCase>("general");
+  const [wantsAdvancedMemory, setWantsAdvancedMemory] = useState(false);
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<{
@@ -149,6 +150,7 @@ export function CreateWorkspaceSheet({
     setClientEmail("");
     setClientPassword("");
     setUseCase("general");
+    setWantsAdvancedMemory(false);
     setWorkspaceId(null);
     setWebhookUrl(null);
     setCredentials(null);
@@ -192,6 +194,7 @@ export function CreateWorkspaceSheet({
         useCase,
         clientEmail: clientEmail || undefined,
         clientPassword: clientPassword || undefined,
+        advancedMemoryEnabled: wantsAdvancedMemory,
       });
 
       if (result.error || !result.workspaceId) {
@@ -412,6 +415,24 @@ export function CreateWorkspaceSheet({
                 Agendamiento) con un prompt de partida.
               </p>
             </div>
+
+            <label className="flex items-start gap-2.5 rounded-lg border border-border/60 p-3">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={wantsAdvancedMemory}
+                onChange={(e) => setWantsAdvancedMemory(e.target.checked)}
+                disabled={saving}
+              />
+              <span className="text-sm text-foreground">
+                Activar Memoria Inteligente Avanzada
+                <span className="block text-xs text-muted-foreground mt-0.5">
+                  El agente recuerda a cada contacto entre conversaciones
+                  (resumen, intereses, objeciones, estado del lead). Se puede
+                  activar o desactivar después en Settings.
+                </span>
+              </span>
+            </label>
 
             <Button
               type="submit"
