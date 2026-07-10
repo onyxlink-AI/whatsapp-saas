@@ -121,6 +121,7 @@ export function CreateWorkspaceSheet({
   const [clientPassword, setClientPassword] = useState("");
   const [useCase, setUseCase] = useState<UseCase>("general");
   const [wantsAdvancedMemory, setWantsAdvancedMemory] = useState(false);
+  const [wantsPipelineAi, setWantsPipelineAi] = useState(false);
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<{
@@ -151,6 +152,7 @@ export function CreateWorkspaceSheet({
     setClientPassword("");
     setUseCase("general");
     setWantsAdvancedMemory(false);
+    setWantsPipelineAi(false);
     setWorkspaceId(null);
     setWebhookUrl(null);
     setCredentials(null);
@@ -195,6 +197,7 @@ export function CreateWorkspaceSheet({
         clientEmail: clientEmail || undefined,
         clientPassword: clientPassword || undefined,
         advancedMemoryEnabled: wantsAdvancedMemory,
+        pipelineAiEnabled: wantsPipelineAi,
       });
 
       if (result.error || !result.workspaceId) {
@@ -430,6 +433,25 @@ export function CreateWorkspaceSheet({
                   El agente recuerda a cada contacto entre conversaciones
                   (resumen, intereses, objeciones, estado del lead). Se puede
                   activar o desactivar después en Settings.
+                </span>
+              </span>
+            </label>
+
+            <label className="flex items-start gap-2.5 rounded-lg border border-border/60 p-3">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={wantsPipelineAi}
+                onChange={(e) => setWantsPipelineAi(e.target.checked)}
+                disabled={saving}
+              />
+              <span className="text-sm text-foreground">
+                Activar Sugerencias de Pipeline con IA
+                <span className="block text-xs text-muted-foreground mt-0.5">
+                  El agente sugiere en qué etapa del pipeline encaja cada
+                  contacto — nunca mueve nada solo, siempre requiere
+                  aprobación manual. Se puede activar o desactivar después en
+                  Settings.
                 </span>
               </span>
             </label>

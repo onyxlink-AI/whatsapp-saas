@@ -40,6 +40,9 @@ export interface DealRow {
   position: number;
   notes: string | null;
   source: string | null;
+  ai_suggested_stage: DealStage | null;
+  ai_suggested_reason: string | null;
+  ai_suggested_at: string | null;
   created_at: string;
   updated_at: string;
 }

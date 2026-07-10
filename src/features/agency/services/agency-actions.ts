@@ -25,6 +25,7 @@ const CreateWorkspaceSchema = z.object({
     .optional()
     .or(z.literal("")),
   advancedMemoryEnabled: z.boolean().optional(),
+  pipelineAiEnabled: z.boolean().optional(),
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -76,8 +77,14 @@ export async function createWorkspaceForClient(
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
-  const { name, useCase, clientEmail, clientPassword, advancedMemoryEnabled } =
-    parsed.data;
+  const {
+    name,
+    useCase,
+    clientEmail,
+    clientPassword,
+    advancedMemoryEnabled,
+    pipelineAiEnabled,
+  } = parsed.data;
   const service = svc();
   let clientCredentials: ClientCredentials | null = null;
 
@@ -93,6 +100,7 @@ export async function createWorkspaceForClient(
       name,
       slug,
       advanced_memory_enabled: advancedMemoryEnabled ?? false,
+      pipeline_ai_enabled: pipelineAiEnabled ?? false,
     })
     .select("id")
     .single();

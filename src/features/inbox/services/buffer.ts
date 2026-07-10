@@ -37,6 +37,10 @@ import {
   searchContactMemories,
   formatMemoryItemsContext,
 } from "./contact-memory-items";
+import {
+  isPipelineAiEnabled,
+  suggestPipelineStage,
+} from "@/features/pipeline/services/pipeline-suggestion";
 
 const DEFAULT_SILENCE_MS = 30_000; // 30 seconds silence window
 const MAX_BATCH_RETRIES = 3;
@@ -525,6 +529,21 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
     // dormant unless advanced_memory_enabled — no latency added to the reply.
     if (advancedMemoryEnabled) {
       void extractContactMemory({
+        workspaceId: batch.workspace_id,
+        conversationId: batch.conversation_id,
+        contactId: conversation.contact_id as string,
+        history,
+        mergedText,
+        replyText: reply.text,
+      });
+    }
+
+    // ── 10f. Sugerencias de Pipeline con IA (opt-in, add-on): fire-and-forget,
+    // dormant unless pipeline_ai_enabled. Only ever writes a suggestion — never
+    // moves/creates a deal by itself.
+    const pipelineAiEnabled = await isPipelineAiEnabled(batch.workspace_id);
+    if (pipelineAiEnabled) {
+      void suggestPipelineStage({
         workspaceId: batch.workspace_id,
         conversationId: batch.conversation_id,
         contactId: conversation.contact_id as string,

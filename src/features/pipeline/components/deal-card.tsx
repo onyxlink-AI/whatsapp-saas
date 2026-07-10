@@ -2,10 +2,11 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CalendarClock, ListTodo } from "lucide-react";
+import { CalendarClock, ListTodo, Sparkles, Check, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { DealWithContact } from "@/features/pipeline/types";
+import { DEAL_STAGE_LABELS, type DealWithContact } from "@/features/pipeline/types";
 
 function Initials({ name }: { name: string | null }) {
   const letters = name
@@ -49,9 +50,16 @@ function formatShortDate(date: string | null) {
 interface DealCardProps {
   deal: DealWithContact;
   onClick: () => void;
+  onAcceptSuggestion?: () => void;
+  onDismissSuggestion?: () => void;
 }
 
-export function DealCard({ deal, onClick }: DealCardProps) {
+export function DealCard({
+  deal,
+  onClick,
+  onAcceptSuggestion,
+  onDismissSuggestion,
+}: DealCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: deal.id });
 
@@ -105,6 +113,45 @@ export function DealCard({ deal, onClick }: DealCardProps) {
           <ListTodo className="h-2.5 w-2.5" />
           {deal.open_task_count}
         </Badge>
+      )}
+
+      {deal.ai_suggested_stage && (
+        <div
+          className="rounded border border-[hsl(var(--electric-lime)/0.4)] bg-[hsl(var(--electric-lime)/0.08)] p-1.5 space-y-1"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <p className="flex items-center gap-1 text-[9px] font-medium text-[hsl(var(--electric-lime))]">
+            <Sparkles className="h-2.5 w-2.5" />
+            IA sugiere: {DEAL_STAGE_LABELS[deal.ai_suggested_stage]}
+          </p>
+          {deal.ai_suggested_reason && (
+            <p className="text-[9px] text-muted-foreground leading-snug">
+              {deal.ai_suggested_reason}
+            </p>
+          )}
+          <div className="flex gap-1">
+            <Button
+              type="button"
+              size="sm"
+              className="h-5 flex-1 text-[9px] gap-1 px-1.5"
+              onClick={onAcceptSuggestion}
+            >
+              <Check className="h-2.5 w-2.5" />
+              Aceptar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-5 flex-1 text-[9px] gap-1 px-1.5"
+              onClick={onDismissSuggestion}
+            >
+              <X className="h-2.5 w-2.5" />
+              Descartar
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );

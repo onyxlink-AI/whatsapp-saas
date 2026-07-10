@@ -10,6 +10,8 @@ interface PipelineColumnProps {
   stage: DealStage;
   deals: DealWithContact[];
   onSelectDeal: (dealId: string) => void;
+  onAcceptSuggestion?: (dealId: string) => void;
+  onDismissSuggestion?: (dealId: string) => void;
 }
 
 const STAGE_COLORS: Record<
@@ -54,7 +56,13 @@ const STAGE_COLORS: Record<
   },
 };
 
-export function PipelineColumn({ stage, deals, onSelectDeal }: PipelineColumnProps) {
+export function PipelineColumn({
+  stage,
+  deals,
+  onSelectDeal,
+  onAcceptSuggestion,
+  onDismissSuggestion,
+}: PipelineColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: stage });
   const colors = STAGE_COLORS[stage];
 
@@ -99,6 +107,12 @@ export function PipelineColumn({ stage, deals, onSelectDeal }: PipelineColumnPro
               key={deal.id}
               deal={deal}
               onClick={() => onSelectDeal(deal.id)}
+              onAcceptSuggestion={
+                onAcceptSuggestion ? () => onAcceptSuggestion(deal.id) : undefined
+              }
+              onDismissSuggestion={
+                onDismissSuggestion ? () => onDismissSuggestion(deal.id) : undefined
+              }
             />
           ))}
         </SortableContext>
