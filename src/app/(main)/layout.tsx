@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   LogOut,
   MessageCircle,
+  Phone,
   Settings,
 } from "lucide-react";
 import Link from "next/link";
@@ -48,6 +49,18 @@ export default async function MainLayout({
   const activeId = active?.workspace_id ?? null;
   const workspaceName =
     memberships.find((m) => m.workspace_id === activeId)?.name ?? null;
+
+  const hasVoiceAgent = activeId
+    ? Boolean(
+        (
+          await supabase
+            .from("workspaces")
+            .select("vapi_assistant_id")
+            .eq("id", activeId)
+            .maybeSingle()
+        ).data?.vapi_assistant_id,
+      )
+    : false;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -100,66 +113,83 @@ export default async function MainLayout({
           )}
         </div>
 
-        {/* Right: agency link (super admin only) + dashboard + settings + logout */}
+        {/* Right: agency link (super admin only) + dashboard + settings + logout.
+            Below md, everything except logout duplicates the bottom mobile
+            nav, so it's hidden there — only brand + logout stay in the header. */}
         <div className="flex items-center gap-1 shrink-0">
-          <ThemeToggle />
+          <div className="hidden md:flex items-center gap-1">
+            <ThemeToggle />
 
-          {isSuperAdmin && (
-            <Link href="/workspaces">
+            {isSuperAdmin && (
+              <Link href="/workspaces">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <Building2 className="h-4 w-4" aria-hidden="true" />
+                  <span className="sr-only sm:not-sr-only sm:ml-2">Agency</span>
+                </Button>
+              </Link>
+            )}
+
+            <Link href="/inbox">
               <Button
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground hover:text-foreground"
               >
-                <Building2 className="h-4 w-4" aria-hidden="true" />
-                <span className="sr-only sm:not-sr-only sm:ml-2">Agency</span>
+                <MessageCircle className="h-4 w-4" aria-hidden="true" />
+                <span className="sr-only sm:not-sr-only sm:ml-2">Inbox</span>
               </Button>
             </Link>
-          )}
 
-          <Link href="/inbox">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <MessageCircle className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only sm:ml-2">Inbox</span>
-            </Button>
-          </Link>
+            <Link href="/dashboard">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
+                <span className="sr-only sm:not-sr-only sm:ml-2">Dashboard</span>
+              </Button>
+            </Link>
 
-          <Link href="/dashboard">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only sm:ml-2">Dashboard</span>
-            </Button>
-          </Link>
+            <Link href="/pipeline">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <Kanban className="h-4 w-4" aria-hidden="true" />
+                <span className="sr-only sm:not-sr-only sm:ml-2">Pipeline</span>
+              </Button>
+            </Link>
 
-          <Link href="/pipeline">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <Kanban className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only sm:ml-2">Pipeline</span>
-            </Button>
-          </Link>
+            {hasVoiceAgent && (
+              <Link href="/asistente-ai">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <Phone className="h-4 w-4" aria-hidden="true" />
+                  <span className="sr-only sm:not-sr-only sm:ml-2">Asistente AI</span>
+                </Button>
+              </Link>
+            )}
 
-          <Link href="/settings">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <Settings className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only sm:ml-2">Settings</span>
-            </Button>
-          </Link>
+            <Link href="/settings">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <Settings className="h-4 w-4" aria-hidden="true" />
+                <span className="sr-only sm:not-sr-only sm:ml-2">Settings</span>
+              </Button>
+            </Link>
+          </div>
 
           <form action={logout}>
             <Button
@@ -209,6 +239,16 @@ export default async function MainLayout({
           <Kanban className="h-5 w-5" aria-hidden="true" />
           <span>Pipeline</span>
         </Link>
+
+        {hasVoiceAgent && (
+          <Link
+            href="/asistente-ai"
+            className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            <Phone className="h-5 w-5" aria-hidden="true" />
+            <span>Asistente AI</span>
+          </Link>
+        )}
 
         <Link
           href="/settings"
