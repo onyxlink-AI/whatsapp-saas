@@ -294,7 +294,7 @@ export function CrmPanel({
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <aside className="w-72 shrink-0 flex flex-col gap-0 border-l border-border/50 glass overflow-y-auto text-sm">
+    <aside className="w-full md:w-72 shrink-0 flex flex-col gap-0 border-t md:border-t-0 md:border-l border-border/50 glass overflow-y-auto text-sm">
       {/* ── Section: Contact info ── */}
       <section>
         <button

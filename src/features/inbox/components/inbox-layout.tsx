@@ -42,6 +42,11 @@ export function InboxLayout({
   // message, state/handoff change) — re-runs the server component.
   useRealtimeConversations(workspaceId);
 
+  // Below md, list and thread can't share the screen — show one at a time,
+  // switching on route (/inbox = list, /inbox/[id] = thread). md+ keeps the
+  // classic two-pane layout regardless of route.
+  const isThreadView = pathname !== "/inbox";
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return conversations.filter((c) => {
@@ -63,7 +68,8 @@ export function InboxLayout({
       {/* Left panel — conversation list */}
       <aside
         className={cn(
-          "w-80 shrink-0 border-r border-border/50 flex flex-col overflow-hidden",
+          "w-full md:w-80 shrink-0 border-r border-border/50 flex-col overflow-hidden",
+          isThreadView ? "hidden md:flex" : "flex",
         )}
         aria-label="Conversaciones"
       >
@@ -155,7 +161,14 @@ export function InboxLayout({
       </aside>
 
       {/* Right panel — thread / detail */}
-      <main className="flex-1 overflow-hidden">{children}</main>
+      <main
+        className={cn(
+          "flex-1 overflow-hidden",
+          isThreadView ? "block" : "hidden md:block",
+        )}
+      >
+        {children}
+      </main>
     </div>
   );
 }

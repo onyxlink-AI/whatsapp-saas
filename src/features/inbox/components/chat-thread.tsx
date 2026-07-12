@@ -9,6 +9,7 @@ import {
   UserCheck,
   BarChart2,
   Bot,
+  ChevronLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -202,13 +203,26 @@ export function ChatThread({
             "px-4 py-3 border-b border-border/50",
           )}
         >
-          <div className="space-y-0.5 min-w-0">
-            <h2 className="font-display text-sm font-semibold text-foreground truncate">
-              {conversation.contact.name ?? conversation.contact.phone}
-            </h2>
-            <p className="font-mono text-[10px] text-muted-foreground">
-              {conversation.contact.phone}
-            </p>
+          <div className="flex items-center gap-1 min-w-0">
+            {/* Back to conversation list — mobile only, list/thread share one screen below md */}
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              onClick={() => router.push("/inbox")}
+              aria-label="Volver a conversaciones"
+              className="md:hidden h-8 w-8 -ml-1 shrink-0 text-muted-foreground"
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            </Button>
+            <div className="space-y-0.5 min-w-0">
+              <h2 className="font-display text-sm font-semibold text-foreground truncate">
+                {conversation.contact.name ?? conversation.contact.phone}
+              </h2>
+              <p className="font-mono text-[10px] text-muted-foreground">
+                {conversation.contact.phone}
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-1 shrink-0">
