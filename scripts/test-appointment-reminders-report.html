@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Test local — Recordatorios de citas</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, sans-serif; max-width: 840px; margin: 40px auto; padding: 0 20px; background: #0f1115; color: #e6e6e6; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.05rem; margin-top: 1.8rem; color: #9aeb3c; }
+  pre { background: #1a1d24; padding: 12px 14px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+  .ok { color: #9aeb3c; } .warn { color: #e0b23c; } .err { color: #e0503c; }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; }
+  td, th { border: 1px solid #333; padding: 6px 10px; text-align: left; font-size: 0.85rem; }
+</style></head>
+<body>
+<h1>Test local — Recordatorios de citas (2h antes)</h1>
+<p>Generado 10/7/2026, 15:58:19 contra el workspace <strong>Onyxlink</strong>.</p>
+
+<h2>Resultado de sendDueReminders()</h2>
+<pre>{
+  "sent": 0,
+  "skipped": 0,
+  "failed": 1
+}</pre>
+
+<h2>Cita dentro de la ventana de 2h (esperado: reminder_sent_at con valor)</h2>
+<pre>{
+  "id": "399e37e2-72d5-45dc-be63-a2ead58736cb",
+  "scheduled_at": "2026-07-10T14:58:15.051+00:00",
+  "reminder_sent_at": null
+}</pre>
+<p><span class="warn">No se marcó — revisar el intento de envío en events (probablemente falló en YCloud por el número inválido, lo cual es esperado y seguro).</span></p>
+
+<h2>Cita fuera de la ventana de 2h — 5h en el futuro (esperado: reminder_sent_at vacío, no se tocó)</h2>
+<pre>{
+  "id": "a0a22873-c6d1-4ae9-9863-a866766032fa",
+  "scheduled_at": "2026-07-10T18:58:15.053+00:00",
+  "reminder_sent_at": null
+}</pre>
+<p><span class="ok">OK: la cita lejana no fue tocada.</span></p>
+
+<h2>Eventos registrados</h2>
+<table><tr><th>Tipo</th><th>Nivel</th><th>Payload</th><th>Fecha</th></tr>
+<tr><td>appointment_reminder_failed</td><td>warn</td><td><pre>{"error":"YCloud sendTemplate error 403","template":"test_fake_recordatorio","contact_id":"ff44ed27-c4e1-4426-898a-85ba2e923ab7","scheduled_at":"2026-07-10T14:58:15.051+00:00","appointment_id":"399e37e2-72d5-45dc-be63-a2ead58736cb","rendered_preview":"Hola TEST Recordatorio (borrar), este es un recordatorio: tienes una cita programada hoy a las 16:58. ¡Te esperamos!"}</pre></td><td>2026-07-10T13:58:18.434793+00:00</td></tr>
+</table>
+</body></html>

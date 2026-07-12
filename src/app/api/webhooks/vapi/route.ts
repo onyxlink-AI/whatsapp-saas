@@ -133,32 +133,36 @@ interface VapiWebhookBody {
 }
 
 /**
- * The lead status isn't in Vapi's own `analysis.structuredData` (that
- * requires configuring `analysisPlan.structuredDataPlan`, which costs extra
- * per call). Instead, read it straight from the `save_lead` tool call(s) the
- * assistant already makes — the LAST call's `fields.Estado` is authoritative
- * (the prompt's "guardado temprano" safety net means save_lead can fire more
- * than once per call; the final one has the most complete data).
+ * Neither the lead status nor a reliable phone number are in Vapi's own
+ * fields for web/dashboard test calls: `analysis.structuredData` isn't
+ * configured (costs extra per call), and `call.customer.number` (Caller ID)
+ * is only populated for real PSTN calls — it's null for browser/test calls,
+ * which is exactly why a lead could go completely unlinked to a contact.
+ * Both are instead read straight from the `save_lead` tool call(s) the
+ * assistant already makes — the LAST call's `fields` are authoritative (the
+ * prompt's "guardado temprano" safety net means save_lead can fire more than
+ * once per call; the final one has the most complete data).
  */
-function extractLeadStatus(messages: VapiToolCallMessage[] | undefined): string | null {
+function extractSavedLeadFields(
+  messages: VapiToolCallMessage[] | undefined,
+): Record<string, unknown> | null {
   if (!Array.isArray(messages)) return null;
-  let lastEstado: string | null = null;
+  let lastFields: Record<string, unknown> | null = null;
   for (const m of messages) {
     if (!Array.isArray(m.toolCalls)) continue;
     for (const tc of m.toolCalls) {
       if (tc.function?.name !== "save_lead") continue;
       try {
         const parsed = JSON.parse(tc.function.arguments ?? "{}") as {
-          fields?: { Estado?: unknown };
+          fields?: Record<string, unknown>;
         };
-        const estado = parsed.fields?.Estado;
-        if (typeof estado === "string") lastEstado = estado;
+        if (parsed.fields) lastFields = parsed.fields;
       } catch {
         // malformed arguments — skip, keep whatever we already had
       }
     }
   }
-  return lastEstado;
+  return lastFields;
 }
 
 export async function POST(req: NextRequest) {
@@ -209,9 +213,18 @@ export async function POST(req: NextRequest) {
       ? Math.max(0, Math.round((new Date(endedAt).getTime() - new Date(startedAt).getTime()) / 1000))
       : null;
 
-  const customerNumber = call?.customer?.number ?? null;
+  const leadFields = extractSavedLeadFields(message.messages ?? message.artifact?.messages);
+  const leadPhone =
+    typeof leadFields?.Teléfono === "string" && leadFields.Teléfono !== "unknown"
+      ? leadFields.Teléfono
+      : null;
+  // Caller ID first (real phone calls), falling back to what the customer
+  // told the agent and it confirmed back (web/dashboard test calls have no
+  // Caller ID at all).
+  const customerNumber = call?.customer?.number ?? leadPhone ?? null;
   const transcript = message.transcript ?? message.artifact?.transcript ?? null;
   const summary = message.summary ?? message.analysis?.summary ?? null;
+  const leadStatus = typeof leadFields?.Estado === "string" ? leadFields.Estado : null;
 
   const { data: voiceCall, error } = await supabase
     .from("voice_calls")
@@ -232,7 +245,7 @@ export async function POST(req: NextRequest) {
         customer_number: customerNumber,
         transcript,
         summary,
-        lead_status: extractLeadStatus(message.messages ?? message.artifact?.messages),
+        lead_status: leadStatus,
         raw_payload: body as unknown as Record<string, unknown>,
       },
       { onConflict: "vapi_call_id" },

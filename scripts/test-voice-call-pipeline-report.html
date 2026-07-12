@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Test local — Llamadas de voz al Pipeline</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, sans-serif; max-width: 840px; margin: 40px auto; padding: 0 20px; background: #0f1115; color: #e6e6e6; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.05rem; margin-top: 1.8rem; color: #9aeb3c; }
+  pre { background: #1a1d24; padding: 12px 14px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+  .ok { color: #9aeb3c; } .warn { color: #e0b23c; } .err { color: #e0503c; }
+</style></head>
+<body>
+<h1>Test local — Llamadas de voz integradas al Pipeline</h1>
+<p>Generado 10/7/2026, 18:29:30 contra el workspace <strong>Onyxlink</strong>. Número de prueba inválido a propósito: <code>+10000099999</code>.</p>
+
+<h2>Transcript simulado</h2>
+<pre>AI: Hola, gracias por llamar, ¿en qué puedo ayudarte?
+Usuario: Quería confirmar que ya hice el pago de la reserva del sábado, ya mandé el Bizum.
+AI: Perfecto, lo confirmo ahora mismo, ¡nos vemos el sábado!</pre>
+
+<h2>Fila en voice_calls</h2>
+<pre>{
+  "id": "05b8d30f-937d-4be7-b240-7a9f58c3a732",
+  "contact_id": "20665d75-0fbe-4fa5-827b-7560ec5e1c2b",
+  "customer_number": "+10000099999",
+  "lead_status": null
+}</pre>
+<p><span class="ok">OK: la llamada quedó vinculada a un contact_id.</span></p>
+
+<h2>Contacto resuelto/creado por teléfono</h2>
+<pre>{
+  "id": "20665d75-0fbe-4fa5-827b-7560ec5e1c2b",
+  "phone": "+10000099999",
+  "opt_in": true
+}</pre>
+
+<h2>Deal generado por el clasificador de Pipeline</h2>
+<pre>{
+  "id": "9b70a947-a391-4f03-b0e3-605bbeaf9bba",
+  "stage": "cliente",
+  "title": "Oportunidad — +10000099999",
+  "notes": "[10/7, 18:29] El usuario confirma que ya hizo el pago de la reserva mediante Bizum para el sábado. No hay más acciones pendientes."
+}</pre>
+<p><span class="ok">OK: el deal se creó directamente en fase "cliente" — el clasificador leyó correctamente la confirmación de pago en la llamada.</span></p>
+
+<h2>Tareas creadas</h2>
+<pre>[
+  {
+    "title": "Enviar recordatorio de la cita para el sábado",
+    "status": "pending"
+  }
+]</pre>
+</body></html>

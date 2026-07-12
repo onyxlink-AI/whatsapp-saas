@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Test local — Memoria Inteligente Avanzada</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, sans-serif; max-width: 840px; margin: 40px auto; padding: 0 20px; background: #0f1115; color: #e6e6e6; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin-top: 2rem; color: #9aeb3c; }
+  pre { background: #1a1d24; padding: 14px 16px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+  .turn { padding: 8px 12px; margin: 4px 0; border-radius: 6px; }
+  .turn.user { background: #1e2530; } .turn.assistant { background: #24261e; }
+  .ok { color: #9aeb3c; } .warn { color: #e0b23c; } .err { color: #e0503c; }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; }
+  td, th { border: 1px solid #333; padding: 6px 10px; text-align: left; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Test local — Memoria Inteligente Avanzada (Fase 1 + Fase 3)</h1>
+<p>Generado 10/7/2026, 12:54:23 contra el workspace <strong>Onyxlink</strong> (advanced_memory_enabled = true).</p>
+<p class="warn">Contacto de prueba creado y eliminado automáticamente al terminar — no queda dato de prueba en producción.</p>
+
+<h2>1. Transcripción simulada (incluye un número de tarjeta falso a propósito)</h2>
+<div class="turn user"><strong>user:</strong> Hola, soy dueño de una tienda de ropa en Málaga y busco automatizar WhatsApp</div>
+<div class="turn assistant"><strong>assistant:</strong> ¡Genial! Cuéntame más sobre tu negocio.</div>
+<div class="turn user"><strong>user:</strong> Tenemos unos 200 mensajes al día, el problema es que no damos abasto por las tardes. Mi principal objeción es el precio, me parece caro.</div>
+<div class="turn user"><strong>user:</strong> Ah y una cosa, mi tarjeta es 4111 1111 1111 1111, apúntala por si acaso. Por cierto, mejor no me llames por la mañana, suelo estar en el almacén sin cobertura hasta las 14h. Y mi hermano tiene una tienda parecida en Sevilla, él fue quien me habló de vosotros.</div>
+<div class="turn assistant"><strong>assistant:</strong> Entiendo, vamos a ver cómo Onyxlink puede ayudarte a automatizar esas conversaciones de la tarde. Sobre el precio, lo mejor es agendar una llamada con un especialista.</div>
+
+<h2>2. Memoria extraída y guardada en contact_memories</h2>
+<pre>{
+  "id": "810c5377-f44f-4506-8a15-bd27b91b5f6d",
+  "workspace_id": "f3db7287-6e81-4576-b26c-e51af09eeb31",
+  "contact_id": "37fe5e7b-38c0-4cb7-9e7c-3899e458435e",
+  "summary": "El contacto es dueño de una tienda de ropa en Málaga que busca automatizar WhatsApp debido a un alto volumen de mensajes. Tiene preocupaciones sobre el precio del servicio y dificultades para manejar la carga de trabajo por las tardes.",
+  "interests": [
+    "automatización de WhatsApp",
+    "tienda de ropa"
+  ],
+  "preferences": {
+    "horario_preferido": "tardes"
+  },
+  "objections": [
+    "el precio me parece caro"
+  ],
+  "lead_status": "interesado, considerando la automatización",
+  "next_step": "agendar una llamada con un especialista sobre precios",
+  "metadata": {
+    "num_empleados": 1
+  },
+  "created_at": "2026-07-10T10:54:20.518591+00:00",
+  "updated_at": "2026-07-10T10:54:20.518591+00:00"
+}</pre>
+
+<h2>3. Bloque que se inyectaría en el prompt del agente</h2>
+<pre class="ok">## Memoria del contacto
+Resumen: El contacto es dueño de una tienda de ropa en Málaga que busca automatizar WhatsApp debido a un alto volumen de mensajes. Tiene preocupaciones sobre el precio del servicio y dificultades para manejar la carga de trabajo por las tardes.
+Intereses: automatización de WhatsApp, tienda de ropa
+Preferencias: horario_preferido: tardes
+Objeciones previas: el precio me parece caro
+Estado del lead: interesado, considerando la automatización
+Siguiente paso sugerido: agendar una llamada con un especialista sobre precios</pre>
+
+<h2>4. Verificación de la red de seguridad (dato sensible)</h2>
+<p><span class="ok">OK: el número de tarjeta NO aparece en la memoria ni en los recuerdos.</span></p>
+
+<h2>5. Recuerdos individuales creados (contact_memory_items, Fase 3)</h2>
+<pre>[
+  {
+    "content": "El contacto tiene unos 200 mensajes al día en su tienda.",
+    "category": "fact",
+    "created_at": "2026-07-10T10:54:21.60456+00:00"
+  },
+  {
+    "content": "Prefiere que no le llamen por la mañana porque está en el almacén sin cobertura hasta las 14h.",
+    "category": "preference",
+    "created_at": "2026-07-10T10:54:21.60456+00:00"
+  },
+  {
+    "content": "Su hermano tiene una tienda parecida en Sevilla, y fue quien le habló de nosotros.",
+    "category": "fact",
+    "created_at": "2026-07-10T10:54:21.60456+00:00"
+  }
+]</pre>
+
+<h2>6. Búsqueda semántica — consulta de seguimiento simulada</h2>
+<p>Consulta: <em>"¿A qué hora del día te viene mejor que te contacte?"</em></p>
+<pre>[
+  {
+    "content": "Prefiere que no le llamen por la mañana porque está en el almacén sin cobertura hasta las 14h.",
+    "category": "preference",
+    "similarity": 0.494116292781583
+  },
+  {
+    "content": "El contacto tiene unos 200 mensajes al día en su tienda.",
+    "category": "fact",
+    "similarity": 0.393969505067555
+  },
+  {
+    "content": "Su hermano tiene una tienda parecida en Sevilla, y fue quien le habló de nosotros.",
+    "category": "fact",
+    "similarity": 0.198499197575776
+  }
+]</pre>
+
+<h2>7. Bloque "Recuerdos relevantes" que se inyectaría en el prompt</h2>
+<pre class="ok">## Recuerdos relevantes
+- Prefiere que no le llamen por la mañana porque está en el almacén sin cobertura hasta las 14h.
+- El contacto tiene unos 200 mensajes al día en su tienda.
+- Su hermano tiene una tienda parecida en Sevilla, y fue quien le habló de nosotros.</pre>
+
+<h2>8. Eventos registrados (tabla events)</h2>
+<table>
+<tr><th>Tipo</th><th>Nivel</th><th>Payload</th><th>Fecha</th></tr>
+<tr><td>contact_memory_updated</td><td>info</td><td><pre>{"contact_id":"37fe5e7b-38c0-4cb7-9e7c-3899e458435e","items_added":3,"fields_updated":["summary","interests","preferences","objections","lead_status","next_step","metadata"]}</pre></td><td>2026-07-10T10:54:21.842591+00:00</td></tr>
+</table>
+</body>
+</html>

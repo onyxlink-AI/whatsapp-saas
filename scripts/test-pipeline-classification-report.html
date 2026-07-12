@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Test local — Clasificador de 4 fases del Pipeline</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, sans-serif; max-width: 840px; margin: 40px auto; padding: 0 20px; background: #0f1115; color: #e6e6e6; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.05rem; margin-top: 1.8rem; color: #9aeb3c; }
+  pre { background: #1a1d24; padding: 12px 14px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+  .step { border: 1px solid #333; border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .ok { color: #9aeb3c; } .warn { color: #e0b23c; } .err { color: #e0503c; }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; }
+  td, th { border: 1px solid #333; padding: 6px 10px; text-align: left; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Test local — Clasificador de 4 fases del Pipeline (tiempo real)</h1>
+<p>Generado 10/7/2026, 17:39:10 contra el workspace <strong>Onyxlink</strong>. Contacto de prueba creado y eliminado automáticamente.</p>
+
+<h2>Progresión esperada vs. real</h2>
+<p>Esperado: (sin deal) → interes → listo_para_comprar → cliente</p>
+<p>Real: (sin deal) → interes → listo_para_comprar → cliente</p>
+<p><span class="ok">OK: el clasificador siguió exactamente la progresión esperada — no creó deal en exploración, y avanzó una fase por mensaje sin retroceder.</span></p>
+
+<h2>Detalle paso a paso</h2>
+
+<div class="step">
+  <p><strong>Fase 1 — Exploración (curiosidad, sin deal esperado)</strong></p>
+  <p>Mensaje: <em>"Hola, ¿cómo funciona el servicio de reservas? ¿Tenéis disponibilidad esta semana?"</em></p>
+  <p>Deal antes: <code>sin deal</code> → Deal después: <code>sin deal</code></p>
+</div>
+
+<div class="step">
+  <p><strong>Fase 2 — Interés (quiere reservar, esperamos que SE CREE el deal)</strong></p>
+  <p>Mensaje: <em>"Perfecto, quiero reservar para el sábado a las 17:00. Me llamo Marco y mi teléfono es el que ya tienes."</em></p>
+  <p>Deal antes: <code>sin deal</code> → Deal después: <code>interes</code></p>
+</div>
+
+<div class="step">
+  <p><strong>Fase 3 — Listo para comprar (esperamos avance a listo_para_comprar)</strong></p>
+  <p>Mensaje: <em>"Sí, ¿cómo hago el pago? ¿Tenéis Bizum o algún enlace?"</em></p>
+  <p>Deal antes: <code>interes</code> → Deal después: <code>listo_para_comprar</code></p>
+</div>
+
+<div class="step">
+  <p><strong>Fase 4 — Cliente (esperamos avance a cliente)</strong></p>
+  <p>Mensaje: <em>"Listo, ya hice el Bizum, aquí tienes el justificante."</em></p>
+  <p>Deal antes: <code>listo_para_comprar</code> → Deal después: <code>cliente</code></p>
+</div>
+
+<h2>Notas acumuladas en el deal (campo "notes")</h2>
+<pre>[10/7, 17:39] Marco quiere reservar para el sábado a las 17:00. Ha confirmado que ya tienen su número de teléfono, lo que indica que está dispuesto a avanzar en el proceso de reserva.
+[10/7, 17:39] Marco ha decidido reservar para el sábado a las 17:00 y necesita información sobre los métodos de pago, incluyendo Bizum.
+[10/7, 17:39] Marco ha reservado para el sábado a las 17:00 y ya ha completado el pago por Bizum. Se ha enviado el justificante del pago.</pre>
+
+<h2>Tareas creadas para el deal (tabla tasks)</h2>
+<table>
+<tr><th>Título</th><th>Estado</th><th>Tipo</th><th>Fecha</th></tr>
+<tr><td>Solicitar cualquier información adicional necesaria para completar la reserva.</td><td>cancelled</td><td>follow_up</td><td>2026-07-10T15:39:02.638992+00:00</td></tr>
+<tr><td>Enviar el enlace de pago o confirmar el método de Bizum</td><td>cancelled</td><td>follow_up</td><td>2026-07-10T15:39:05.413797+00:00</td></tr>
+<tr><td>Enviar confirmación de la cita para el sábado</td><td>pending</td><td>follow_up</td><td>2026-07-10T15:39:09.948654+00:00</td></tr>
+</table>
+<p><span class="ok">OK: hay exactamente una tarea pendiente (las anteriores se cancelaron al avanzar de fase).</span></p>
+
+<h2>Eventos registrados (tabla events)</h2>
+<table>
+<tr><th>Tipo</th><th>Nivel</th><th>Payload</th><th>Fecha</th></tr>
+<tr><td>pipeline_stage_moved</td><td>info</td><td><pre>{"phase":"interes","action":"create","reason":"El contacto ha mencionado una fecha y hora específica para la reserva y ha facilitado su nombre y teléfono.","deal_id":"585f3b9b-664c-4fb4-9e23-085e8787b8a7","next_step":"Solicitar cualquier información adicional necesaria para completar la reserva.","contact_id":"aa84217f-2b2a-4d06-bc31-0d313d344777"}</pre></td><td>2026-07-10T15:39:02.731738+00:00</td></tr>
+<tr><td>pipeline_stage_moved</td><td>info</td><td><pre>{"from":"interes","phase":"listo_para_comprar","action":"move","reason":"El contacto ha confirmado la fecha y hora de la reserva y está preguntando específicamente cómo realizar el pago.","deal_id":"585f3b9b-664c-4fb4-9e23-085e8787b8a7","next_step":"Enviar el enlace de pago o confirmar el método de Bizum","contact_id":"aa84217f-2b2a-4d06-bc31-0d313d344777"}</pre></td><td>2026-07-10T15:39:05.505994+00:00</td></tr>
+<tr><td>pipeline_stage_moved</td><td>info</td><td><pre>{"from":"listo_para_comprar","phase":"cliente","action":"move","reason":"El pago ya ha sido realizado y se ha enviado un justificante.","deal_id":"585f3b9b-664c-4fb4-9e23-085e8787b8a7","next_step":"Enviar confirmación de la cita para el sábado","contact_id":"aa84217f-2b2a-4d06-bc31-0d313d344777"}</pre></td><td>2026-07-10T15:39:10.121725+00:00</td></tr>
+</table>
+</body>
+</html>

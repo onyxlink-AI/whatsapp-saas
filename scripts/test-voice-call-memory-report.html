@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Test local — Memoria compartida voz/WhatsApp</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, sans-serif; max-width: 840px; margin: 40px auto; padding: 0 20px; background: #0f1115; color: #e6e6e6; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.05rem; margin-top: 1.8rem; color: #9aeb3c; }
+  pre { background: #1a1d24; padding: 12px 14px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+  .ok { color: #9aeb3c; } .warn { color: #e0b23c; } .err { color: #e0503c; }
+</style></head>
+<body>
+<h1>Test local — Memoria compartida entre llamada de voz y WhatsApp</h1>
+<p>Generado 10/7/2026, 19:05:08 contra el workspace <strong>Onyxlink</strong>. Número de prueba inválido a propósito: <code>+10000088888</code>.</p>
+
+<h2>Transcript de la llamada simulada</h2>
+<pre>AI: Hola, gracias por llamar, ¿en qué puedo ayudarte?
+Usuario: Hola, soy Elena. Llamo porque tengo alergia a los mariscos y quería confirmar que el menú de la reserva del viernes no lleva marisco.
+AI: Claro Elena, lo anoto y confirmamos que tu menú será sin marisco por tu alergia.</pre>
+
+<h2>contact_memories generado a partir de la llamada</h2>
+<pre>{
+  "id": "06f1d185-10a3-46d0-a806-1eef89786385",
+  "workspace_id": "f3db7287-6e81-4576-b26c-e51af09eeb31",
+  "contact_id": "f7bda03d-df05-4c48-b711-638e82c6a9e7",
+  "summary": "Elena tiene alergia a los mariscos y está confirmando su menú para una reserva.",
+  "interests": [],
+  "preferences": {},
+  "objections": [],
+  "lead_status": "interesada en la reserva",
+  "next_step": "Confirmar el menú sin mariscos para la reserva del viernes.",
+  "metadata": {},
+  "created_at": "2026-07-10T17:04:59.220975+00:00",
+  "updated_at": "2026-07-10T17:04:59.220975+00:00"
+}</pre>
+<p><span class="ok">OK: la llamada generó memoria estructurada para el contacto.</span></p>
+
+<h2>contact_memory_items (recuerdos individuales) generados</h2>
+<pre>[
+  {
+    "content": "Elena tiene alergia a los mariscos.",
+    "category": "objection"
+  },
+  {
+    "content": "El menú de la reserva del viernes no llevará mariscos.",
+    "category": "preference"
+  }
+]</pre>
+
+<h2>Simulación: el contacto ahora escribe por WhatsApp preguntando por su reserva</h2>
+<p>Bloque "Memoria del contacto" que se inyectaría en el prompt del agente de WhatsApp:</p>
+<pre class="ok">## Memoria del contacto
+Resumen: Elena tiene alergia a los mariscos y está confirmando su menú para una reserva.
+Estado del lead: interesada en la reserva
+Siguiente paso sugerido: Confirmar el menú sin mariscos para la reserva del viernes.</pre>
+<p>Bloque "Recuerdos relevantes" (búsqueda semántica con la pregunta "¿A qué hora es mi reserva del viernes?"):</p>
+<pre class="ok">## Recuerdos relevantes
+- El menú de la reserva del viernes no llevará mariscos.
+- Elena tiene alergia a los mariscos.</pre>
+<p><span class="ok">OK: el agente de WhatsApp vería la alergia a mariscos mencionada SOLO por teléfono — la conexión entre canales funciona.</span></p>
+</body></html>

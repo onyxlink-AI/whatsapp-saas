@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Test local — Recuperación de Leads Fríos con IA</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, sans-serif; max-width: 840px; margin: 40px auto; padding: 0 20px; background: #0f1115; color: #e6e6e6; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin-top: 2rem; color: #9aeb3c; }
+  pre { background: #1a1d24; padding: 14px 16px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+  .ok { color: #9aeb3c; } .warn { color: #e0b23c; } .err { color: #e0503c; }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; }
+  td, th { border: 1px solid #333; padding: 6px 10px; text-align: left; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Test local — Recuperación de Leads Fríos con IA</h1>
+<p>Generado 10/7/2026, 14:27:58 contra el workspace <strong>Onyxlink</strong>.</p>
+
+<h2>Run 1 — estado real actual (sin plantilla aprobada todavía)</h2>
+<pre>{
+  "evaluated": 0,
+  "contacted": 0,
+  "skipped": "no_approved_template"
+}</pre>
+<p><span class="ok">OK: el sistema detectó correctamente que aún no hay plantilla aprobada por Meta y no intentó enviar nada.</span></p>
+
+<h2>Run 2 — pipeline completo con plantilla aprobada de prueba (falsa, no tocó Meta)</h2>
+<p>Contacto de prueba: teléfono <code>+10000000000</code> (inválido a propósito — no puede llegar a una persona real), 5 días sin respuesta, mensaje previo con interés claro.</p>
+<pre>{
+  "evaluated": 2,
+  "contacted": 0,
+  "skipped": null
+}</pre>
+<p><span class="ok">OK: el contacto de prueba fue evaluado por la IA.</span></p>
+
+<h2>custom_fields del contacto tras la evaluación</h2>
+<pre>{
+  "cold_recovery_last_evaluated_at": "2026-07-10T12:27:35.062Z"
+}</pre>
+
+<h2>Eventos registrados (tabla events)</h2>
+<table>
+<tr><th>Tipo</th><th>Nivel</th><th>Payload</th><th>Fecha</th></tr>
+<tr><td>cold_lead_recovery_send_failed</td><td>warn</td><td><pre>{"error":"YCloud sendTemplate error 403","topic":"automatizar WhatsApp para tu clínica dental","template":"test_fake_approved_recovery","contact_id":"a48f68c9-4803-46c9-8ba3-d02696a760a4","rendered_preview":"Hola TEST Recuperación (borrar), ¿seguimos con tu interés en automatizar WhatsApp para tu clínica dental? Con gusto te ayudo a agendar una cita sin compromiso."}</pre></td><td>2026-07-10T12:27:53.730431+00:00</td></tr>
+</table>
+</body>
+</html>
