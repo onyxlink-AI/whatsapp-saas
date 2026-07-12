@@ -1,7 +1,14 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
-import { Building2, LogOut, Settings } from "lucide-react";
+import {
+  Building2,
+  Kanban,
+  LayoutDashboard,
+  LogOut,
+  MessageCircle,
+  Settings,
+} from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/features/auth/services/actions";
@@ -96,7 +103,58 @@ export default async function AgencyLayout({
         </div>
       </nav>
 
-      <main className="flex-1 px-3 sm:px-6 py-6">{children}</main>
+      <main className="flex-1 px-3 sm:px-6 py-6 pb-20 md:pb-6">{children}</main>
+
+      {/* Mobile bottom nav — hidden on md+, matches MainLayout's so it's
+          never missing while navigating between the client app and agency. */}
+      <nav
+        className={cn(
+          "md:hidden fixed bottom-0 inset-x-0 z-50 h-14",
+          "glass-strong border-t border-border/50",
+          "flex items-center justify-around px-4",
+        )}
+        aria-label="Navegación móvil"
+      >
+        <Link
+          href="/inbox"
+          className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+        >
+          <MessageCircle className="h-5 w-5" aria-hidden="true" />
+          <span>Inbox</span>
+        </Link>
+
+        <Link
+          href="/dashboard"
+          className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+        >
+          <LayoutDashboard className="h-5 w-5" aria-hidden="true" />
+          <span>Dashboard</span>
+        </Link>
+
+        <Link
+          href="/pipeline"
+          className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+        >
+          <Kanban className="h-5 w-5" aria-hidden="true" />
+          <span>Pipeline</span>
+        </Link>
+
+        <Link
+          href="/settings"
+          className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+        >
+          <Settings className="h-5 w-5" aria-hidden="true" />
+          <span>Settings</span>
+        </Link>
+
+        <Link
+          href="/workspaces"
+          className="flex flex-col items-center gap-0.5 text-xs text-primary transition-colors"
+        >
+          <Building2 className="h-5 w-5" aria-hidden="true" />
+          <span>Agency</span>
+        </Link>
+      </nav>
     </div>
   );
 }
