@@ -55,7 +55,7 @@ const nextConfig: NextConfig = {
     },
   ],
   // Serve the app icon for legacy /favicon.ico probes (avoids a 404).
-  rewrites: async () => [{ source: "/favicon.ico", destination: "/icon.svg" }],
+  rewrites: async () => [{ source: "/favicon.ico", destination: "/icon.png" }],
 };
 
 export default nextConfig;
