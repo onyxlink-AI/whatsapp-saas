@@ -1,0 +1,217 @@
+"use client";
+
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Pencil, Trash2 } from "lucide-react";
+import {
+  deleteClientRecord,
+  listClients,
+} from "@/features/clients/services/client-actions";
+import { useClientsFiltersStore } from "@/features/clients/store/clients-filters-store";
+import {
+  CLIENT_STATUS_LABELS,
+  type ClientRow,
+  type ClientStatus,
+} from "@/features/clients/types";
+import { ClientFormDialog } from "./client-form-dialog";
+
+const STATUS_BADGE_VARIANT: Record<ClientStatus, "default" | "secondary" | "outline"> = {
+  activo: "default",
+  potencial: "secondary",
+  archivado: "outline",
+};
+
+function formatDate(date: string) {
+  return new Intl.DateTimeFormat("es-MX", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(date));
+}
+
+interface ClientsTableProps {
+  workspaceId: string;
+  initialClients: ClientRow[];
+}
+
+export function ClientsTable({ workspaceId, initialClients }: ClientsTableProps) {
+  const [clients, setClients] = useState(initialClients);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingClient, setEditingClient] = useState<ClientRow | null>(null);
+  const [, startTransition] = useTransition();
+
+  const search = useClientsFiltersStore((s) => s.search);
+  const status = useClientsFiltersStore((s) => s.status);
+  const setSearch = useClientsFiltersStore((s) => s.setSearch);
+  const setStatus = useClientsFiltersStore((s) => s.setStatus);
+
+  async function refresh() {
+    const data = await listClients(workspaceId, { search, status });
+    setClients(data);
+  }
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      refresh();
+    }, 250);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, status]);
+
+  const rows = useMemo(() => clients, [clients]);
+
+  function handleCreate() {
+    setEditingClient(null);
+    setFormOpen(true);
+  }
+
+  function handleEdit(client: ClientRow) {
+    setEditingClient(client);
+    setFormOpen(true);
+  }
+
+  function handleDelete(client: ClientRow) {
+    const ok = window.confirm(
+      `¿Eliminar a ${client.name || client.phone}? Esto borra también su historial de conversación, deals y tareas asociadas. Esta acción no se puede deshacer.`,
+    );
+    if (!ok) return;
+
+    startTransition(async () => {
+      const result = await deleteClientRecord(client.id);
+      if (!result.ok) {
+        toast.error(result.error ?? "Error al eliminar el cliente");
+        return;
+      }
+      toast.success("Cliente eliminado");
+      setClients((prev) => prev.filter((c) => c.id !== client.id));
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-3 h-full">
+      <div className="flex items-center gap-3 flex-wrap">
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar por nombre o empresa..."
+          className="h-8 w-56 text-xs"
+        />
+
+        <Tabs value={status} onValueChange={(v) => setStatus(v as ClientStatus | "all")}>
+          <TabsList>
+            <TabsTrigger value="all">Todos</TabsTrigger>
+            <TabsTrigger value="activo">Activos</TabsTrigger>
+            <TabsTrigger value="potencial">Potenciales</TabsTrigger>
+            <TabsTrigger value="archivado">Archivados</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <Button
+          size="sm"
+          className="h-8 text-xs gap-1.5 ml-auto"
+          onClick={handleCreate}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Nuevo cliente
+        </Button>
+      </div>
+
+      <div className="rounded-md border border-border/40 flex-1 overflow-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nombre</TableHead>
+              <TableHead className="hidden sm:table-cell">Empresa</TableHead>
+              <TableHead>Teléfono</TableHead>
+              <TableHead className="hidden md:table-cell">Email</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead className="hidden md:table-cell">Creado</TableHead>
+              <TableHead className="w-20" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center text-xs text-muted-foreground py-8">
+                  Sin clientes
+                </TableCell>
+              </TableRow>
+            )}
+            {rows.map((client) => (
+              <TableRow
+                key={client.id}
+                className="cursor-pointer"
+                onClick={() => handleEdit(client)}
+              >
+                <TableCell className="font-medium text-sm">
+                  {client.name || "Sin nombre"}
+                </TableCell>
+                <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
+                  {client.company?.name ?? "—"}
+                </TableCell>
+                <TableCell className="text-sm font-mono">{client.phone}</TableCell>
+                <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                  {client.email ?? "—"}
+                </TableCell>
+                <TableCell>
+                  <Badge variant={STATUS_BADGE_VARIANT[client.client_status]} className="text-[10px]">
+                    {CLIENT_STATUS_LABELS[client.client_status]}
+                  </Badge>
+                </TableCell>
+                <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
+                  {formatDate(client.created_at)}
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(client);
+                      }}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(client);
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <ClientFormDialog
+        open={formOpen}
+        workspaceId={workspaceId}
+        client={editingClient}
+        onClose={() => setFormOpen(false)}
+        onSaved={refresh}
+      />
+    </div>
+  );
+}

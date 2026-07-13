@@ -10,13 +10,13 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { listTasks } from "@/features/pipeline/services/task-actions";
-import { TASK_STATUS_LABELS, type TaskRow as TaskRowType, type TaskStatus } from "@/features/pipeline/types";
+import { listTasks } from "@/features/projects/services/task-actions";
+import type { WorkspaceMember } from "@/features/projects/services/project-actions";
+import { TASK_STATUS_LABELS, type TaskRow as TaskRowType, type TaskStatus } from "@/features/projects/types";
 import { TaskRow } from "./task-row";
 import { TaskFormDialog } from "./task-form-dialog";
-import type { WorkspaceMember } from "@/features/pipeline/services/deal-actions";
 
-interface TaskListProps {
+interface TasksTabProps {
   workspaceId: string;
   initialTasks: TaskRowType[];
   members: WorkspaceMember[];
@@ -24,7 +24,7 @@ interface TaskListProps {
 
 type StatusFilter = TaskStatus | "all" | "overdue";
 
-export function TaskList({ workspaceId, initialTasks, members }: TaskListProps) {
+export function TasksTab({ workspaceId, initialTasks, members }: TasksTabProps) {
   const [tasks, setTasks] = useState(initialTasks);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [createOpen, setCreateOpen] = useState(false);
@@ -40,7 +40,7 @@ export function TaskList({ workspaceId, initialTasks, members }: TaskListProps) 
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: refresh() loads tasks on mount and filter change
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: refresh() reloads tasks on filter change
     void refresh(statusFilter);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
