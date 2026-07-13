@@ -12,12 +12,14 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   Building2,
+  FolderKanban,
   Kanban,
   LayoutDashboard,
   LogOut,
   MessageCircle,
   Phone,
   Settings,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -50,17 +52,21 @@ export default async function MainLayout({
   const workspaceName =
     memberships.find((m) => m.workspace_id === activeId)?.name ?? null;
 
-  const hasVoiceAgent = activeId
-    ? Boolean(
-        (
-          await supabase
-            .from("workspaces")
-            .select("vapi_assistant_id")
-            .eq("id", activeId)
-            .maybeSingle()
-        ).data?.vapi_assistant_id,
-      )
-    : false;
+  const activeWorkspaceRow = activeId
+    ? (
+        await supabase
+          .from("workspaces")
+          .select("vapi_assistant_id, whatsapp_agent_enabled, gestion_enabled")
+          .eq("id", activeId)
+          .maybeSingle()
+      ).data
+    : null;
+
+  const hasVoiceAgent = Boolean(activeWorkspaceRow?.vapi_assistant_id);
+  // Two independent products — Onyxlink Gestión is never bundled with the
+  // WhatsApp agent. Both default to their DB defaults when the row is missing.
+  const hasWhatsappAgent = activeWorkspaceRow?.whatsapp_agent_enabled !== false;
+  const hasGestion = activeWorkspaceRow?.gestion_enabled === true;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -133,40 +139,72 @@ export default async function MainLayout({
               </Link>
             )}
 
-            <Link href="/inbox">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <MessageCircle className="h-4 w-4" aria-hidden="true" />
-                <span className="sr-only sm:not-sr-only sm:ml-2">Inbox</span>
-              </Button>
-            </Link>
+            {hasWhatsappAgent && (
+              <Link href="/dashboard">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
+                  <span className="sr-only sm:not-sr-only sm:ml-2">Dashboard</span>
+                </Button>
+              </Link>
+            )}
 
-            <Link href="/dashboard">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
-                <span className="sr-only sm:not-sr-only sm:ml-2">Dashboard</span>
-              </Button>
-            </Link>
+            {hasWhatsappAgent && (
+              <Link href="/inbox">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <MessageCircle className="h-4 w-4" aria-hidden="true" />
+                  <span className="sr-only sm:not-sr-only sm:ml-2">Agentes</span>
+                </Button>
+              </Link>
+            )}
 
-            <Link href="/pipeline">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <Kanban className="h-4 w-4" aria-hidden="true" />
-                <span className="sr-only sm:not-sr-only sm:ml-2">Pipeline</span>
-              </Button>
-            </Link>
+            {hasGestion && (
+              <Link href="/clientes">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <Users className="h-4 w-4" aria-hidden="true" />
+                  <span className="sr-only sm:not-sr-only sm:ml-2">Clientes</span>
+                </Button>
+              </Link>
+            )}
 
-            {hasVoiceAgent && (
+            {(hasWhatsappAgent || hasGestion) && (
+              <Link href="/pipeline">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <Kanban className="h-4 w-4" aria-hidden="true" />
+                  <span className="sr-only sm:not-sr-only sm:ml-2">Pipeline</span>
+                </Button>
+              </Link>
+            )}
+
+            {hasGestion && (
+              <Link href="/proyectos">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <FolderKanban className="h-4 w-4" aria-hidden="true" />
+                  <span className="sr-only sm:not-sr-only sm:ml-2">Proyectos</span>
+                </Button>
+              </Link>
+            )}
+
+            {hasWhatsappAgent && hasVoiceAgent && (
               <Link href="/asistente-ai">
                 <Button
                   variant="ghost"
@@ -216,31 +254,57 @@ export default async function MainLayout({
         )}
         aria-label="Navegación móvil"
       >
-        <Link
-          href="/inbox"
-          className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-        >
-          <MessageCircle className="h-5 w-5" aria-hidden="true" />
-          <span>Inbox</span>
-        </Link>
+        {hasWhatsappAgent && (
+          <Link
+            href="/dashboard"
+            className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            <LayoutDashboard className="h-5 w-5" aria-hidden="true" />
+            <span>Dashboard</span>
+          </Link>
+        )}
 
-        <Link
-          href="/dashboard"
-          className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-        >
-          <LayoutDashboard className="h-5 w-5" aria-hidden="true" />
-          <span>Dashboard</span>
-        </Link>
+        {hasWhatsappAgent && (
+          <Link
+            href="/inbox"
+            className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            <MessageCircle className="h-5 w-5" aria-hidden="true" />
+            <span>Agentes</span>
+          </Link>
+        )}
 
-        <Link
-          href="/pipeline"
-          className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-        >
-          <Kanban className="h-5 w-5" aria-hidden="true" />
-          <span>Pipeline</span>
-        </Link>
+        {hasGestion && (
+          <Link
+            href="/clientes"
+            className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            <Users className="h-5 w-5" aria-hidden="true" />
+            <span>Clientes</span>
+          </Link>
+        )}
 
-        {hasVoiceAgent && (
+        {(hasWhatsappAgent || hasGestion) && (
+          <Link
+            href="/pipeline"
+            className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            <Kanban className="h-5 w-5" aria-hidden="true" />
+            <span>Pipeline</span>
+          </Link>
+        )}
+
+        {hasGestion && (
+          <Link
+            href="/proyectos"
+            className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            <FolderKanban className="h-5 w-5" aria-hidden="true" />
+            <span>Proyectos</span>
+          </Link>
+        )}
+
+        {hasWhatsappAgent && hasVoiceAgent && (
           <Link
             href="/asistente-ai"
             className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"

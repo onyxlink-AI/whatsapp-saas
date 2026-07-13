@@ -5,6 +5,10 @@ import { headers } from "next/headers";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { isSignupOpen, markAsSuperAdmin } from "./signup-gate";
+import {
+  getActiveWorkspace,
+  getDefaultRouteForWorkspace,
+} from "@/features/workspace/services/active-workspace";
 
 // Map Supabase auth error messages (English) to Spanish for the UI.
 // Falls back to the original message when there is no known translation.
@@ -50,7 +54,17 @@ export async function login(
     return { error: localizeAuthError(error.message) };
   }
 
-  redirect("/inbox");
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const membership = user ? await getActiveWorkspace(supabase, user.id) : null;
+
+  redirect(
+    membership
+      ? await getDefaultRouteForWorkspace(supabase, membership.workspace_id)
+      : "/onboarding",
+  );
 }
 
 export async function signup(

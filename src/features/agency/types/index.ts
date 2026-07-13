@@ -19,6 +19,10 @@ export type UseCase = "setter" | "soporte" | "agendamiento" | "general";
 export interface CreateWorkspaceInput {
   name: string;
   useCase: UseCase;
+  /** WhatsApp agent platform: Inbox/Agentes, Pipeline, Asistente AI. */
+  whatsappAgentEnabled: boolean;
+  /** "Onyxlink Gestión": Clientes/Agenda/Proyectos — always a separate add-on, never implied by the agent. */
+  gestionEnabled: boolean;
   clientEmail?: string;
   /** Optional password for the client account; auto-generated if omitted. */
   clientPassword?: string;

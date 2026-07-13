@@ -17,6 +17,8 @@ import type {
 const CreateWorkspaceSchema = z.object({
   name: z.string().min(1, "El nombre es requerido").max(80),
   useCase: z.enum(["setter", "soporte", "agendamiento", "general"]),
+  whatsappAgentEnabled: z.boolean().default(true),
+  gestionEnabled: z.boolean().default(false),
   clientEmail: z.string().email("Email inválido").optional().or(z.literal("")),
   clientPassword: z
     .string()
@@ -83,6 +85,8 @@ export async function createWorkspaceForClient(
   const {
     name,
     useCase,
+    whatsappAgentEnabled,
+    gestionEnabled,
     clientEmail,
     clientPassword,
     advancedMemoryEnabled,
@@ -105,6 +109,8 @@ export async function createWorkspaceForClient(
     .insert({
       name,
       slug,
+      whatsapp_agent_enabled: whatsappAgentEnabled,
+      gestion_enabled: gestionEnabled,
       advanced_memory_enabled: advancedMemoryEnabled ?? false,
       pipeline_ai_enabled: pipelineAiEnabled ?? false,
       cold_lead_recovery_enabled: coldLeadRecoveryEnabled ?? false,
@@ -169,125 +175,130 @@ export async function createWorkspaceForClient(
     }
   }
 
-  // Seed starter prompt
-  const STARTER_PROMPTS: Record<string, string> = {
-    setter:
-      "Eres un agente de ventas amable y profesional para {{business_name}}. Tu objetivo es calificar leads y agendar citas.",
-    soporte:
-      "Eres un agente de soporte al cliente para {{business_name}}. Responde preguntas con precisión y empatía.",
-    agendamiento:
-      "Eres un asistente de agendamiento para {{business_name}}. Ayuda a los clientes a reservar citas.",
-    general:
-      "Eres un asistente virtual para {{business_name}}. Eres amable, claro y útil.",
-  };
+  // Seed starter prompt + the 3 agents — only when the WhatsApp agent
+  // product is included. Workspaces without it have no agent to seed (the
+  // "Agentes" Settings tab and Inbox/Pipeline stay hidden).
+  if (whatsappAgentEnabled) {
+    const STARTER_PROMPTS: Record<string, string> = {
+      setter:
+        "Eres un agente de ventas amable y profesional para {{business_name}}. Tu objetivo es calificar leads y agendar citas.",
+      soporte:
+        "Eres un agente de soporte al cliente para {{business_name}}. Responde preguntas con precisión y empatía.",
+      agendamiento:
+        "Eres un asistente de agendamiento para {{business_name}}. Ayuda a los clientes a reservar citas.",
+      general:
+        "Eres un asistente virtual para {{business_name}}. Eres amable, claro y útil.",
+    };
 
-  const promptBody = (
-    STARTER_PROMPTS[useCase] ?? STARTER_PROMPTS.general
-  ).replace("{{business_name}}", name);
-
-  const { data: promptRow } = await service
-    .from("prompts")
-    .insert({
-      workspace_id: workspaceId,
-      scope: "global",
-      scope_ref: null,
-      name: "Prompt principal",
-    })
-    .select("id")
-    .single();
-
-  if (promptRow) {
-    const promptId = (promptRow as { id: string }).id;
-    const { data: versionRow } = await service
-      .from("prompt_versions")
-      .insert({
-        workspace_id: workspaceId,
-        prompt_id: promptId,
-        version: 1,
-        state: "published",
-        body: promptBody,
-        published_at: new Date().toISOString(),
-        created_by: userId,
-      })
-      .select("id")
-      .single();
-
-    if (versionRow) {
-      const versionId = (versionRow as { id: string }).id;
-      await service
-        .from("prompts")
-        .update({ active_version_id: versionId })
-        .eq("id", promptId);
-    }
-  }
-
-  // Seed business info so the "Negocio" tab and the agent context aren't empty.
-  await service.from("business_info").insert({
-    workspace_id: workspaceId,
-    structured: { name },
-    free_text: "",
-  });
-
-  // Seed the 3 agents (Setter / Soporte / Agendamiento). The chosen use case is
-  // active (general → setter); each agent gets its own mode-scoped prompt.
-  const activeType = useCase === "general" ? "setter" : useCase;
-  const AGENT_NAMES: Record<string, string> = {
-    setter: "Carlos",
-    soporte: "Sofía",
-    agendamiento: "Andrés",
-  };
-  for (const type of ["setter", "soporte", "agendamiento"] as const) {
-    const body = (
-      type === activeType
-        ? promptBody
-        : (STARTER_PROMPTS[type] ?? STARTER_PROMPTS.general)
+    const promptBody = (
+      STARTER_PROMPTS[useCase] ?? STARTER_PROMPTS.general
     ).replace("{{business_name}}", name);
 
-    const { data: agentPrompt } = await service
+    const { data: promptRow } = await service
       .from("prompts")
       .insert({
         workspace_id: workspaceId,
-        scope: "mode",
-        scope_ref: type,
-        name: `Agente ${type}`,
+        scope: "global",
+        scope_ref: null,
+        name: "Prompt principal",
       })
       .select("id")
       .single();
 
-    const agentPromptId = (agentPrompt as { id: string } | null)?.id ?? null;
-    if (agentPromptId) {
-      const { data: agentVersion } = await service
+    if (promptRow) {
+      const promptId = (promptRow as { id: string }).id;
+      const { data: versionRow } = await service
         .from("prompt_versions")
         .insert({
           workspace_id: workspaceId,
-          prompt_id: agentPromptId,
+          prompt_id: promptId,
           version: 1,
           state: "published",
-          body,
+          body: promptBody,
           published_at: new Date().toISOString(),
           created_by: userId,
         })
         .select("id")
         .single();
-      const agentVersionId = (agentVersion as { id: string } | null)?.id;
-      if (agentVersionId) {
+
+      if (versionRow) {
+        const versionId = (versionRow as { id: string }).id;
         await service
           .from("prompts")
-          .update({ active_version_id: agentVersionId })
-          .eq("id", agentPromptId);
+          .update({ active_version_id: versionId })
+          .eq("id", promptId);
       }
     }
 
-    await service.from("agents").insert({
-      workspace_id: workspaceId,
-      type,
-      name: AGENT_NAMES[type],
-      avatar_key: type,
-      model: null,
-      is_active: type === activeType,
-      prompt_id: agentPromptId,
-    });
+    // Seed the 3 agents (Setter / Soporte / Agendamiento). The chosen use case
+    // is active (general → setter); each agent gets its own mode-scoped prompt.
+    const activeType = useCase === "general" ? "setter" : useCase;
+    const AGENT_NAMES: Record<string, string> = {
+      setter: "Carlos",
+      soporte: "Sofía",
+      agendamiento: "Andrés",
+    };
+    for (const type of ["setter", "soporte", "agendamiento"] as const) {
+      const body = (
+        type === activeType
+          ? promptBody
+          : (STARTER_PROMPTS[type] ?? STARTER_PROMPTS.general)
+      ).replace("{{business_name}}", name);
+
+      const { data: agentPrompt } = await service
+        .from("prompts")
+        .insert({
+          workspace_id: workspaceId,
+          scope: "mode",
+          scope_ref: type,
+          name: `Agente ${type}`,
+        })
+        .select("id")
+        .single();
+
+      const agentPromptId = (agentPrompt as { id: string } | null)?.id ?? null;
+      if (agentPromptId) {
+        const { data: agentVersion } = await service
+          .from("prompt_versions")
+          .insert({
+            workspace_id: workspaceId,
+            prompt_id: agentPromptId,
+            version: 1,
+            state: "published",
+            body,
+            published_at: new Date().toISOString(),
+            created_by: userId,
+          })
+          .select("id")
+          .single();
+        const agentVersionId = (agentVersion as { id: string } | null)?.id;
+        if (agentVersionId) {
+          await service
+            .from("prompts")
+            .update({ active_version_id: agentVersionId })
+            .eq("id", agentPromptId);
+        }
+      }
+
+      await service.from("agents").insert({
+        workspace_id: workspaceId,
+        type,
+        name: AGENT_NAMES[type],
+        avatar_key: type,
+        model: null,
+        is_active: type === activeType,
+        prompt_id: agentPromptId,
+      });
+    }
   }
+
+  // Seed business info so the "Negocio" tab isn't empty — generic to both
+  // modes (Onyxlink Gestión workspaces still have a Negocio tab).
+  await service.from("business_info").insert({
+    workspace_id: workspaceId,
+    structured: { name },
+    free_text: "",
+  });
 
   // Fail loud instead of shipping a dead placeholder host to the client.
   // In dev, fall back to localhost so local testing works.

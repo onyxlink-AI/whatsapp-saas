@@ -53,10 +53,21 @@ export default async function InboxDetailPage({ params }: PageProps) {
   // as everything else on this page (no service-role here).
   const { data: wsData } = await supabase
     .from("workspaces")
-    .select("advanced_memory_enabled")
+    .select("advanced_memory_enabled, whatsapp_agent_enabled")
     .eq("id", convWithContact.workspace_id)
     .maybeSingle();
   const advancedMemoryEnabled = wsData?.advanced_memory_enabled === true;
+
+  if (wsData?.whatsapp_agent_enabled === false) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] px-6 text-center">
+        <p className="text-muted-foreground text-sm max-w-sm">
+          Este workspace no incluye Agentes de WhatsApp — tu plan es Onyxlink
+          Gestión.
+        </p>
+      </div>
+    );
+  }
 
   let initialMemory: ContactMemory | null = null;
   if (advancedMemoryEnabled) {

@@ -117,6 +117,10 @@ export function CreateWorkspaceSheet({
 
   // Step 1 — basics
   const [name, setName] = useState("");
+  // Independent products — Onyxlink Gestión is never bundled with the
+  // WhatsApp agent, a workspace can have either, both, or neither.
+  const [whatsappAgentEnabled, setWhatsappAgentEnabled] = useState(true);
+  const [gestionEnabled, setGestionEnabled] = useState(false);
   const [clientEmail, setClientEmail] = useState("");
   const [clientPassword, setClientPassword] = useState("");
   const [useCase, setUseCase] = useState<UseCase>("general");
@@ -151,6 +155,8 @@ export function CreateWorkspaceSheet({
   function resetAll() {
     setStep("basics");
     setName("");
+    setWhatsappAgentEnabled(true);
+    setGestionEnabled(false);
     setClientEmail("");
     setClientPassword("");
     setUseCase("general");
@@ -200,6 +206,8 @@ export function CreateWorkspaceSheet({
       const result = await createWorkspaceForClient({
         name,
         useCase,
+        whatsappAgentEnabled,
+        gestionEnabled,
         clientEmail: clientEmail || undefined,
         clientPassword: clientPassword || undefined,
         advancedMemoryEnabled: wantsAdvancedMemory,
@@ -217,8 +225,15 @@ export function CreateWorkspaceSheet({
       setWorkspaceId(result.workspaceId);
       setWebhookUrl(result.webhookUrl ?? null);
       setCredentials(result.clientCredentials ?? null);
-      toast.success("Workspace creado — sigamos configurándolo");
       onCreated();
+
+      if (!whatsappAgentEnabled) {
+        toast.success("Workspace creado");
+        setStep("done");
+        return;
+      }
+
+      toast.success("Workspace creado — sigamos configurándolo");
       setStep("ycloud");
     });
   }
@@ -323,13 +338,61 @@ export function CreateWorkspaceSheet({
           <SheetDescription className="text-muted-foreground">
             {step === "basics"
               ? "Da de alta un cliente (su propio workspace). Si pones su email, se crea su cuenta al instante con una contraseña — compártela y entra directo, sin correos."
-              : `Paso ${stepIndex + 1} de ${STEP_ORDER.length} — ${STEP_LABEL[step]}. Puedes configurar cualquier paso opcional después en Settings.`}
+              : step === "done" && !whatsappAgentEnabled
+                ? "Sin agente de WhatsApp — el cliente ya puede entrar."
+                : `Paso ${stepIndex + 1} de ${STEP_ORDER.length} — ${STEP_LABEL[step]}. Puedes configurar cualquier paso opcional después en Settings.`}
           </SheetDescription>
         </SheetHeader>
 
         {/* ── Step: basics ─────────────────────────────────────────────── */}
         {step === "basics" && (
           <form onSubmit={handleCreateBasics} className="mt-6 space-y-5">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-foreground">
+                Productos
+                <span className="ml-1 text-muted-foreground text-xs">
+                  (independientes — puedes marcar uno, ambos o ninguno por ahora)
+                </span>
+              </Label>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => setWhatsappAgentEnabled((v) => !v)}
+                  className={`rounded-lg border p-3 text-left transition-colors ${
+                    whatsappAgentEnabled
+                      ? "border-primary bg-primary/5"
+                      : "border-border/60 hover:border-border"
+                  }`}
+                >
+                  <p className="text-sm font-medium text-foreground">
+                    Agente de WhatsApp
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Inbox/Agentes, Pipeline, Asistente AI.
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => setGestionEnabled((v) => !v)}
+                  className={`rounded-lg border p-3 text-left transition-colors ${
+                    gestionEnabled
+                      ? "border-primary bg-primary/5"
+                      : "border-border/60 hover:border-border"
+                  }`}
+                >
+                  <p className="text-sm font-medium text-foreground">
+                    Onyxlink Gestión
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Clientes, Agenda y Proyectos — siempre aparte, nunca
+                    incluido con el agente.
+                  </p>
+                </button>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label
                 htmlFor="ws-name"
@@ -396,133 +459,137 @@ export function CreateWorkspaceSheet({
               />
             </div>
 
-            <div className="space-y-2">
-              <Label
-                htmlFor="ws-usecase"
-                className="text-sm font-medium text-foreground"
-              >
-                Caso de uso
-              </Label>
-              <Select
-                value={useCase}
-                onValueChange={(v) => setUseCase(v as UseCase)}
-                disabled={saving}
-              >
-                <SelectTrigger id="ws-usecase">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {USE_CASES.map((uc) => (
-                    <SelectItem key={uc.value} value={uc.value}>
-                      <span className="font-medium">{uc.label}</span>
-                      <span className="ml-1.5 text-muted-foreground text-xs">
-                        — {uc.description}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Activa de una vez al agente correspondiente (Setter, Soporte o
-                Agendamiento) con un prompt de partida.
-              </p>
-            </div>
+            {whatsappAgentEnabled && (
+              <>
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="ws-usecase"
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Caso de uso
+                  </Label>
+                  <Select
+                    value={useCase}
+                    onValueChange={(v) => setUseCase(v as UseCase)}
+                    disabled={saving}
+                  >
+                    <SelectTrigger id="ws-usecase">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {USE_CASES.map((uc) => (
+                        <SelectItem key={uc.value} value={uc.value}>
+                          <span className="font-medium">{uc.label}</span>
+                          <span className="ml-1.5 text-muted-foreground text-xs">
+                            — {uc.description}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Activa de una vez al agente correspondiente (Setter, Soporte o
+                    Agendamiento) con un prompt de partida.
+                  </p>
+                </div>
 
-            <label className="flex items-start gap-2.5 rounded-lg border border-border/60 p-3">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={wantsAdvancedMemory}
-                onChange={(e) => setWantsAdvancedMemory(e.target.checked)}
-                disabled={saving}
-              />
-              <span className="text-sm text-foreground">
-                Activar Memoria Inteligente Avanzada
-                <span className="block text-xs text-muted-foreground mt-0.5">
-                  El agente recuerda a cada contacto entre conversaciones
-                  (resumen, intereses, objeciones, estado del lead). Se puede
-                  activar o desactivar después en Settings.
-                </span>
-              </span>
-            </label>
+                <label className="flex items-start gap-2.5 rounded-lg border border-border/60 p-3">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={wantsAdvancedMemory}
+                    onChange={(e) => setWantsAdvancedMemory(e.target.checked)}
+                    disabled={saving}
+                  />
+                  <span className="text-sm text-foreground">
+                    Activar Memoria Inteligente Avanzada
+                    <span className="block text-xs text-muted-foreground mt-0.5">
+                      El agente recuerda a cada contacto entre conversaciones
+                      (resumen, intereses, objeciones, estado del lead). Se puede
+                      activar o desactivar después en Settings.
+                    </span>
+                  </span>
+                </label>
 
-            <label className="flex items-start gap-2.5 rounded-lg border border-border/60 p-3">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={wantsPipelineAi}
-                onChange={(e) => setWantsPipelineAi(e.target.checked)}
-                disabled={saving}
-              />
-              <span className="text-sm text-foreground">
-                Activar Sugerencias de Pipeline con IA
-                <span className="block text-xs text-muted-foreground mt-0.5">
-                  El agente mueve al contacto por el pipeline en tiempo real
-                  (exploración → interés → listo para comprar → cliente)
-                  según la conversación. Solo actúa el agente activo que
-                  tenga &ldquo;Funciones de Setter&rdquo; activadas en su configuración.
-                  Se puede activar o desactivar después en Settings.
-                </span>
-              </span>
-            </label>
+                <label className="flex items-start gap-2.5 rounded-lg border border-border/60 p-3">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={wantsPipelineAi}
+                    onChange={(e) => setWantsPipelineAi(e.target.checked)}
+                    disabled={saving}
+                  />
+                  <span className="text-sm text-foreground">
+                    Activar Sugerencias de Pipeline con IA
+                    <span className="block text-xs text-muted-foreground mt-0.5">
+                      El agente mueve al contacto por el pipeline en tiempo real
+                      (exploración → interés → listo para comprar → cliente)
+                      según la conversación. Solo actúa el agente activo que
+                      tenga &ldquo;Funciones de Setter&rdquo; activadas en su configuración.
+                      Se puede activar o desactivar después en Settings.
+                    </span>
+                  </span>
+                </label>
 
-            <label className="flex items-start gap-2.5 rounded-lg border border-border/60 p-3">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={wantsColdLeadRecovery}
-                onChange={(e) => setWantsColdLeadRecovery(e.target.checked)}
-                disabled={saving}
-              />
-              <span className="text-sm text-foreground">
-                Activar Recuperación de Leads Fríos con IA
-                <span className="block text-xs text-muted-foreground mt-0.5">
-                  Cada día, la IA revisa los contactos sin respuesta y decide
-                  a cuáles merece la pena reenganchar, enviando una plantilla
-                  aprobada por WhatsApp con un mensaje personalizado. Se puede
-                  activar o desactivar después en Settings.
-                </span>
-              </span>
-            </label>
+                <label className="flex items-start gap-2.5 rounded-lg border border-border/60 p-3">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={wantsColdLeadRecovery}
+                    onChange={(e) => setWantsColdLeadRecovery(e.target.checked)}
+                    disabled={saving}
+                  />
+                  <span className="text-sm text-foreground">
+                    Activar Recuperación de Leads Fríos con IA
+                    <span className="block text-xs text-muted-foreground mt-0.5">
+                      Cada día, la IA revisa los contactos sin respuesta y decide
+                      a cuáles merece la pena reenganchar, enviando una plantilla
+                      aprobada por WhatsApp con un mensaje personalizado. Se puede
+                      activar o desactivar después en Settings.
+                    </span>
+                  </span>
+                </label>
 
-            <div className="rounded-lg border border-border/60 p-3">
-              <label htmlFor="vapi-assistant-id-create" className="text-sm text-foreground">
-                Asistente AI (agente de voz, Vapi) — opcional
-              </label>
-              <p className="text-xs text-muted-foreground mt-0.5 mb-2">
-                Si este cliente ya tiene un agente de voz en Vapi, pega su
-                assistant ID para activar la sección &quot;Asistente AI&quot;
-                desde el alta. Si no, se puede vincular después en Settings.
-              </p>
-              <input
-                id="vapi-assistant-id-create"
-                type="text"
-                className="w-full rounded-md border border-border/60 bg-background px-2.5 py-1.5 font-mono text-xs"
-                placeholder="ej. 4ca5c330-4093-4be0-a787-c2eb05f478f3"
-                value={vapiAssistantId}
-                onChange={(e) => setVapiAssistantId(e.target.value)}
-                disabled={saving}
-              />
-            </div>
+                <div className="rounded-lg border border-border/60 p-3">
+                  <label htmlFor="vapi-assistant-id-create" className="text-sm text-foreground">
+                    Asistente AI (agente de voz, Vapi) — opcional
+                  </label>
+                  <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+                    Si este cliente ya tiene un agente de voz en Vapi, pega su
+                    assistant ID para activar la sección &quot;Asistente AI&quot;
+                    desde el alta. Si no, se puede vincular después en Settings.
+                  </p>
+                  <input
+                    id="vapi-assistant-id-create"
+                    type="text"
+                    className="w-full rounded-md border border-border/60 bg-background px-2.5 py-1.5 font-mono text-xs"
+                    placeholder="ej. 4ca5c330-4093-4be0-a787-c2eb05f478f3"
+                    value={vapiAssistantId}
+                    onChange={(e) => setVapiAssistantId(e.target.value)}
+                    disabled={saving}
+                  />
+                </div>
 
-            <label className="flex items-start gap-2.5 rounded-lg border border-border/60 p-3">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={wantsCrossChannelMemory}
-                onChange={(e) => setWantsCrossChannelMemory(e.target.checked)}
-                disabled={saving}
-              />
-              <span className="text-sm text-foreground">
-                Activar Memoria compartida entre canales
-                <span className="block text-xs text-muted-foreground mt-0.5">
-                  Conecta la memoria del Asistente de voz con la de WhatsApp
-                  — solo tiene efecto si además activas Memoria Inteligente
-                  Avanzada y vinculas un Asistente de voz. Se puede activar
-                  o desactivar después en Settings.
-                </span>
-              </span>
-            </label>
+                <label className="flex items-start gap-2.5 rounded-lg border border-border/60 p-3">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={wantsCrossChannelMemory}
+                    onChange={(e) => setWantsCrossChannelMemory(e.target.checked)}
+                    disabled={saving}
+                  />
+                  <span className="text-sm text-foreground">
+                    Activar Memoria compartida entre canales
+                    <span className="block text-xs text-muted-foreground mt-0.5">
+                      Conecta la memoria del Asistente de voz con la de WhatsApp
+                      — solo tiene efecto si además activas Memoria Inteligente
+                      Avanzada y vinculas un Asistente de voz. Se puede activar
+                      o desactivar después en Settings.
+                    </span>
+                  </span>
+                </label>
+              </>
+            )}
 
             <Button
               type="submit"
@@ -835,31 +902,76 @@ export function CreateWorkspaceSheet({
         {/* ── Step: done ───────────────────────────────────────────────── */}
         {step === "done" && (
           <div className="mt-6 space-y-5">
+            {!whatsappAgentEnabled && credentials && (
+              <div className="rounded-lg border border-warning/30 bg-warning/5 p-4 space-y-2">
+                <p className="text-sm font-medium text-foreground">
+                  Credenciales del cliente
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Compártelas con tu cliente. No se vuelven a mostrar.
+                </p>
+                <div className="space-y-1 font-mono text-xs mt-1">
+                  <p className="text-foreground break-all">
+                    <span className="text-muted-foreground">Email: </span>
+                    {credentials.email}
+                  </p>
+                  <p className="text-foreground break-all">
+                    <span className="text-muted-foreground">Contraseña: </span>
+                    {credentials.password}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-1 gap-1.5"
+                  onClick={handleCopyCredentials}
+                >
+                  {copiedCred ? (
+                    <CheckCheck className="h-4 w-4 text-primary" aria-hidden />
+                  ) : (
+                    <Copy className="h-4 w-4" aria-hidden />
+                  )}
+                  Copiar credenciales
+                </Button>
+              </div>
+            )}
+
             <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
               <p className="text-sm font-medium text-foreground">
-                {name} está listo para terminar de afinarse
+                {whatsappAgentEnabled
+                  ? `${name} está listo para terminar de afinarse`
+                  : `${name} ya puede entrar`}
               </p>
               <p className="text-xs text-muted-foreground">
-                Lo que sigue no se puede automatizar desde aquí — requiere
-                contenido real del cliente:
+                {whatsappAgentEnabled
+                  ? "Lo que sigue no se puede automatizar desde aquí — requiere contenido real del cliente:"
+                  : "Con las credenciales de arriba."}
               </p>
+              {gestionEnabled && (
+                <p className="text-xs text-muted-foreground">
+                  Incluye Onyxlink Gestión (Clientes, Agenda y Proyectos).
+                </p>
+              )}
             </div>
-            <ul className="space-y-1.5 text-sm text-foreground">
-              <li className="flex gap-2">
-                <span className="text-muted-foreground">·</span>
-                Pegar la Webhook URL en el panel de YCloud del cliente
-              </li>
-              <li className="flex gap-2">
-                <span className="text-muted-foreground">·</span>
-                Cargar información del negocio, ajustar el prompt y subir la
-                Knowledge Base (Settings → Negocio / Agentes / Knowledge Base)
-              </li>
-              <li className="flex gap-2">
-                <span className="text-muted-foreground">·</span>
-                Mandar un mensaje real de WhatsApp para probar de punta a
-                punta antes de entregarlo
-              </li>
-            </ul>
+            {whatsappAgentEnabled && (
+              <ul className="space-y-1.5 text-sm text-foreground">
+                <li className="flex gap-2">
+                  <span className="text-muted-foreground">·</span>
+                  Pegar la Webhook URL en el panel de YCloud del cliente
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-muted-foreground">·</span>
+                  Cargar información del negocio, ajustar el prompt y subir la
+                  Knowledge Base (Settings → Negocio / Agentes / Knowledge Base)
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-muted-foreground">·</span>
+                  Mandar un mensaje real de WhatsApp para probar de punta a
+                  punta antes de entregarlo
+                </li>
+              </ul>
+            )}
             <Button variant="outline" className="w-full" onClick={handleClose}>
               Cerrar
             </Button>

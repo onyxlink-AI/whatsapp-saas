@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { OnboardingWizard } from "@/features/onboarding/components/onboarding-wizard";
+import { getDefaultRouteForWorkspace } from "@/features/workspace/services/active-workspace";
 
 export default async function OnboardingPage() {
   const supabase = await createClient();
@@ -20,7 +21,9 @@ export default async function OnboardingPage() {
     .limit(1)
     .maybeSingle();
 
-  if (membership) redirect("/inbox");
+  if (membership) {
+    redirect(await getDefaultRouteForWorkspace(supabase, membership.workspace_id));
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">

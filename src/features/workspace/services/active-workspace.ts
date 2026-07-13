@@ -37,6 +37,26 @@ export async function getActiveWorkspace(
   return { workspace_id: chosen.workspace_id, role: chosen.role };
 }
 
+/**
+ * Where to land a user for this workspace, since "/inbox" is only usable
+ * when the WhatsApp agent product is enabled — a Gestión-only workspace
+ * must not redirect there (it would just show the "not included" guard).
+ */
+export async function getDefaultRouteForWorkspace(
+  supabase: SupabaseClient,
+  workspaceId: string,
+): Promise<string> {
+  const { data } = await supabase
+    .from("workspaces")
+    .select("whatsapp_agent_enabled, gestion_enabled")
+    .eq("id", workspaceId)
+    .maybeSingle();
+
+  if (data?.whatsapp_agent_enabled !== false) return "/inbox";
+  if (data?.gestion_enabled === true) return "/clientes";
+  return "/settings";
+}
+
 /** Lists the user's active memberships with workspace names — for the switcher. */
 export async function listMemberships(
   supabase: SupabaseClient,

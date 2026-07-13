@@ -27,9 +27,20 @@ export default async function AsistenteAiPage() {
 
   const { data: workspace } = await supabase
     .from("workspaces")
-    .select("vapi_assistant_id")
+    .select("vapi_assistant_id, whatsapp_agent_enabled")
     .eq("id", membership.workspace_id)
     .maybeSingle();
+
+  if (workspace?.whatsapp_agent_enabled === false) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] px-6 text-center">
+        <p className="text-muted-foreground text-sm max-w-sm">
+          Este workspace no incluye Asistente AI — tu plan es Onyxlink
+          Gestión.
+        </p>
+      </div>
+    );
+  }
 
   if (!workspace?.vapi_assistant_id) {
     return (

@@ -1,5 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import {
+  getActiveWorkspace,
+  getDefaultRouteForWorkspace,
+} from "@/features/workspace/services/active-workspace";
 import { cn } from "@/lib/utils";
 import {
   Building2,
@@ -33,7 +37,14 @@ export default async function AgencyLayout({
     .eq("id", user.id)
     .single();
 
-  if (!userRow?.is_super_admin) redirect("/inbox");
+  if (!userRow?.is_super_admin) {
+    const membership = await getActiveWorkspace(supabase, user.id);
+    redirect(
+      membership
+        ? await getDefaultRouteForWorkspace(supabase, membership.workspace_id)
+        : "/onboarding",
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">

@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
+import {
+  getActiveWorkspace,
+  getDefaultRouteForWorkspace,
+} from "@/features/workspace/services/active-workspace";
 import { getAllWorkspacesWithStats } from "@/features/agency/services/agency-actions";
 import { WorkspacesTable } from "@/features/agency/components/workspaces-table";
 import { formatTokens, ESTIMATED_USD_PER_MILLION_TOKENS } from "@/features/agency/lib/cost-format";
@@ -24,7 +28,14 @@ export default async function AgencyWorkspacesPage() {
     .eq("id", user.id)
     .single();
 
-  if (!userRow?.is_super_admin) redirect("/inbox");
+  if (!userRow?.is_super_admin) {
+    const membership = await getActiveWorkspace(supabase, user.id);
+    redirect(
+      membership
+        ? await getDefaultRouteForWorkspace(supabase, membership.workspace_id)
+        : "/onboarding",
+    );
+  }
 
   const result = await getAllWorkspacesWithStats();
 

@@ -349,6 +349,68 @@ export async function createGoogleEvent(
   return json;
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Event listing — read-only display for the Agenda module's Google Calendar
+// panel (never used to create/edit events from there, only to show them).
+// ──────────────────────────────────────────────────────────────────────────────
+
+export interface GoogleCalendarEvent {
+  id: string;
+  summary: string;
+  start: string; // ISO, or a bare YYYY-MM-DD for all-day events
+  end: string;
+  allDay: boolean;
+  htmlLink?: string;
+}
+
+export async function listGoogleCalendarEvents(
+  calendarId: string,
+  timeMinIso: string,
+  timeMaxIso: string,
+): Promise<GoogleCalendarEvent[]> {
+  const token = await getAccessToken();
+  const params = new URLSearchParams({
+    timeMin: timeMinIso,
+    timeMax: timeMaxIso,
+    singleEvents: "true",
+    orderBy: "startTime",
+    maxResults: "50",
+  });
+
+  const res = await fetch(
+    `${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events?${params.toString()}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+
+  if (!res.ok) {
+    throw new Error(
+      `Google events.list error: ${res.status} ${(await res.text()).slice(0, 200)}`,
+    );
+  }
+
+  const json = (await res.json()) as {
+    items?: {
+      id: string;
+      summary?: string;
+      start?: { dateTime?: string; date?: string };
+      end?: { dateTime?: string; date?: string };
+      htmlLink?: string;
+    }[];
+  };
+
+  return (json.items ?? []).map((item) => {
+    const allDay = Boolean(item.start?.date && !item.start?.dateTime);
+    return {
+      id: item.id,
+      summary: item.summary ?? "(Sin título)",
+      start: item.start?.dateTime ?? item.start?.date ?? "",
+      end: item.end?.dateTime ?? item.end?.date ?? "",
+      allDay,
+      htmlLink: item.htmlLink,
+    };
+  });
+}
+
 /** Lightweight reachability check for the "Probar conexión" button. */
 export async function testGoogleCalendarConnection(
   calendarId: string,

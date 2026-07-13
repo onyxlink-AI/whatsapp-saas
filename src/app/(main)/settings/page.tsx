@@ -64,7 +64,7 @@ export default async function SettingsPage() {
       .eq("workspace_id", workspaceId),
     svc
       .from("workspaces")
-      .select("advanced_memory_enabled, pipeline_ai_enabled, cold_lead_recovery_enabled, vapi_assistant_id, cross_channel_memory_enabled")
+      .select("advanced_memory_enabled, pipeline_ai_enabled, cold_lead_recovery_enabled, vapi_assistant_id, cross_channel_memory_enabled, whatsapp_agent_enabled, gestion_enabled")
       .eq("id", workspaceId)
       .single(),
     svc.from("users").select("is_super_admin").eq("id", user.id).maybeSingle(),
@@ -142,6 +142,8 @@ export default async function SettingsPage() {
       initialVapiAssistantId={(workspaceData?.vapi_assistant_id as string | null) ?? null}
       initialCrossChannelMemoryEnabled={workspaceData?.cross_channel_memory_enabled === true}
       isSuperAdmin={isSuperAdmin}
+      hasWhatsappAgent={workspaceData?.whatsapp_agent_enabled !== false}
+      initialGestionEnabled={workspaceData?.gestion_enabled === true}
     />
   );
 }

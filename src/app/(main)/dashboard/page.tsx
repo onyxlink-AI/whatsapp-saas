@@ -30,6 +30,22 @@ export default async function DashboardPage() {
     );
   }
 
+  const { data: workspaceFlagsRow } = await supabase
+    .from("workspaces")
+    .select("whatsapp_agent_enabled")
+    .eq("id", membership.workspace_id)
+    .maybeSingle();
+
+  if (workspaceFlagsRow?.whatsapp_agent_enabled === false) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] px-6 text-center">
+        <p className="text-muted-foreground text-sm max-w-sm">
+          Este workspace no incluye Dashboard — tu plan es Onyxlink Gestión.
+        </p>
+      </div>
+    );
+  }
+
   const [metrics, recentConversations] = await Promise.all([
     getWorkspaceMetrics(membership.workspace_id),
     getRecentConversations(membership.workspace_id, 5),

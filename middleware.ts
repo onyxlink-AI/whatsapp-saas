@@ -56,7 +56,9 @@ export async function middleware(request: NextRequest) {
   }
 
   // Authenticated users don't belong on entry auth pages — but /reset-password
-  // is reached WITH a recovery session, so it must stay accessible.
+  // is reached WITH a recovery session, so it must stay accessible. Bounce to
+  // "/" rather than hardcoding "/inbox": that route resolves the right
+  // landing page per workspace (a Gestión-only workspace has no Inbox).
   if (
     user &&
     (pathname === "/login" ||
@@ -64,7 +66,7 @@ export async function middleware(request: NextRequest) {
       pathname === "/forgot-password")
   ) {
     const url = request.nextUrl.clone();
-    url.pathname = "/inbox";
+    url.pathname = "/";
     return NextResponse.redirect(url);
   }
 

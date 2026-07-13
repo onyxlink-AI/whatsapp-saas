@@ -49,6 +49,23 @@ export default async function InboxPage() {
     redirect("/onboarding");
   }
 
+  const { data: workspaceFlagsRow } = await supabase
+    .from("workspaces")
+    .select("whatsapp_agent_enabled")
+    .eq("id", membership.workspace_id)
+    .maybeSingle();
+
+  if (workspaceFlagsRow?.whatsapp_agent_enabled === false) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] px-6 text-center">
+        <p className="text-muted-foreground text-sm max-w-sm">
+          Este workspace no incluye Agentes de WhatsApp — tu plan es Onyxlink
+          Gestión.
+        </p>
+      </div>
+    );
+  }
+
   // 3. Query conversations with contacts
   const { data: conversations } = await supabase
     .from("conversations")
