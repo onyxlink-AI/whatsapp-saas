@@ -8,6 +8,7 @@ import { ColdLeadRecoveryToggle } from "./cold-lead-recovery-toggle";
 import { VapiAssistantField } from "./vapi-assistant-field";
 import { CrossChannelMemoryToggle } from "./cross-channel-memory-toggle";
 import { GestionToggle } from "./gestion-toggle";
+import { OfficeVirtualToggle } from "./office-virtual-toggle";
 import { ToolsCatalog } from "./tools-catalog";
 import { IntegrationsTab } from "./integrations-tab";
 import { TeamTab } from "./team-tab";
@@ -47,6 +48,7 @@ interface Props {
   /** false hides every WhatsApp-agent-specific tab/toggle (independent from Gestión). */
   hasWhatsappAgent?: boolean;
   initialGestionEnabled?: boolean;
+  initialOfficeVirtualEnabled?: boolean;
 }
 
 export function SettingsShell({
@@ -65,6 +67,7 @@ export function SettingsShell({
   isSuperAdmin = false,
   hasWhatsappAgent = true,
   initialGestionEnabled = false,
+  initialOfficeVirtualEnabled = false,
 }: Props) {
   const biForForm = initialBusinessInfo as {
     structured: Record<string, unknown>;
@@ -127,6 +130,12 @@ export function SettingsShell({
 
         <TabsContent value="negocio">
           <div className="p-6 space-y-6 rounded-lg glass">
+            {isSuperAdmin && (
+              <OfficeVirtualToggle
+                workspaceId={workspaceId}
+                initialEnabled={initialOfficeVirtualEnabled}
+              />
+            )}
             <GestionToggle
               workspaceId={workspaceId}
               initialEnabled={initialGestionEnabled}
