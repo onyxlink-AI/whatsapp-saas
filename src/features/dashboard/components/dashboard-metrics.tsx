@@ -12,12 +12,18 @@ import { cn } from "@/lib/utils";
 import type {
   WorkspaceMetrics,
   RecentConversation,
+  MessageVolumePoint,
+  ConversationStateCount,
 } from "@/features/dashboard/services/metrics";
 import type { ConversationState } from "@/features/inbox/types";
+import { MessageVolumeChart } from "./message-volume-chart";
+import { ConversationStateChart } from "./conversation-state-chart";
 
 interface DashboardMetricsProps {
   metrics: WorkspaceMetrics;
   recentConversations: RecentConversation[];
+  messageVolume: MessageVolumePoint[];
+  conversationStates: ConversationStateCount[];
 }
 
 interface KpiCardProps {
@@ -107,6 +113,8 @@ function formatRelativeTime(iso: string | null): string {
 export function DashboardMetrics({
   metrics,
   recentConversations,
+  messageVolume,
+  conversationStates,
 }: DashboardMetricsProps) {
   return (
     <div className="p-6 space-y-8 max-w-5xl mx-auto">
@@ -148,6 +156,12 @@ export function DashboardMetrics({
           value={metrics.templatesSentWeek.toLocaleString("es")}
           icon={<Send className="h-4 w-4" aria-hidden="true" />}
         />
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <MessageVolumeChart data={messageVolume} />
+        <ConversationStateChart data={conversationStates} />
       </div>
 
       {/* Recent conversations */}

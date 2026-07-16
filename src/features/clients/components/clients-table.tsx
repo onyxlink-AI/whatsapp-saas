@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -14,9 +15,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Download } from "lucide-react";
 import {
   deleteClientRecord,
+  deleteClientRecords,
+  getClient,
   listClients,
 } from "@/features/clients/services/client-actions";
 import { useClientsFiltersStore } from "@/features/clients/store/clients-filters-store";
@@ -26,6 +29,7 @@ import {
   type ClientStatus,
 } from "@/features/clients/types";
 import { ClientFormDialog } from "./client-form-dialog";
+import { exportClientsToExcel } from "../lib/export";
 
 const STATUS_BADGE_VARIANT: Record<ClientStatus, "default" | "secondary" | "outline"> = {
   activo: "default",
@@ -44,13 +48,20 @@ function formatDate(date: string) {
 interface ClientsTableProps {
   workspaceId: string;
   initialClients: ClientRow[];
+  initialOpenClientId?: string | null;
 }
 
-export function ClientsTable({ workspaceId, initialClients }: ClientsTableProps) {
+export function ClientsTable({
+  workspaceId,
+  initialClients,
+  initialOpenClientId,
+}: ClientsTableProps) {
   const [clients, setClients] = useState(initialClients);
   const [formOpen, setFormOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<ClientRow | null>(null);
-  const [, startTransition] = useTransition();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isExporting, setIsExporting] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const search = useClientsFiltersStore((s) => s.search);
   const status = useClientsFiltersStore((s) => s.status);
@@ -60,7 +71,22 @@ export function ClientsTable({ workspaceId, initialClients }: ClientsTableProps)
   async function refresh() {
     const data = await listClients(workspaceId, { search, status });
     setClients(data);
+    setSelectedIds(new Set());
   }
+
+  // Deep-link from the global search palette (?open=<id>) — the target
+  // client may not be in the initially loaded/filtered page, so fetch it
+  // directly rather than looking it up in `clients`.
+  useEffect(() => {
+    if (!initialOpenClientId) return;
+    getClient(initialOpenClientId).then((client) => {
+      if (client) {
+        setEditingClient(client);
+        setFormOpen(true);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialOpenClientId]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -71,6 +97,22 @@ export function ClientsTable({ workspaceId, initialClients }: ClientsTableProps)
   }, [search, status]);
 
   const rows = useMemo(() => clients, [clients]);
+
+  const allSelected = rows.length > 0 && selectedIds.size === rows.length;
+  const someSelected = selectedIds.size > 0 && !allSelected;
+
+  function toggleAll() {
+    setSelectedIds(allSelected ? new Set() : new Set(rows.map((c) => c.id)));
+  }
+
+  function toggleOne(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   function handleCreate() {
     setEditingClient(null);
@@ -99,6 +141,41 @@ export function ClientsTable({ workspaceId, initialClients }: ClientsTableProps)
     });
   }
 
+  function handleBulkDelete() {
+    const count = selectedIds.size;
+    const ok = window.confirm(
+      `¿Eliminar ${count} cliente${count === 1 ? "" : "s"}? Esto borra también su historial de conversación, deals y tareas asociadas. Esta acción no se puede deshacer.`,
+    );
+    if (!ok) return;
+
+    const ids = Array.from(selectedIds);
+    startTransition(async () => {
+      const result = await deleteClientRecords(ids);
+      if (!result.ok) {
+        toast.error(result.error ?? "Error al eliminar los clientes");
+        return;
+      }
+      toast.success(`${count} cliente${count === 1 ? "" : "s"} eliminado${count === 1 ? "" : "s"}`);
+      setClients((prev) => prev.filter((c) => !selectedIds.has(c.id)));
+      setSelectedIds(new Set());
+    });
+  }
+
+  async function handleExport() {
+    setIsExporting(true);
+    try {
+      const toExport = selectedIds.size > 0
+        ? rows.filter((c) => selectedIds.has(c.id))
+        : rows;
+      await exportClientsToExcel(toExport);
+    } catch (err) {
+      console.error("[handleExport] error:", err);
+      toast.error("Error al exportar");
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-3 h-full">
       <div className="flex items-center gap-3 flex-wrap">
@@ -118,20 +195,53 @@ export function ClientsTable({ workspaceId, initialClients }: ClientsTableProps)
           </TabsList>
         </Tabs>
 
-        <Button
-          size="sm"
-          className="h-8 text-xs gap-1.5 ml-auto"
-          onClick={handleCreate}
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Nuevo cliente
-        </Button>
+        <div className="flex items-center gap-2 ml-auto">
+          {selectedIds.size > 0 && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 text-xs gap-1.5 text-destructive"
+              onClick={handleBulkDelete}
+              disabled={isPending}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Eliminar ({selectedIds.size})
+            </Button>
+          )}
+
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs gap-1.5"
+            onClick={handleExport}
+            disabled={isExporting || rows.length === 0}
+          >
+            <Download className="h-3.5 w-3.5" />
+            {isExporting
+              ? "Exportando..."
+              : selectedIds.size > 0
+                ? `Exportar (${selectedIds.size})`
+                : "Exportar"}
+          </Button>
+
+          <Button size="sm" className="h-8 text-xs gap-1.5" onClick={handleCreate}>
+            <Plus className="h-3.5 w-3.5" />
+            Nuevo cliente
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-md border border-border/40 flex-1 overflow-auto">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                  onCheckedChange={toggleAll}
+                  aria-label="Seleccionar todos"
+                />
+              </TableHead>
               <TableHead>Nombre</TableHead>
               <TableHead className="hidden sm:table-cell">Empresa</TableHead>
               <TableHead>Teléfono</TableHead>
@@ -144,7 +254,7 @@ export function ClientsTable({ workspaceId, initialClients }: ClientsTableProps)
           <TableBody>
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-xs text-muted-foreground py-8">
+                <TableCell colSpan={8} className="text-center text-xs text-muted-foreground py-8">
                   Sin clientes
                 </TableCell>
               </TableRow>
@@ -153,8 +263,16 @@ export function ClientsTable({ workspaceId, initialClients }: ClientsTableProps)
               <TableRow
                 key={client.id}
                 className="cursor-pointer"
+                data-state={selectedIds.has(client.id) ? "selected" : undefined}
                 onClick={() => handleEdit(client)}
               >
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    checked={selectedIds.has(client.id)}
+                    onCheckedChange={() => toggleOne(client.id)}
+                    aria-label={`Seleccionar ${client.name ?? client.phone}`}
+                  />
+                </TableCell>
                 <TableCell className="font-medium text-sm">
                   {client.name || "Sin nombre"}
                 </TableCell>

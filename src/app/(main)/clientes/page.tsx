@@ -6,7 +6,11 @@ import { ClientsTable } from "@/features/clients/components/clients-table";
 
 export const dynamic = "force-dynamic";
 
-export default async function ClientesPage() {
+export default async function ClientesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ open?: string }>;
+}) {
   const supabase = await createClient();
 
   const {
@@ -43,6 +47,7 @@ export default async function ClientesPage() {
     );
   }
 
+  const { open } = await searchParams;
   const clients = await listClients(membership.workspace_id);
 
   return (
@@ -50,6 +55,7 @@ export default async function ClientesPage() {
       <ClientsTable
         workspaceId={membership.workspace_id}
         initialClients={clients}
+        initialOpenClientId={open ?? null}
       />
     </div>
   );

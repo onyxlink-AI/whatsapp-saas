@@ -18,7 +18,11 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function ProyectosPage() {
+export default async function ProyectosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ open?: string }>;
+}) {
   const supabase = await createClient();
 
   const {
@@ -55,6 +59,8 @@ export default async function ProyectosPage() {
     );
   }
 
+  const { open } = await searchParams;
+
   const [projects, members, tasks] = await Promise.all([
     getProjectsForBoard(membership.workspace_id),
     listWorkspaceMembers(membership.workspace_id),
@@ -75,6 +81,7 @@ export default async function ProyectosPage() {
             workspaceId={membership.workspace_id}
             initialProjects={projects}
             members={members}
+            initialSelectedProjectId={open ?? null}
           />
         </TabsContent>
 

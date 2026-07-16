@@ -18,6 +18,17 @@ export interface WorkspaceMetrics {
   templatesSentWeek: number;
 }
 
+export interface MessageVolumePoint {
+  date: string; // YYYY-MM-DD
+  inbound: number;
+  outbound: number;
+}
+
+export interface ConversationStateCount {
+  state: ConversationState;
+  count: number;
+}
+
 export interface RecentConversation {
   id: string;
   contactName: string | null;
@@ -100,6 +111,81 @@ export async function getWorkspaceMetrics(
     llmCostWeekUsd: totalTokensWeek * USD_PER_TOKEN,
     templatesSentWeek: templatesResult.count ?? 0,
   };
+}
+
+/** Daily inbound/outbound message counts for the last `days` days (chart data). */
+export async function getMessageVolumeSeries(
+  workspaceId: string,
+  days = 14,
+): Promise<MessageVolumePoint[]> {
+  const supabase = svc();
+
+  const rangeStart = new Date();
+  rangeStart.setUTCHours(0, 0, 0, 0);
+  rangeStart.setUTCDate(rangeStart.getUTCDate() - (days - 1));
+
+  const { data, error } = await supabase
+    .from("messages")
+    .select("direction, created_at")
+    .eq("workspace_id", workspaceId)
+    .gte("created_at", rangeStart.toISOString());
+
+  const buckets = new Map<string, { inbound: number; outbound: number }>();
+  for (let i = 0; i < days; i++) {
+    const d = new Date(rangeStart);
+    d.setUTCDate(d.getUTCDate() + i);
+    buckets.set(d.toISOString().slice(0, 10), { inbound: 0, outbound: 0 });
+  }
+
+  if (!error && data) {
+    for (const row of data as { direction: string; created_at: string }[]) {
+      const key = row.created_at.slice(0, 10);
+      const bucket = buckets.get(key);
+      if (!bucket) continue;
+      if (row.direction === "in") bucket.inbound += 1;
+      else bucket.outbound += 1;
+    }
+  }
+
+  return Array.from(buckets.entries()).map(([date, counts]) => ({
+    date,
+    ...counts,
+  }));
+}
+
+const ALL_CONVERSATION_STATES: ConversationState[] = [
+  "ai_active",
+  "human_active",
+  "handoff_pending",
+  "waiting_reply",
+  "paused",
+  "closed",
+];
+
+/** Count of conversations per state, for the state-breakdown chart. */
+export async function getConversationStateBreakdown(
+  workspaceId: string,
+): Promise<ConversationStateCount[]> {
+  const supabase = svc();
+
+  const { data, error } = await supabase
+    .from("conversations")
+    .select("state")
+    .eq("workspace_id", workspaceId);
+
+  const counts = new Map<ConversationState, number>();
+  for (const state of ALL_CONVERSATION_STATES) counts.set(state, 0);
+
+  if (!error && data) {
+    for (const row of data as { state: ConversationState }[]) {
+      counts.set(row.state, (counts.get(row.state) ?? 0) + 1);
+    }
+  }
+
+  return ALL_CONVERSATION_STATES.map((state) => ({
+    state,
+    count: counts.get(state) ?? 0,
+  })).filter((row) => row.count > 0);
 }
 
 export async function getRecentConversations(

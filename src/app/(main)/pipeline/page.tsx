@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function PipelinePage({
   searchParams,
 }: {
-  searchParams: Promise<{ createFor?: string }>;
+  searchParams: Promise<{ createFor?: string; open?: string }>;
 }) {
   const supabase = await createClient();
 
@@ -54,7 +54,7 @@ export default async function PipelinePage({
     );
   }
 
-  const { createFor } = await searchParams;
+  const { createFor, open } = await searchParams;
 
   const [deals, members, initialContact] = await Promise.all([
     getDealsForBoard(membership.workspace_id),
@@ -69,6 +69,7 @@ export default async function PipelinePage({
         initialDeals={deals}
         members={members}
         initialContact={initialContact}
+        initialSelectedDealId={open ?? null}
       />
     </div>
   );

@@ -60,6 +60,10 @@
     --chart-3: 0.78 0.16 80;
     --chart-4: 0.65 0.17 150;
     --chart-5: 0.58 0.22 25;
+    /* Same hue/chroma as --chart-2, kept as its own token because the dark-mode
+       variant below needs a slightly different L to pass the OKLCH lightness
+       band for chart marks (0.48-0.67) — see dataviz skill validator. */
+    --chart-messages-in: 0.62 0.15 250;
 
     /* Glassmorphism (light) */
     --glass-bg: 1 0 0;
@@ -116,6 +120,9 @@
     --chart-3: 0.82 0.16 85;
     --chart-4: 0.72 0.17 150;
     --chart-5: 0.62 0.21 25;
+    /* L nudged to 0.65 (vs --chart-2's 0.68) to fit the dark-mode lightness
+       band — see the light-mode definition's comment. */
+    --chart-messages-in: 0.65 0.14 250;
 
     /* Glassmorphism (dark) */
     --glass-bg: 1 0 0;

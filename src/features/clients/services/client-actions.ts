@@ -297,3 +297,34 @@ export async function deleteClientRecord(
 
   return { ok: true, data: null };
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// deleteClientRecords — bulk hard delete for multi-select in the table.
+// Same cascade caveat as deleteClientRecord; UI must confirm explicitly.
+// ──────────────────────────────────────────────────────────────────────────────
+export async function deleteClientRecords(
+  clientIds: string[],
+): Promise<ActionResult<null>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { ok: false, error: "No autorizado" };
+  }
+
+  if (clientIds.length === 0) {
+    return { ok: true, data: null };
+  }
+
+  const { error } = await supabase.from("contacts").delete().in("id", clientIds);
+
+  if (error) {
+    console.error("[deleteClientRecords] Supabase error:", error.message);
+    return { ok: false, error: "Error al eliminar los clientes" };
+  }
+
+  return { ok: true, data: null };
+}

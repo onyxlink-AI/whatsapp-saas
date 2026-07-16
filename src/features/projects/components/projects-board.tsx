@@ -31,15 +31,19 @@ interface ProjectsBoardProps {
   workspaceId: string;
   initialProjects: ProjectWithContact[];
   members: WorkspaceMember[];
+  initialSelectedProjectId?: string | null;
 }
 
 export function ProjectsBoard({
   workspaceId,
   initialProjects,
   members,
+  initialSelectedProjectId,
 }: ProjectsBoardProps) {
   const [projects, setProjects] = useState(initialProjects);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    initialSelectedProjectId ?? null,
+  );
   const [createOpen, setCreateOpen] = useState(false);
   const [, startTransition] = useTransition();
 

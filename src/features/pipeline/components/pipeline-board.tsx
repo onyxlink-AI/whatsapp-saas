@@ -35,6 +35,7 @@ interface PipelineBoardProps {
   initialDeals: DealWithContact[];
   members: WorkspaceMember[];
   initialContact?: ContactSummary | null;
+  initialSelectedDealId?: string | null;
 }
 
 export function PipelineBoard({
@@ -42,9 +43,12 @@ export function PipelineBoard({
   initialDeals,
   members,
   initialContact,
+  initialSelectedDealId,
 }: PipelineBoardProps) {
   const [deals, setDeals] = useState(initialDeals);
-  const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
+  const [selectedDealId, setSelectedDealId] = useState<string | null>(
+    initialSelectedDealId ?? null,
+  );
   const [createOpen, setCreateOpen] = useState(Boolean(initialContact));
   const [, startTransition] = useTransition();
 

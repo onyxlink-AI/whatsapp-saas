@@ -8,6 +8,7 @@ import {
 import { WorkspaceSwitcher } from "@/features/workspace/components/workspace-switcher";
 import Image from "next/image";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { GlobalSearchLauncher } from "@/features/search/components/global-search-launcher";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -125,6 +126,14 @@ export default async function MainLayout({
         <div className="flex items-center gap-1 shrink-0">
           <div className="hidden md:flex items-center gap-1">
             <ThemeToggle />
+
+            {activeId && (
+              <GlobalSearchLauncher
+                workspaceId={activeId}
+                hasGestion={hasGestion}
+                hasPipeline={hasWhatsappAgent || hasGestion}
+              />
+            )}
 
             {isSuperAdmin && (
               <Link href="/workspaces">

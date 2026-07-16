@@ -4,6 +4,8 @@ import { getActiveWorkspace } from "@/features/workspace/services/active-workspa
 import {
   getWorkspaceMetrics,
   getRecentConversations,
+  getMessageVolumeSeries,
+  getConversationStateBreakdown,
 } from "@/features/dashboard/services/metrics";
 import { DashboardMetrics } from "@/features/dashboard/components/dashboard-metrics";
 
@@ -46,15 +48,20 @@ export default async function DashboardPage() {
     );
   }
 
-  const [metrics, recentConversations] = await Promise.all([
-    getWorkspaceMetrics(membership.workspace_id),
-    getRecentConversations(membership.workspace_id, 5),
-  ]);
+  const [metrics, recentConversations, messageVolume, conversationStates] =
+    await Promise.all([
+      getWorkspaceMetrics(membership.workspace_id),
+      getRecentConversations(membership.workspace_id, 5),
+      getMessageVolumeSeries(membership.workspace_id, 14),
+      getConversationStateBreakdown(membership.workspace_id),
+    ]);
 
   return (
     <DashboardMetrics
       metrics={metrics}
       recentConversations={recentConversations}
+      messageVolume={messageVolume}
+      conversationStates={conversationStates}
     />
   );
 }
