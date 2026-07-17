@@ -11,6 +11,7 @@ import {
   Webhook,
   FlaskConical,
   Wrench,
+  type LucideIcon,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +35,7 @@ interface Props {
 }
 
 // Per-tool glyph so each row is scannable at a glance (annotation #2).
-const TOOL_ICONS: Record<string, React.ElementType> = {
+const TOOL_ICONS: Record<string, LucideIcon> = {
   schedule_link: CalendarClock,
   schedule_highlevel: CalendarPlus,
   check_availability: CalendarSearch,
@@ -46,7 +47,7 @@ const TOOL_ICONS: Record<string, React.ElementType> = {
 // Orange (not destructive red) reads as "caution", not "error" (annotation #3).
 const sensitivityConfig: Record<
   string,
-  { label: string; className: string; Icon?: React.ElementType }
+  { label: string; className: string; Icon?: LucideIcon }
 > = {
   read: {
     label: "lectura",

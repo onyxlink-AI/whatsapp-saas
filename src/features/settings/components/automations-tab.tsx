@@ -12,6 +12,7 @@ import {
   Pencil,
   Trash2,
   Zap,
+  type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,7 @@ import type { TemplateRow } from "@/features/inbox/services/templates";
 
 const TRIGGER_META: Record<
   TriggerType,
-  { label: string; Icon: React.ElementType; className: string }
+  { label: string; Icon: LucideIcon; className: string }
 > = {
   first_message: {
     label: "Primer mensaje",

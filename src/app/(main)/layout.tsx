@@ -6,6 +6,7 @@ import {
   listMemberships,
 } from "@/features/workspace/services/active-workspace";
 import { WorkspaceSwitcher } from "@/features/workspace/components/workspace-switcher";
+import { isOfficeVirtualEnabled } from "@/features/office-virtual/access";
 import Image from "next/image";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { GlobalSearchLauncher } from "@/features/search/components/global-search-launcher";
@@ -18,6 +19,7 @@ import {
   LayoutDashboard,
   LogOut,
   MessageCircle,
+  Network,
   Phone,
   Settings,
   Users,
@@ -57,7 +59,7 @@ export default async function MainLayout({
     ? (
         await supabase
           .from("workspaces")
-          .select("vapi_assistant_id, whatsapp_agent_enabled, gestion_enabled")
+          .select("vapi_assistant_id, whatsapp_agent_enabled, gestion_enabled, office_virtual_enabled")
           .eq("id", activeId)
           .maybeSingle()
       ).data
@@ -68,6 +70,11 @@ export default async function MainLayout({
   // WhatsApp agent. Both default to their DB defaults when the row is missing.
   const hasWhatsappAgent = activeWorkspaceRow?.whatsapp_agent_enabled !== false;
   const hasGestion = activeWorkspaceRow?.gestion_enabled === true;
+  // Opt-in add-on, only Onyxlink can turn it on (Settings → Oficina Virtual
+  // toggle) — defaults to hidden, same as gestion_enabled. Same predicate the
+  // route guard uses (see src/features/office-virtual/access.ts) so the nav
+  // link and the route can never disagree about who gets access.
+  const hasOfficeVirtual = isOfficeVirtualEnabled(activeWorkspaceRow);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -226,6 +233,19 @@ export default async function MainLayout({
               </Link>
             )}
 
+            {hasOfficeVirtual && (
+              <Link href="/oficina-virtual">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <Network className="h-4 w-4" aria-hidden="true" />
+                  <span className="sr-only sm:not-sr-only sm:ml-2">Oficina Virtual</span>
+                </Button>
+              </Link>
+            )}
+
             <Link href="/settings">
               <Button
                 variant="ghost"
@@ -320,6 +340,16 @@ export default async function MainLayout({
           >
             <Phone className="h-5 w-5" aria-hidden="true" />
             <span>Asistente AI</span>
+          </Link>
+        )}
+
+        {hasOfficeVirtual && (
+          <Link
+            href="/oficina-virtual"
+            className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            <Network className="h-5 w-5" aria-hidden="true" />
+            <span>Oficina</span>
           </Link>
         )}
 

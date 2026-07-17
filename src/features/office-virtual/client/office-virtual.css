@@ -1,0 +1,458 @@
+/* Oficina Virtual — scoped visual layer ported from the Agencia IA
+   prototype. Everything here is scoped under .onyx-app so it can't leak
+   into the rest of the whatsapp-saas panel (which already ships its own
+   Tailwind v3 + shadcn theme). No @tailwind/@theme directives here —
+   Tailwind utility classes used inside .onyx-app (bg-white/[0.03], etc.)
+   are picked up automatically by the panel's existing Tailwind config. */
+
+.onyx-app {
+  --onyx-black: #050407;
+  --onyx-panel: #09080c;
+  --onyx-line: rgba(255, 255, 255, 0.075);
+  --onyx-violet: #7c3aed;
+  --onyx-surface: rgba(255, 255, 255, 0.028);
+  --onyx-surface-hover: rgba(255, 255, 255, 0.05);
+  --onyx-focus: rgba(167, 139, 250, 0.72);
+  color-scheme: dark;
+  background:
+    linear-gradient(rgba(124, 58, 237, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 58, 237, 0.018) 1px, transparent 1px),
+    var(--onyx-black);
+  background-size: 36px 36px;
+}
+
+.onyx-app * {
+  box-sizing: border-box;
+}
+
+.onyx-app button,
+.onyx-app input,
+.onyx-app textarea {
+  font: inherit;
+}
+
+.onyx-app button {
+  cursor: pointer;
+}
+
+.onyx-app button:disabled {
+  cursor: not-allowed;
+}
+
+.onyx-app :where(button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--onyx-focus);
+  outline-offset: 2px;
+}
+
+.onyx-app main {
+  min-height: 0;
+}
+
+.onyx-sidebar {
+  background: linear-gradient(180deg, #09080b 0%, #070608 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.065);
+  box-shadow: 12px 0 36px rgba(0, 0, 0, 0.2);
+}
+
+.onyx-brand {
+  border-bottom: 1px solid var(--onyx-line);
+  background: rgba(255, 255, 255, 0.012);
+}
+
+.onyx-nav-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 25%;
+  width: 2px;
+  height: 50%;
+  border-radius: 2px;
+  background: transparent;
+}
+
+.onyx-nav-item.is-active {
+  background: linear-gradient(90deg, rgba(124, 58, 237, 0.16), rgba(124, 58, 237, 0.045));
+  box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.09);
+}
+
+.onyx-nav-item.is-active::before {
+  background: #a78bfa;
+  box-shadow: 0 0 9px #7c3aed;
+}
+
+.onyx-identity {
+  border: 1px solid var(--onyx-line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.onyx-topbar {
+  height: 56px;
+  background: rgba(8, 7, 10, 0.94);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.065);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(18px);
+}
+
+.onyx-segment,
+.onyx-control,
+.onyx-icon-button {
+  border: 1px solid var(--onyx-line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.onyx-control:hover,
+.onyx-icon-button:hover {
+  border-color: rgba(167, 139, 250, 0.32);
+  background: rgba(124, 58, 237, 0.07);
+}
+
+.onyx-sidebar-nav {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 92, 246, 0.22) transparent;
+}
+
+.onyx-popover {
+  overflow: hidden;
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  border-radius: 7px;
+  background: rgba(12, 10, 15, 0.98);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 28px rgba(124, 58, 237, 0.08);
+  backdrop-filter: blur(20px);
+}
+
+.onyx-mobile-sheet {
+  overflow: hidden;
+  border: 1px solid rgba(167, 139, 250, 0.18);
+  border-radius: 8px;
+  background: rgba(12, 10, 15, 0.985);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(24px);
+  animation: onyx-sheet-in 180ms ease-out;
+}
+
+@keyframes onyx-sheet-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.onyx-popover.onyx-agent-menu {
+  max-height: min(20rem, calc(100dvh - 4.5rem));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.onyx-input {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(0, 0, 0, 0.36);
+  color: rgba(255, 255, 255, 0.9);
+  outline: none;
+  transition: border-color 160ms, box-shadow 160ms;
+}
+
+.onyx-input::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.onyx-input:focus {
+  border-color: rgba(167, 139, 250, 0.58);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+.onyx-input:is(textarea) {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.onyx-chat {
+  border-left: 1px solid rgba(167, 139, 250, 0.22);
+  background: linear-gradient(180deg, rgba(10, 8, 13, 0.985), rgba(6, 5, 8, 0.985));
+  box-shadow: -24px 0 70px rgba(0, 0, 0, 0.58), -2px 0 24px rgba(124, 58, 237, 0.08);
+  backdrop-filter: blur(22px);
+}
+
+.onyx-view-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--onyx-line);
+  background: linear-gradient(90deg, rgba(124, 58, 237, 0.035), transparent 48%);
+}
+
+.onyx-view-header__main {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  max-width: 1400px;
+}
+
+.onyx-view-header__icon {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(167, 139, 250, 0.22);
+  border-radius: 7px;
+  color: rgba(216, 200, 255, 0.9);
+  background: rgba(124, 58, 237, 0.085);
+}
+
+.onyx-view-header__eyebrow {
+  margin-bottom: 3px;
+  color: rgba(196, 181, 253, 0.58);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.onyx-view-header__title {
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.onyx-view-header__description {
+  max-width: 760px;
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.43);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.onyx-view-header__tools {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.onyx-header-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.onyx-header-stat > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+}
+
+.onyx-guide {
+  position: relative;
+}
+
+.onyx-guide > summary {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid var(--onyx-line);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.52);
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 11px;
+  cursor: pointer;
+  list-style: none;
+  white-space: nowrap;
+}
+
+.onyx-guide > summary::-webkit-details-marker {
+  display: none;
+}
+
+.onyx-guide[open] > summary,
+.onyx-guide > summary:hover {
+  border-color: rgba(167, 139, 250, 0.3);
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(124, 58, 237, 0.07);
+}
+
+.onyx-guide__content {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(330px, calc(100vw - 32px));
+  padding: 14px;
+  border: 1px solid rgba(167, 139, 250, 0.18);
+  border-radius: 7px;
+  background: rgba(13, 11, 16, 0.99);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.48);
+}
+
+.onyx-guide__title {
+  margin-bottom: 8px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.onyx-guide__content ul {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.onyx-guide__content li {
+  position: relative;
+  padding-left: 13px;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.onyx-guide__content li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #8b5cf6;
+}
+
+.onyx-agent-card {
+  min-height: 330px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.022);
+  transition: border-color 160ms, background-color 160ms, transform 160ms;
+}
+
+.onyx-agent-card:hover {
+  border-color: rgba(167, 139, 250, 0.18);
+  background: rgba(255, 255, 255, 0.032);
+  transform: translateY(-1px);
+}
+
+.onyx-agent-card__department {
+  max-width: 130px;
+  overflow: hidden;
+  padding: 4px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 5px;
+  color: rgba(255, 255, 255, 0.38);
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.onyx-agent-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 5px;
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 10px;
+  font-weight: 550;
+}
+
+.onyx-agent-activity,
+.onyx-agent-load {
+  min-height: 67px;
+  padding: 10px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.onyx-agent-load {
+  text-align: center;
+}
+
+.onyx-contact-row {
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.onyx-contact-row:hover {
+  border-color: rgba(167, 139, 250, 0.18);
+  background: rgba(124, 58, 237, 0.045);
+}
+
+.onyx-placeholder {
+  background:
+    radial-gradient(circle at center, rgba(124, 58, 237, 0.065), transparent 33%),
+    linear-gradient(rgba(124, 58, 237, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 58, 237, 0.025) 1px, transparent 1px);
+  background-size: auto, 40px 40px, 40px 40px;
+}
+
+.onyx-app ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.onyx-app ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.onyx-app ::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.32);
+  border-radius: 2px;
+}
+.onyx-app ::-webkit-scrollbar-thumb:hover {
+  background: rgba(167, 139, 250, 0.62);
+}
+
+@media (max-width: 767px) {
+  .onyx-view-header {
+    padding: 17px 16px 14px;
+  }
+
+  .onyx-view-header__main {
+    gap: 11px;
+  }
+
+  .onyx-view-header__icon {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+  }
+
+  .onyx-view-header__tools {
+    position: static;
+  }
+
+  .onyx-guide > summary span {
+    display: none;
+  }
+
+  .onyx-guide > summary {
+    width: 34px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .onyx-guide__content {
+    right: 16px;
+    top: 58px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onyx-app *, .onyx-app *::before, .onyx-app *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
