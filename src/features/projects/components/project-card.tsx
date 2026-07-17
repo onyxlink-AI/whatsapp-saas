@@ -5,6 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { CalendarClock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { motionClasses } from "@/features/ui-kit/motion";
 import type { ProjectWithContact } from "@/features/projects/types";
 
 const PRIORITY_BADGE: Record<string, string> = {
@@ -30,15 +31,17 @@ function formatShortDate(date: string | null) {
 interface ProjectCardProps {
   project: ProjectWithContact;
   onClick: () => void;
+  index?: number;
 }
 
-export function ProjectCard({ project, onClick }: ProjectCardProps) {
+export function ProjectCard({ project, onClick, index = 0 }: ProjectCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: project.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    animationDelay: `${Math.min(index * 30, 300)}ms`,
   };
 
   const dueDate = formatShortDate(project.due_date);
@@ -52,6 +55,7 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
       onClick={onClick}
       className={cn(
         "rounded-md border border-border/50 bg-background/60 p-3 space-y-2 cursor-grab active:cursor-grabbing hover:border-[hsl(var(--electric-lime)/0.4)] transition-colors",
+        motionClasses.fadeInUp,
         isDragging && "opacity-50",
       )}
     >

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -171,7 +172,9 @@ export function ClientFormDialog({
             size="sm"
             onClick={handleSave}
             disabled={isPending || !name.trim() || !phone.trim()}
+            aria-busy={isPending}
           >
+            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />}
             {isPending ? "Guardando..." : "Guardar"}
           </Button>
         </DialogFooter>

@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import {
   deleteProject,
   getProject,
@@ -306,7 +306,8 @@ export function ProjectDetailDialog({
             <Trash2 className="h-3.5 w-3.5" />
             Eliminar
           </Button>
-          <Button size="sm" onClick={handleSave} disabled={isPending}>
+          <Button size="sm" onClick={handleSave} disabled={isPending} aria-busy={isPending}>
+            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />}
             {isPending ? "Guardando..." : "Guardar cambios"}
           </Button>
         </DialogFooter>

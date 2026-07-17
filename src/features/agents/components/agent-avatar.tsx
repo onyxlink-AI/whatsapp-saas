@@ -32,6 +32,9 @@ export const AVATAR_PRESETS: AvatarPreset[] = [
     key: "agendamiento",
     label: "Agenda",
     src: "/avatars/agendamiento.jpg",
+    // 1 of 6 deliberately varied persona fallback colors (only shown if the
+    // photo fails to load), not the app's primary brand chrome.
+    // impeccable-disable-next-line ai-color-palette: deliberate, see above
     fallbackGradient: "from-violet-400 to-fuchsia-600",
   },
   {

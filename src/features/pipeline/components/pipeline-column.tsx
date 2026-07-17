@@ -88,10 +88,11 @@ export function PipelineColumn({ stage, deals, onSelectDeal }: PipelineColumnPro
           items={deals.map((d) => d.id)}
           strategy={verticalListSortingStrategy}
         >
-          {deals.map((deal) => (
+          {deals.map((deal, index) => (
             <DealCard
               key={deal.id}
               deal={deal}
+              index={index}
               onClick={() => onSelectDeal(deal.id)}
             />
           ))}

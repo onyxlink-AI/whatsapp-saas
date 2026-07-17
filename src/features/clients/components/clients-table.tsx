@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Pencil, Trash2, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Download, Loader2 } from "lucide-react";
 import {
   deleteClientRecord,
   deleteClientRecords,
@@ -215,8 +215,13 @@ export function ClientsTable({
             className="h-8 text-xs gap-1.5"
             onClick={handleExport}
             disabled={isExporting || rows.length === 0}
+            aria-busy={isExporting}
           >
-            <Download className="h-3.5 w-3.5" />
+            {isExporting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : (
+              <Download className="h-3.5 w-3.5" />
+            )}
             {isExporting
               ? "Exportando..."
               : selectedIds.size > 0
@@ -297,6 +302,7 @@ export function ClientsTable({
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7"
+                      aria-label={`Editar ${client.name || client.phone}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleEdit(client);
@@ -308,6 +314,7 @@ export function ClientsTable({
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 text-destructive"
+                      aria-label={`Eliminar ${client.name || client.phone}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDelete(client);

@@ -50,7 +50,7 @@ export function DayView({ workspaceId, date, onDateChange }: DayViewProps) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2 flex-wrap">
-        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => shiftDay(-1)}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => shiftDay(-1)} aria-label="Día anterior">
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <Button
@@ -61,7 +61,7 @@ export function DayView({ workspaceId, date, onDateChange }: DayViewProps) {
         >
           Hoy
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => shiftDay(1)}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => shiftDay(1)} aria-label="Día siguiente">
           <ChevronRight className="h-4 w-4" />
         </Button>
         <span className="text-sm font-medium capitalize ml-1 truncate">{label}</span>

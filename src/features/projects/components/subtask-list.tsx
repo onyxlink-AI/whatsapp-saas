@@ -76,6 +76,7 @@ export function SubtaskList({ taskId }: SubtaskListProps) {
             onCheckedChange={() => handleToggle(subtask)}
             disabled={isPending}
             className="h-3.5 w-3.5"
+            aria-label={`Marcar "${subtask.title}" como completada`}
           />
           <span
             className={
@@ -92,6 +93,7 @@ export function SubtaskList({ taskId }: SubtaskListProps) {
             className="h-5 w-5"
             onClick={() => handleDelete(subtask.id)}
             disabled={isPending}
+            aria-label={`Eliminar subtarea "${subtask.title}"`}
           >
             <Trash2 className="h-3 w-3" />
           </Button>
@@ -109,6 +111,7 @@ export function SubtaskList({ taskId }: SubtaskListProps) {
             }
           }}
           placeholder="Nueva subtarea..."
+          aria-label="Nueva subtarea"
           className="h-6 text-xs"
         />
         <Button
@@ -117,6 +120,7 @@ export function SubtaskList({ taskId }: SubtaskListProps) {
           className="h-6 w-6 shrink-0"
           onClick={handleAdd}
           disabled={isPending || !title.trim()}
+          aria-label="Agregar subtarea"
         >
           <Plus className="h-3 w-3" />
         </Button>

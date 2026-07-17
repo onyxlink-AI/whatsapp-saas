@@ -80,6 +80,8 @@ export function TaskRow({ task, members, onChanged }: TaskRowProps) {
           size="icon"
           className="h-5 w-5 shrink-0"
           onClick={() => setExpanded((v) => !v)}
+          aria-label={expanded ? "Ocultar subtareas" : "Mostrar subtareas"}
+          aria-expanded={expanded}
         >
           {expanded ? (
             <ChevronDown className="h-3.5 w-3.5" />
@@ -91,6 +93,7 @@ export function TaskRow({ task, members, onChanged }: TaskRowProps) {
           checked={task.status === "done"}
           onCheckedChange={handleToggle}
           disabled={isPending}
+          aria-label={`Marcar "${task.title}" como completada`}
         />
         <div className="flex-1 min-w-0">
           <p
@@ -124,7 +127,7 @@ export function TaskRow({ task, members, onChanged }: TaskRowProps) {
         )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="icon" variant="ghost" className="h-6 w-6">
+            <Button size="icon" variant="ghost" className="h-6 w-6" aria-label="Más opciones de la tarea">
               <MoreVertical className="h-3.5 w-3.5" />
             </Button>
           </DropdownMenuTrigger>

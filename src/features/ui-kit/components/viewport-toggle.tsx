@@ -64,7 +64,7 @@ export function ViewportToggle({ children }: { children: React.ReactNode }) {
       <div className="flex justify-center px-4 py-8">
         <div
           className={cn(
-            "w-full transition-all duration-[350ms] ease-out",
+            "w-full transition-all duration-300 ease-out",
             viewport !== "desktop" &&
               "rounded-2xl shadow-2xl shadow-black/30 ring-1 ring-border",
           )}

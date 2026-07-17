@@ -81,10 +81,11 @@ export function ProjectColumn({ status, projects, onSelectProject }: ProjectColu
           items={projects.map((p) => p.id)}
           strategy={verticalListSortingStrategy}
         >
-          {projects.map((project) => (
+          {projects.map((project, index) => (
             <ProjectCard
               key={project.id}
               project={project}
+              index={index}
               onClick={() => onSelectProject(project.id)}
             />
           ))}

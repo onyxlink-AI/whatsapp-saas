@@ -22,15 +22,13 @@ export const motion = {
     enter: "cubic-bezier(0.0, 0.0, 0.2, 1)",
     // Elements leaving the screen
     exit: "cubic-bezier(0.4, 0.0, 1, 1)",
-    // Subtle bounce — use RARELY, only for delightful micro-interactions
-    spring: "cubic-bezier(0.34, 1.56, 0.64, 1)",
   },
   // Tailwind shorthand classes
   tw: {
     hover: "transition-colors duration-150 ease-out",
     enter: "transition-all duration-200 ease-out",
     exit: "transition-all duration-200 ease-in",
-    drawer: "transition-transform duration-[350ms] ease-out",
+    drawer: "transition-transform duration-300 ease-out",
     modal: "transition-all duration-200 ease-out",
   },
   // What to animate (always) vs what to NEVER animate
@@ -65,5 +63,5 @@ export const motionClasses = {
   // Zoom in (modals, dialogs)
   zoomIn: "animate-in zoom-in-95 fade-in duration-200",
   // Slide in from right (drawers, side panels)
-  slideInRight: "animate-in slide-in-from-right duration-[350ms]",
+  slideInRight: "animate-in slide-in-from-right duration-300",
 } as const;

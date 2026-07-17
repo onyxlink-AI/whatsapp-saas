@@ -5,6 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { CalendarClock, ListTodo } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { motionClasses } from "@/features/ui-kit/motion";
 import type { DealWithContact } from "@/features/pipeline/types";
 
 function Initials({ name }: { name: string | null }) {
@@ -49,15 +50,17 @@ function formatShortDate(date: string | null) {
 interface DealCardProps {
   deal: DealWithContact;
   onClick: () => void;
+  index?: number;
 }
 
-export function DealCard({ deal, onClick }: DealCardProps) {
+export function DealCard({ deal, onClick, index = 0 }: DealCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: deal.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    animationDelay: `${Math.min(index * 30, 300)}ms`,
   };
 
   const closeDate = formatShortDate(deal.expected_close_date);
@@ -71,6 +74,7 @@ export function DealCard({ deal, onClick }: DealCardProps) {
       onClick={onClick}
       className={cn(
         "rounded-md border border-border/50 bg-background/60 p-3 space-y-2 cursor-grab active:cursor-grabbing hover:border-[hsl(var(--electric-lime)/0.4)] transition-colors",
+        motionClasses.fadeInUp,
         isDragging && "opacity-50",
       )}
     >

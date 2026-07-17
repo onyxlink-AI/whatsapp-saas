@@ -41,7 +41,7 @@ export function LoginForm({ message }: { message?: string }) {
         <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
           Bienvenido de vuelta
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-foreground/85">
           Ingresa a tu cuenta para continuar
         </p>
       </div>
@@ -91,7 +91,7 @@ export function LoginForm({ message }: { message?: string }) {
         <SubmitButton />
       </form>
 
-      <p className="text-center text-sm text-muted-foreground">
+      <p className="text-center text-sm text-foreground/85">
         ¿No tienes cuenta?{" "}
         <Link
           href="/signup"

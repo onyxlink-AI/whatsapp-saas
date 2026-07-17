@@ -18,6 +18,7 @@ import type {
 import type { ConversationState } from "@/features/inbox/types";
 import { MessageVolumeChart } from "./message-volume-chart";
 import { ConversationStateChart } from "./conversation-state-chart";
+import { motionClasses } from "@/features/ui-kit/motion";
 
 interface DashboardMetricsProps {
   metrics: WorkspaceMetrics;
@@ -31,15 +32,18 @@ interface KpiCardProps {
   value: string;
   icon: React.ReactNode;
   accent?: boolean;
+  index?: number;
 }
 
-function KpiCard({ label, value, icon, accent = false }: KpiCardProps) {
+function KpiCard({ label, value, icon, accent = false, index = 0 }: KpiCardProps) {
   return (
     <div
       className={cn(
         "rounded-xl p-5 flex items-start gap-4 transition-colors",
+        motionClasses.fadeInUp,
         accent ? "glass-accent" : "border border-border/50 bg-card",
       )}
+      style={{ animationDelay: `${index * 50}ms` }}
     >
       <div
         className={cn(
@@ -131,27 +135,32 @@ export function DashboardMetrics({
       {/* KPI grid — 2x2 on mobile, 1x4 on lg */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
+          index={0}
           label="Mensajes hoy"
           value={metrics.messagesToday.toLocaleString("es")}
           icon={<MessageCircle className="h-4 w-4" aria-hidden="true" />}
         />
         <KpiCard
+          index={1}
           label="Conversaciones activas"
           value={metrics.activeConversations.toLocaleString("es")}
           icon={<Users className="h-4 w-4" aria-hidden="true" />}
           accent
         />
         <KpiCard
+          index={2}
           label="Handoffs pendientes"
           value={metrics.handoffPending.toLocaleString("es")}
           icon={<AlertCircle className="h-4 w-4" aria-hidden="true" />}
         />
         <KpiCard
+          index={3}
           label="Costo LLM esta semana"
           value={formatCost(metrics.llmCostWeekUsd)}
           icon={<DollarSign className="h-4 w-4" aria-hidden="true" />}
         />
         <KpiCard
+          index={4}
           label="Templates enviados (semana)"
           value={metrics.templatesSentWeek.toLocaleString("es")}
           icon={<Send className="h-4 w-4" aria-hidden="true" />}
@@ -159,13 +168,16 @@ export function DashboardMetrics({
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div
+        className={cn("grid grid-cols-1 lg:grid-cols-2 gap-4", motionClasses.fadeInUp)}
+        style={{ animationDelay: "250ms" }}
+      >
         <MessageVolumeChart data={messageVolume} />
         <ConversationStateChart data={conversationStates} />
       </div>
 
       {/* Recent conversations */}
-      <div className="space-y-3">
+      <div className={cn("space-y-3", motionClasses.fadeInUp)} style={{ animationDelay: "300ms" }}>
         <h2 className="font-display text-sm font-semibold text-foreground">
           Actividad reciente hoy
         </h2>

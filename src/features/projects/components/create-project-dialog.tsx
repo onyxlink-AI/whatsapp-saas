@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -199,7 +200,8 @@ export function CreateProjectDialog({
           <Button variant="outline" size="sm" onClick={handleClose}>
             Cancelar
           </Button>
-          <Button size="sm" onClick={handleCreate} disabled={isPending}>
+          <Button size="sm" onClick={handleCreate} disabled={isPending} aria-busy={isPending}>
+            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />}
             {isPending ? "Creando..." : "Crear proyecto"}
           </Button>
         </DialogFooter>

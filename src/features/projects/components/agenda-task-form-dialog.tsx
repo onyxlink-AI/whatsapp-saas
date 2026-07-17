@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { format, startOfWeek } from "date-fns";
+import { Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -152,7 +153,8 @@ export function AgendaTaskFormDialog({
           <Button variant="ghost" size="sm" onClick={onClose}>
             Cancelar
           </Button>
-          <Button size="sm" onClick={handleSave} disabled={isPending}>
+          <Button size="sm" onClick={handleSave} disabled={isPending} aria-busy={isPending}>
+            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />}
             {isPending ? "Guardando..." : "Guardar"}
           </Button>
         </DialogFooter>

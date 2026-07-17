@@ -53,6 +53,7 @@ export function AgendaTaskItem({ task, onEdit, onChanged }: AgendaTaskItemProps)
         onCheckedChange={handleToggle}
         disabled={isPending}
         className="mt-0.5"
+        aria-label={`Marcar "${task.title}" como completada`}
       />
       <div className="flex-1 min-w-0">
         <p
@@ -75,6 +76,7 @@ export function AgendaTaskItem({ task, onEdit, onChanged }: AgendaTaskItemProps)
           size="icon"
           className="h-7 w-7"
           onClick={() => onEdit(task)}
+          aria-label={`Editar "${task.title}"`}
         >
           <Pencil className="h-3.5 w-3.5" />
         </Button>
@@ -84,6 +86,7 @@ export function AgendaTaskItem({ task, onEdit, onChanged }: AgendaTaskItemProps)
           className="h-7 w-7 text-destructive"
           onClick={handleDelete}
           disabled={isPending}
+          aria-label={`Eliminar "${task.title}"`}
         >
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
