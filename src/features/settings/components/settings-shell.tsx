@@ -76,7 +76,7 @@ export function SettingsShell({
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       <h1 className="font-display text-xl font-semibold text-foreground mb-6">
-        Configuración del Workspace
+        ⚙️ Ajustes
       </h1>
 
       <Tabs defaultValue={isFullMode ? "agentes" : "negocio"}>
@@ -84,21 +84,21 @@ export function SettingsShell({
             push horizontal overflow onto the whole page. */}
         <div className="mb-6 -mx-1 overflow-x-auto px-1 pb-1">
           <TabsList className="glass w-max">
-            {isFullMode && <TabsTrigger value="agentes">Agentes</TabsTrigger>}
+            {isFullMode && <TabsTrigger value="agentes">🤖 Agentes</TabsTrigger>}
             {isFullMode && (
-              <TabsTrigger value="integraciones">Integraciones</TabsTrigger>
+              <TabsTrigger value="integraciones">🔌 Integraciones</TabsTrigger>
             )}
-            <TabsTrigger value="negocio">Negocio</TabsTrigger>
-            {isFullMode && <TabsTrigger value="tools">Tools</TabsTrigger>}
-            {isFullMode && <TabsTrigger value="templates">Templates</TabsTrigger>}
+            <TabsTrigger value="negocio">🏢 Negocio</TabsTrigger>
+            {isFullMode && <TabsTrigger value="tools">🛠️ Herramientas</TabsTrigger>}
+            {isFullMode && <TabsTrigger value="templates">💬 Mensajes</TabsTrigger>}
             {isFullMode && (
-              <TabsTrigger value="knowledge-base">Knowledge Base</TabsTrigger>
+              <TabsTrigger value="knowledge-base">📚 Lo que sabe la IA</TabsTrigger>
             )}
-            <TabsTrigger value="equipo">Equipo</TabsTrigger>
+            <TabsTrigger value="equipo">👥 Equipo</TabsTrigger>
             {isFullMode && (
-              <TabsTrigger value="automatizaciones">Automatizaciones</TabsTrigger>
+              <TabsTrigger value="automatizaciones">⚡ Automatizaciones</TabsTrigger>
             )}
-            <TabsTrigger value="actividad">Actividad</TabsTrigger>
+            <TabsTrigger value="actividad">📋 Actividad</TabsTrigger>
           </TabsList>
         </div>
 

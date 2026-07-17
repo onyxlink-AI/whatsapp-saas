@@ -55,11 +55,10 @@ export function PipelineAiToggle({
             Sugerencias de Pipeline con IA
           </Label>
           <p className="mt-1 text-xs text-muted-foreground max-w-md">
-            El agente mueve al contacto por el pipeline en tiempo real
-            (Exploración → Interés → Listo para comprar → Cliente) según la
-            conversación, y crea la oportunidad si aún no existe. Solo actúa
-            cuando el agente activo tiene &ldquo;Funciones de Setter&rdquo; activadas en
-            su configuración.
+            La IA mueve al contacto solo por las etapas de venta (Explorando →
+            Interesado → Listo para comprar → Cliente) según lo que hablan, y
+            crea el negocio si todavía no existe. Solo funciona si tu agente
+            tiene la función de ventas activada.
           </p>
           {!isSuperAdmin && (
             <p className="mt-2 flex items-center gap-1.5 text-[11px] text-[hsl(var(--electric-lime))]">

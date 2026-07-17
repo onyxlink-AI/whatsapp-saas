@@ -66,7 +66,7 @@ export function GoogleCalendarPanel({ workspaceId, viewMode, date }: GoogleCalen
       <div className="flex items-center gap-2 mb-2">
         <CalendarCheck2 className="h-3.5 w-3.5 text-muted-foreground" />
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Sincronizado desde Google Calendar
+          📅 Google Calendar
         </span>
       </div>
 
@@ -76,7 +76,7 @@ export function GoogleCalendarPanel({ workspaceId, viewMode, date }: GoogleCalen
 
       {!state.loading && !state.connected && (
         <p className="text-xs text-muted-foreground">
-          Google Calendar no está conectado para este workspace.
+          Todavía no conectaste tu Google Calendar.
         </p>
       )}
 
@@ -86,7 +86,7 @@ export function GoogleCalendarPanel({ workspaceId, viewMode, date }: GoogleCalen
 
       {!state.loading && state.connected && !state.error && state.events.length === 0 && (
         <p className="text-xs text-muted-foreground">
-          Sin eventos sincronizados en este rango.
+          No tienes eventos en estos días.
         </p>
       )}
 

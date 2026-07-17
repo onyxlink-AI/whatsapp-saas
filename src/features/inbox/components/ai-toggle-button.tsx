@@ -37,7 +37,7 @@ export function AiToggleButton({
           aiEnabled ? "text-primary" : "text-muted-foreground",
         )}
       >
-        {aiEnabled ? "IA Activa" : "Humano activo"}
+        {aiEnabled ? "Responde la IA" : "Respondes tú"}
       </Label>
     </div>
   );

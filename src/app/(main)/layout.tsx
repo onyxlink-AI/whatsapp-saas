@@ -195,7 +195,7 @@ export default async function MainLayout({
                   className="text-muted-foreground hover:text-foreground"
                 >
                   <Kanban className="h-4 w-4" aria-hidden="true" />
-                  <span className="sr-only sm:not-sr-only sm:ml-2">Pipeline</span>
+                  <span className="sr-only sm:not-sr-only sm:ml-2">Ventas</span>
                 </Button>
               </Link>
             )}
@@ -233,7 +233,7 @@ export default async function MainLayout({
                 className="text-muted-foreground hover:text-foreground"
               >
                 <Settings className="h-4 w-4" aria-hidden="true" />
-                <span className="sr-only sm:not-sr-only sm:ml-2">Settings</span>
+                <span className="sr-only sm:not-sr-only sm:ml-2">Ajustes</span>
               </Button>
             </Link>
           </div>
@@ -299,7 +299,7 @@ export default async function MainLayout({
             className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
           >
             <Kanban className="h-5 w-5" aria-hidden="true" />
-            <span>Pipeline</span>
+            <span>Ventas</span>
           </Link>
         )}
 
@@ -328,7 +328,7 @@ export default async function MainLayout({
           className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
         >
           <Settings className="h-5 w-5" aria-hidden="true" />
-          <span>Settings</span>
+          <span>Ajustes</span>
         </Link>
 
         {isSuperAdmin && (

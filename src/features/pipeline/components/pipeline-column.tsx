@@ -100,7 +100,7 @@ export function PipelineColumn({ stage, deals, onSelectDeal }: PipelineColumnPro
 
         {deals.length === 0 && (
           <p className="text-[10px] text-muted-foreground text-center py-4">
-            Sin deals
+            Sin negocios
           </p>
         )}
       </div>

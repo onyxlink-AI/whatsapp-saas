@@ -255,7 +255,7 @@ export function MessageAttachment({ media, type }: MessageAttachmentProps) {
       className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 max-w-[280px] hover:bg-muted/80 transition-colors"
     >
       <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
-      <span className="text-sm text-foreground">[Media]</span>
+      <span className="text-sm text-foreground">Archivo adjunto</span>
     </a>
   );
 }

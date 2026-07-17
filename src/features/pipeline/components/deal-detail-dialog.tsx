@@ -100,13 +100,13 @@ export function DealDetailDialog({
       });
 
       if (!result.ok) {
-        toast.error(result.error ?? "Error al guardar el deal");
+        toast.error(result.error ?? "Error al guardar el negocio");
         return;
       }
 
       const updated = await getDeal(dealId);
       if (updated) onSaved(updated);
-      toast.success("Deal actualizado");
+      toast.success("Negocio actualizado");
     });
   }
 
@@ -114,7 +114,7 @@ export function DealDetailDialog({
     startTransition(async () => {
       const result = await deleteDeal(dealId);
       if (!result.ok) {
-        toast.error(result.error ?? "Error al eliminar el deal");
+        toast.error(result.error ?? "Error al eliminar el negocio");
         return;
       }
       onDeleted(dealId);
@@ -127,7 +127,7 @@ export function DealDetailDialog({
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {deal?.contact?.name || deal?.contact?.phone || "Deal"}
+            {deal?.contact?.name || deal?.contact?.phone || "Negocio"}
           </DialogTitle>
         </DialogHeader>
 
@@ -171,7 +171,7 @@ export function DealDetailDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs">Cierre esperado</Label>
+              <Label className="text-xs">Fecha de cierre</Label>
               <Input
                 type="date"
                 value={expectedCloseDate}

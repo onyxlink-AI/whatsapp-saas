@@ -86,7 +86,7 @@ export function WeekView({ workspaceId, date, onDateChange }: WeekViewProps) {
       <div className="space-y-2">
         {tasks.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-8">
-            Sin tareas para esta semana
+            🎉 No tienes tareas esta semana
           </p>
         )}
         {tasks.map((task) => (

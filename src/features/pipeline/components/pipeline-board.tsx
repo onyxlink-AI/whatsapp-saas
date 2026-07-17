@@ -133,7 +133,7 @@ export function PipelineBoard({
           );
 
       if (!result.ok) {
-        toast.error(result.error ?? "Error al mover el deal");
+        toast.error(result.error ?? "Error al mover el negocio");
         setDeals(initialDeals);
       }
     });
@@ -160,7 +160,7 @@ export function PipelineBoard({
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar deal o contacto..."
+          placeholder="Busca un negocio o contacto..."
           className="h-8 w-56 text-xs"
         />
         <label className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -173,7 +173,7 @@ export function PipelineBoard({
           onClick={() => setCreateOpen(true)}
         >
           <Plus className="h-3.5 w-3.5" />
-          Nuevo deal
+          Nuevo negocio
         </Button>
       </div>
 

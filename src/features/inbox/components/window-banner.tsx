@@ -24,7 +24,10 @@ export function WindowBanner({ windowExpiresAt }: WindowBannerProps) {
       )}
     >
       <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
-      <span>Ventana 24h expirada — Solo puedes enviar templates aprobados</span>
+      <span>
+        ⏰ Pasaron más de 24 horas desde su último mensaje. WhatsApp ahora solo
+        te deja responder con un mensaje ya aprobado — elige uno abajo.
+      </span>
     </div>
   );
 }

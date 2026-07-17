@@ -90,7 +90,7 @@ export function ToolsCatalog({ workspaceId, initialTools }: Props) {
 
       if (!res.ok) {
         const data = (await res.json()) as { error?: string };
-        throw new Error(data.error ?? "Error al actualizar tool");
+        throw new Error(data.error ?? "No se pudo actualizar la herramienta");
       }
 
       toast.success(
@@ -104,7 +104,7 @@ export function ToolsCatalog({ workspaceId, initialTools }: Props) {
         ),
       );
       toast.error(
-        err instanceof Error ? err.message : "Error al actualizar tool",
+        err instanceof Error ? err.message : "No se pudo actualizar la herramienta",
       );
     } finally {
       setPending((prev) => {
@@ -119,7 +119,7 @@ export function ToolsCatalog({ workspaceId, initialTools }: Props) {
     return (
       <div className="py-10 text-center">
         <p className="text-sm text-muted-foreground">
-          No hay tools disponibles en el catálogo.
+          Todavía no hay herramientas disponibles.
         </p>
       </div>
     );
@@ -129,10 +129,10 @@ export function ToolsCatalog({ workspaceId, initialTools }: Props) {
     <div className="space-y-6">
       <div>
         <h2 className="font-display text-lg font-semibold text-foreground">
-          Catálogo de Tools
+          🛠️ Herramientas de tu IA
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Activa o desactiva las capacidades del agente para este workspace.
+          Activa o desactiva lo que tu IA puede hacer.
         </p>
       </div>
 

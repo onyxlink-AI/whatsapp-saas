@@ -50,7 +50,7 @@ const TRIGGER_META: Record<
     className: "text-orange-400 bg-orange-400/10",
   },
   handoff_requested: {
-    label: "IA solicita handoff",
+    label: "La IA pide ayuda",
     Icon: Users,
     className: "text-secondary bg-secondary/10",
   },
@@ -69,7 +69,7 @@ const TRIGGER_META: Record<
 // ── Action metadata ───────────────────────────────────────────────────────────
 
 const ACTION_LABELS: Record<ActionType, string> = {
-  send_template: "Enviar template",
+  send_template: "Enviar mensaje",
   assign_agent: "Asignar agente",
   add_tag: "Agregar etiqueta",
   close_conversation: "Cerrar conversación",
@@ -102,7 +102,7 @@ function EmptyState({ onNew }: { onNew: () => void }) {
       </div>
       <div>
         <p className="text-sm font-medium text-foreground">
-          No hay automatizaciones configuradas
+          ⚡ No hay automatizaciones configuradas
         </p>
         <p className="mt-1 max-w-xs text-xs text-muted-foreground">
           Las automatizaciones envían mensajes y realizan acciones
@@ -306,7 +306,7 @@ export function AutomationsTab({ workspaceId }: Props) {
   async function handleDelete(rule: AutomationRule) {
     if (
       !window.confirm(
-        `¿Eliminar la automatización "${rule.name}"? Esta acción no se puede deshacer.`,
+        `¿Eliminar la automatización "${rule.name}"? No se puede deshacer.`,
       )
     )
       return;

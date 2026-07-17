@@ -234,7 +234,7 @@ export function CrmPanel({
   function handleForgetContact() {
     if (
       !window.confirm(
-        "¿Olvidar la memoria de este contacto? Esta acción no se puede deshacer.",
+        "¿Olvidar todo lo que sabemos de este contacto? No se puede deshacer.",
       )
     )
       return;
@@ -354,12 +354,12 @@ export function CrmPanel({
             {/* Opt-in switch */}
             <div className="flex items-center justify-between">
               <Label className="text-[10px] text-[hsl(var(--electric-lime))] uppercase tracking-wider">
-                WhatsApp Opt-in
+                Recibe WhatsApp
               </Label>
               <Switch
                 checked={optIn}
                 onCheckedChange={setOptIn}
-                aria-label="WhatsApp Opt-in"
+                aria-label="Recibe WhatsApp"
               />
             </div>
           </div>
@@ -374,7 +374,7 @@ export function CrmPanel({
           className="w-full flex items-center justify-between px-4 py-2.5 border-b border-border/40 hover:bg-muted/20 transition-colors"
         >
           <span className="text-xs font-semibold text-[hsl(var(--electric-lime))] uppercase tracking-wider">
-            CRM
+            Seguimiento
           </span>
           {crmOpen ? (
             <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
@@ -466,9 +466,9 @@ export function CrmPanel({
             <div className="px-4 py-3 space-y-3">
               {!hasMemoryRow && (
                 <p className="text-[10px] text-muted-foreground">
-                  Aún no hay memoria extraída de este contacto — se genera
-                  automáticamente tras las conversaciones, o puedes escribirla
-                  a mano aquí.
+                  Todavía no hay nada guardado sobre este contacto. Se va
+                  llenando solo con las conversaciones, o puedes escribirlo tú
+                  aquí.
                 </p>
               )}
 
@@ -616,7 +616,7 @@ export function CrmPanel({
               {/* Estado del lead */}
               <div className="space-y-1">
                 <Label className="text-[10px] text-[hsl(var(--electric-lime))] uppercase tracking-wider">
-                  Estado del lead
+                  Cómo va este contacto
                 </Label>
                 <Input
                   value={memoryLeadStatus}
@@ -695,7 +695,7 @@ export function CrmPanel({
         >
           <Link href={`/pipeline?createFor=${contact.id}`}>
             <Kanban className="h-3.5 w-3.5" />
-            Crear deal
+            Crear negocio
           </Link>
         </Button>
       </div>
@@ -704,8 +704,8 @@ export function CrmPanel({
       {!optIn && (
         <div className="mx-4 mb-3 px-3 py-2 rounded-md bg-destructive/10 border border-destructive/30">
           <p className="text-[10px] text-destructive leading-snug">
-            <strong>Opt-out activo.</strong> No se enviarán mensajes a este
-            contacto.
+            <strong>Este contacto no quiere recibir WhatsApp.</strong> No le
+            vamos a escribir.
           </p>
         </div>
       )}

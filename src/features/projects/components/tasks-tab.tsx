@@ -76,7 +76,7 @@ export function TasksTab({ workspaceId, initialTasks, members }: TasksTabProps) 
       <div className="rounded-md border border-border/40">
         {tasks.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-6">
-            Sin tareas
+            ✅ Todavía no tienes tareas
           </p>
         )}
         {tasks.map((task) => (

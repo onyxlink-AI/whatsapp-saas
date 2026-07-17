@@ -68,14 +68,14 @@ export function CreateDealDialog({
       });
 
       if (!result.ok) {
-        toast.error(result.error ?? "Error al crear el deal");
+        toast.error(result.error ?? "Error al crear el negocio");
         return;
       }
 
       const created = await getDeal(result.data.id);
       if (created) onCreated(created);
 
-      toast.success("Deal creado");
+      toast.success("Negocio creado");
       handleClose();
     });
   }
@@ -84,7 +84,7 @@ export function CreateDealDialog({
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nuevo deal</DialogTitle>
+          <DialogTitle>Nuevo negocio</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-3">
@@ -135,7 +135,7 @@ export function CreateDealDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Cierre esperado</Label>
+              <Label className="text-xs">Fecha de cierre</Label>
               <Input
                 type="date"
                 value={expectedCloseDate}
@@ -151,7 +151,7 @@ export function CreateDealDialog({
             Cancelar
           </Button>
           <Button size="sm" onClick={handleCreate} disabled={isPending}>
-            {isPending ? "Creando..." : "Crear deal"}
+            {isPending ? "Creando..." : "Crear negocio"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -107,7 +107,7 @@ function CalculatorContent() {
           htmlFor="calc-type"
           className="text-sm font-medium text-foreground"
         >
-          Tipo de template
+          Tipo de mensaje
         </Label>
         <Select
           value={type}
@@ -165,7 +165,7 @@ function CalculatorContent() {
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">
-              Mensajes dentro de ventana 24h
+              Mensajes de conversación normal
             </span>
             <span className="font-mono font-semibold text-primary tabular-nums">
               Gratis
@@ -208,8 +208,8 @@ export function CostCalculator() {
             Calculadora de costos WhatsApp
           </DialogTitle>
           <DialogDescription>
-            Estima el costo mensual de tus envíos de templates basándote en
-            volumen y tipo. Los mensajes dentro de la ventana de 24h son gratis.
+            Calcula cuánto gastarías al mes según cuántos mensajes envías. Los
+            mensajes normales de conversación (primeras 24 horas) son gratis.
           </DialogDescription>
         </DialogHeader>
         <CalculatorContent />

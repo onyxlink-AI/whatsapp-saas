@@ -90,12 +90,12 @@ export function ChatThread({
       );
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        toast.error((data as { error?: string }).error ?? "Error al enviar");
+        toast.error((data as { error?: string }).error ?? "No se pudo enviar el mensaje");
         return;
       }
       setDraft("");
     } catch {
-      toast.error("Error al enviar");
+      toast.error("No se pudo enviar el mensaje");
     } finally {
       setSending(false);
     }
@@ -111,10 +111,10 @@ export function ChatThread({
       });
       if (!res.ok) {
         const data = await res.json();
-        toast.error(data.error ?? "Error al solicitar handoff");
+        toast.error(data.error ?? "No se pudo pedir ayuda");
         return;
       }
-      toast.success("Handoff solicitado");
+      toast.success("Pedido enviado");
       router.refresh();
     } catch {
       toast.error("Error de conexión");
@@ -133,7 +133,7 @@ export function ChatThread({
       });
       if (!res.ok) {
         const data = await res.json();
-        toast.error(data.error ?? "Error al devolver a IA");
+        toast.error(data.error ?? "No se pudo devolver la conversación a la IA");
         return;
       }
       toast.success("Conversación devuelta a la IA");
@@ -158,7 +158,7 @@ export function ChatThread({
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         toast.error(
-          (data as { error?: string }).error ?? "Error al guardar nota",
+          (data as { error?: string }).error ?? "No se pudo guardar la nota",
         );
         return;
       }
@@ -180,7 +180,7 @@ export function ChatThread({
       });
       if (!res.ok) {
         const data = await res.json();
-        toast.error(data.error ?? "Error al tomar la conversación");
+        toast.error(data.error ?? "No se pudo tomar la conversación");
         return;
       }
       toast.success("Conversación tomada");
@@ -235,11 +235,11 @@ export function ChatThread({
                   variant="outline"
                   onClick={handleHandoffRequest}
                   disabled={handoffLoading}
-                  aria-label="Solicitar handoff a humano"
+                  aria-label="Pedir que un humano responda"
                   className="h-8 gap-1.5 text-xs text-amber-400 border-amber-400/30 hover:bg-amber-400/10"
                 >
                   <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
-                  Handoff
+                  Pedir ayuda
                 </Button>
               </RoleGate>
             )}
@@ -331,10 +331,10 @@ export function ChatThread({
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <p className="text-sm text-muted-foreground">
-                  No hay mensajes aún
+                  💬 Todavía no hay mensajes
                 </p>
                 <p className="text-xs text-muted-foreground/60 mt-1">
-                  Los mensajes entrantes aparecerán aquí en tiempo real
+                  Los mensajes nuevos van a aparecer aquí solos
                 </p>
               </div>
             ) : (
@@ -360,7 +360,7 @@ export function ChatThread({
             />
           ) : !canSendMessages(role) ? (
             <p className="py-2 text-center text-xs text-muted-foreground/60 select-none">
-              Solo lectura — sin permisos para enviar mensajes
+              No puedes escribir aquí — no tienes permiso para enviar mensajes
             </p>
           ) : noteMode ? (
             /* ── Note mode composer ───────────────────────────── */

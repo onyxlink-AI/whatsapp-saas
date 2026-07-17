@@ -47,10 +47,10 @@ export function WorkspaceSwitcher({
             "font-mono text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40",
             "max-w-[160px] sm:max-w-[220px]",
           )}
-          aria-label="Cambiar de workspace"
+          aria-label="Cambiar de negocio"
         >
           <span className="truncate" title={active?.name}>
-            {active?.name ?? "Workspace"}
+            {active?.name ?? "Negocio"}
           </span>
           {isPending ? (
             <Loader2
@@ -63,7 +63,7 @@ export function WorkspaceSwitcher({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
-        <DropdownMenuLabel>Cambiar de workspace</DropdownMenuLabel>
+        <DropdownMenuLabel>Cambiar de negocio</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {workspaces.map((w) => (
           <DropdownMenuItem

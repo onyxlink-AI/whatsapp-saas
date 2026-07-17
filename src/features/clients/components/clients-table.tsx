@@ -126,7 +126,7 @@ export function ClientsTable({
 
   function handleDelete(client: ClientRow) {
     const ok = window.confirm(
-      `¿Eliminar a ${client.name || client.phone}? Esto borra también su historial de conversación, deals y tareas asociadas. Esta acción no se puede deshacer.`,
+      `¿Eliminar a ${client.name || client.phone}? También se borran sus mensajes, negocios y tareas. No se puede deshacer.`,
     );
     if (!ok) return;
 
@@ -144,7 +144,7 @@ export function ClientsTable({
   function handleBulkDelete() {
     const count = selectedIds.size;
     const ok = window.confirm(
-      `¿Eliminar ${count} cliente${count === 1 ? "" : "s"}? Esto borra también su historial de conversación, deals y tareas asociadas. Esta acción no se puede deshacer.`,
+      `¿Eliminar ${count} cliente${count === 1 ? "" : "s"}? También se borran sus mensajes, negocios y tareas. No se puede deshacer.`,
     );
     if (!ok) return;
 
@@ -182,7 +182,7 @@ export function ClientsTable({
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por nombre o empresa..."
+          placeholder="Busca un cliente..."
           className="h-8 w-56 text-xs"
         />
 
@@ -260,7 +260,7 @@ export function ClientsTable({
             {rows.length === 0 && (
               <TableRow>
                 <TableCell colSpan={8} className="text-center text-xs text-muted-foreground py-8">
-                  Sin clientes
+                  👥 Todavía no tienes clientes
                 </TableCell>
               </TableRow>
             )}

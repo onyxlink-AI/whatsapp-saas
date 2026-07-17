@@ -37,7 +37,7 @@ export default async function ProyectosPage({
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <p className="text-muted-foreground text-sm">
-          No tienes un workspace activo.
+          No encontramos tu negocio. Pídele acceso a quien te invitó.
         </p>
       </div>
     );
@@ -53,7 +53,7 @@ export default async function ProyectosPage({
     return (
       <div className="flex items-center justify-center min-h-[60vh] px-6 text-center">
         <p className="text-muted-foreground text-sm max-w-sm">
-          Este workspace no incluye Onyxlink Gestión.
+          Esta sección no está incluida en tu plan. Pregúntale a tu gestor de Onyxlink.
         </p>
       </div>
     );
@@ -71,9 +71,9 @@ export default async function ProyectosPage({
     <div className="p-4 sm:p-6 h-full flex flex-col">
       <Tabs defaultValue="tablero" className="flex flex-col h-full">
         <TabsList className="w-fit">
-          <TabsTrigger value="tablero">Tablero</TabsTrigger>
-          <TabsTrigger value="tareas">Tareas</TabsTrigger>
-          <TabsTrigger value="agenda">Agenda</TabsTrigger>
+          <TabsTrigger value="tablero">📋 Tablero</TabsTrigger>
+          <TabsTrigger value="tareas">✅ Tareas</TabsTrigger>
+          <TabsTrigger value="agenda">📅 Agenda</TabsTrigger>
         </TabsList>
 
         <TabsContent value="tablero" className="flex-1 mt-3">

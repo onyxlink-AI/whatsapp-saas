@@ -36,13 +36,13 @@ const TRIGGER_LABELS: Record<TriggerType, string> = {
   first_message: "Primer mensaje del contacto",
   inactivity_24h: "Sin respuesta en 24h",
   window_closing: "Ventana de 24h cerrando (2h restantes)",
-  handoff_requested: "IA solicita handoff",
+  handoff_requested: "La IA pide ayuda",
   lead_qualified: "Lead calificado",
   keyword_match: "Palabra clave detectada",
 };
 
 const ACTION_LABELS: Record<ActionType, string> = {
-  send_template: "Enviar template",
+  send_template: "Enviar mensaje",
   assign_agent: "Asignar a agente",
   add_tag: "Agregar etiqueta",
   close_conversation: "Cerrar conversación",
@@ -247,7 +247,7 @@ export function AutomationRuleForm({
               htmlFor="rule-trigger"
               className="text-sm font-medium text-foreground"
             >
-              Disparador
+              Cuándo se activa
             </Label>
             <Select
               value={triggerType}
@@ -318,7 +318,7 @@ export function AutomationRuleForm({
                   htmlFor="rule-template"
                   className="text-xs font-medium text-muted-foreground"
                 >
-                  Template aprobado
+                  Mensaje aprobado
                 </Label>
                 {approvedTemplates.length === 0 ? (
                   <p className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning flex items-center gap-1.5">
@@ -326,8 +326,8 @@ export function AutomationRuleForm({
                       className="h-3.5 w-3.5 shrink-0"
                       aria-hidden="true"
                     />
-                    No hay templates aprobados por Meta. Sincroniza plantillas
-                    primero.
+                    No tienes mensajes aprobados por WhatsApp todavía.
+                    Sincroniza primero.
                   </p>
                 ) : (
                   <Select
@@ -335,7 +335,7 @@ export function AutomationRuleForm({
                     onValueChange={setSelectedTemplate}
                   >
                     <SelectTrigger id="rule-template">
-                      <SelectValue placeholder="Selecciona un template" />
+                      <SelectValue placeholder="Selecciona un mensaje" />
                     </SelectTrigger>
                     <SelectContent>
                       {approvedTemplates.map((t) => (

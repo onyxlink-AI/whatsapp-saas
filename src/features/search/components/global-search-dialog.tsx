@@ -25,7 +25,7 @@ interface GlobalSearchDialogProps {
 const GROUP_LABEL: Record<SearchResultType, string> = {
   client: "Clientes",
   project: "Proyectos",
-  deal: "Pipeline",
+  deal: "Ventas",
 };
 
 const GROUP_ICON: Record<SearchResultType, React.ReactNode> = {
@@ -97,7 +97,7 @@ export function GlobalSearchDialog({
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
       <CommandInput
-        placeholder="Buscar clientes, proyectos, deals..."
+        placeholder="Buscar clientes, proyectos, negocios..."
         value={query}
         onValueChange={setQuery}
       />

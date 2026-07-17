@@ -20,7 +20,7 @@ export default async function AsistenteAiPage() {
   if (!membership) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <p className="text-muted-foreground text-sm">No tienes un workspace activo.</p>
+        <p className="text-muted-foreground text-sm">No encontramos tu negocio. Pídele acceso a quien te invitó.</p>
       </div>
     );
   }
@@ -35,8 +35,7 @@ export default async function AsistenteAiPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh] px-6 text-center">
         <p className="text-muted-foreground text-sm max-w-sm">
-          Este workspace no incluye Asistente AI — tu plan es Onyxlink
-          Gestión.
+          Esta sección no está incluida en tu plan. Pregúntale a tu gestor de Onyxlink.
         </p>
       </div>
     );
@@ -46,8 +45,7 @@ export default async function AsistenteAiPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh] px-6 text-center">
         <p className="text-muted-foreground text-sm max-w-sm">
-          Este workspace no tiene un agente de voz vinculado. Un administrador
-          puede vincularlo en Settings → Negocio.
+          🎙️ Todavía no tienes un asistente de voz conectado. Puedes conectarlo en Ajustes → Negocio.
         </p>
       </div>
     );

@@ -266,7 +266,7 @@ export function TemplateFormSheet({
         );
       }
 
-      toast.success(isEdit ? "Plantilla actualizada" : "Borrador creado");
+      toast.success(isEdit ? "Mensaje actualizado" : "Borrador creado");
       onSaved();
       onOpenChange(false);
     } catch (err) {
@@ -287,7 +287,7 @@ export function TemplateFormSheet({
       >
         <SheetHeader className="mb-6">
           <SheetTitle className="font-display">
-            {isEdit ? "Editar plantilla" : "Nueva plantilla"}
+            {isEdit ? "Editar mensaje" : "Nuevo mensaje"}
           </SheetTitle>
           <SheetDescription>
             Se guarda como borrador. Envíala a aprobación desde la lista cuando
@@ -395,7 +395,7 @@ export function TemplateFormSheet({
                       aria-hidden="true"
                     />
                     <p className="text-xs leading-relaxed text-amber-300">
-                      Las plantillas de marketing deben ofrecer una opción para
+                      Los mensajes de marketing deben ofrecer una opción para
                       dejar de recibir mensajes (usa el pie estándar).
                     </p>
                   </div>
@@ -707,8 +707,8 @@ export function TemplateFormSheet({
               />
               <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Send className="h-3 w-3" aria-hidden="true" />
-                Tras guardar, envíala a aprobación desde la lista. Meta tarda
-                24–48 h.
+                Tras guardar, envíalo a aprobación desde la lista. WhatsApp
+                tarda 24–48 horas.
               </p>
             </div>
           </div>

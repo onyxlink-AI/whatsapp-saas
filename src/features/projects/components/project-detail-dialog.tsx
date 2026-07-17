@@ -279,7 +279,7 @@ export function ProjectDetailDialog({
               <div className="rounded-md border border-border/40">
                 {tasks.length === 0 && (
                   <p className="text-xs text-muted-foreground text-center py-3">
-                    Sin tareas
+                    Todavía no hay tareas
                   </p>
                 )}
                 {tasks.map((task) => (

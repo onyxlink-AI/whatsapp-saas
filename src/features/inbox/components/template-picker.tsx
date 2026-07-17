@@ -106,15 +106,15 @@ export function TemplatePicker({
         variables,
       );
       if (result.ok) {
-        toast.success("Template enviado");
+        toast.success("Mensaje enviado");
         setSelectedTemplate(null);
         setVariables([]);
         onSent?.();
       } else {
-        toast.error(result.error ?? "Error al enviar el template");
+        toast.error(result.error ?? "No se pudo enviar el mensaje");
       }
     } catch {
-      toast.error("Error inesperado al enviar el template");
+      toast.error("Error inesperado al enviar el mensaje");
     } finally {
       setIsPending(false);
     }
@@ -126,7 +126,7 @@ export function TemplatePicker({
       <div
         className="space-y-2 p-1"
         aria-busy="true"
-        aria-label="Cargando templates"
+        aria-label="Cargando mensajes automáticos"
       >
         {[0, 1, 2].map((i) => (
           <Skeleton key={i} className="h-12 w-full rounded-lg" />
@@ -139,7 +139,7 @@ export function TemplatePicker({
   if (!isLoading && templates.length === 0) {
     return (
       <p className="py-3 text-center text-sm text-muted-foreground">
-        Sin templates aprobados
+        No tienes mensajes automáticos listos todavía
       </p>
     );
   }
@@ -157,7 +157,7 @@ export function TemplatePicker({
             variant="ghost"
             size="icon"
             onClick={handleBack}
-            aria-label="Volver a lista de templates"
+            aria-label="Volver a la lista de mensajes"
             className="h-7 w-7 shrink-0"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
@@ -181,7 +181,7 @@ export function TemplatePicker({
                   htmlFor={`tpl-var-${index}`}
                   className="text-xs text-muted-foreground"
                 >
-                  Variable {`{{${index + 1}}}`}
+                  Dato {`{{${index + 1}}}`}
                 </Label>
                 <Input
                   id={`tpl-var-${index}`}
@@ -206,7 +206,7 @@ export function TemplatePicker({
           aria-busy={isPending}
         >
           <Send className="h-4 w-4 mr-2" aria-hidden="true" />
-          {isPending ? "Enviando..." : "Enviar template"}
+          {isPending ? "Enviando..." : "Enviar mensaje"}
         </Button>
       </div>
     );

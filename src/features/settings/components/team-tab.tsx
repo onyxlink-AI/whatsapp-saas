@@ -60,7 +60,7 @@ const ROLE_LABELS: Record<WorkspaceRole, string> = {
   admin: "Admin",
   manager: "Manager",
   agent: "Agente",
-  viewer: "Viewer",
+  viewer: "Solo ver",
 };
 
 // Role badge styles using design-system tokens (dark theme)
@@ -146,8 +146,7 @@ function TeamEmpty({ onInvite }: { onInvite: () => void }) {
           Solo tú en el equipo
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Invita a colaboradores para que accedan al inbox y gestionen
-          conversaciones.
+          Invita a colaboradores para que te ayuden a contestar mensajes.
         </p>
       </div>
       <Button size="sm" className="gap-1.5 mt-1" onClick={onInvite}>
@@ -246,7 +245,7 @@ export function TeamTab({ workspaceId }: Props) {
         toast.success("Cuenta creada");
       } else {
         // Existing user added to the workspace.
-        toast.success(`${inviteEmail} agregado al workspace`);
+        toast.success(`${inviteEmail} agregado a tu equipo`);
         closeInvite();
       }
     } catch (err) {
@@ -360,7 +359,7 @@ export function TeamTab({ workspaceId }: Props) {
           </h2>
         </div>
         <p className="text-sm text-muted-foreground">
-          Gestiona los miembros que tienen acceso a este workspace.
+          Administra quién tiene acceso a tu negocio.
         </p>
       </div>
 
@@ -507,14 +506,14 @@ export function TeamTab({ workspaceId }: Props) {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-display text-base font-semibold">
-              {createdCreds ? "Credenciales del cliente" : "Invitar miembro"}
+              {createdCreds ? "Datos de acceso" : "Invitar miembro"}
             </DialogTitle>
           </DialogHeader>
           {createdCreds ? (
             <div className="space-y-4 pt-2">
               <p className="text-sm text-muted-foreground">
-                Comparte estas credenciales con el usuario. No se vuelven a
-                mostrar.
+                Comparte este usuario y contraseña con la persona que
+                invitaste. No los vas a poder ver de nuevo.
               </p>
               <div className="space-y-1 rounded-lg border border-warning/30 bg-warning/5 p-3 font-mono text-xs">
                 <p className="text-foreground break-all">
@@ -604,23 +603,23 @@ export function TeamTab({ workspaceId }: Props) {
                       <div>
                         <span className="font-medium">Agente</span>
                         <span className="ml-2 text-xs text-muted-foreground">
-                          Opera el inbox
+                          Contesta los mensajes
                         </span>
                       </div>
                     </SelectItem>
                     <SelectItem value="viewer">
                       <div>
-                        <span className="font-medium">Viewer</span>
+                        <span className="font-medium">Solo ver</span>
                         <span className="ml-2 text-xs text-muted-foreground">
-                          Solo lectura
+                          Puede ver pero no cambiar nada
                         </span>
                       </div>
                     </SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Se crea su cuenta al instante. Sin correos: comparte las
-                  credenciales y entra directo.
+                  Se crea su cuenta al instante. No mandamos correos: solo
+                  copia estos datos y compártelos.
                 </p>
               </div>
               <div className="space-y-1.5">

@@ -59,8 +59,7 @@ export default async function InboxPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh] px-6 text-center">
         <p className="text-muted-foreground text-sm max-w-sm">
-          Este workspace no incluye Agentes de WhatsApp — tu plan es Onyxlink
-          Gestión.
+          Esta sección no está incluida en tu plan. Pregúntale a tu gestor de Onyxlink.
         </p>
       </div>
     );

@@ -15,10 +15,10 @@ import type { ConversationStateCount } from "@/features/dashboard/services/metri
 import type { ConversationState } from "@/features/inbox/types";
 
 const STATE_LABELS: Record<ConversationState, string> = {
-  ai_active: "IA activa",
-  human_active: "Humano",
-  handoff_pending: "Handoff",
-  waiting_reply: "Esperando",
+  ai_active: "Responde la IA",
+  human_active: "Respondes tú",
+  handoff_pending: "Te necesita",
+  waiting_reply: "Esperando respuesta",
   paused: "Pausado",
   closed: "Cerrado",
 };
@@ -53,12 +53,12 @@ export function ConversationStateChart({ data }: { data: ConversationStateCount[
   return (
     <div className="rounded-xl border border-border/50 bg-card p-5">
       <h2 className="font-display text-sm font-semibold text-foreground mb-4">
-        Conversaciones por estado
+        🗂️ Cómo están tus chats
       </h2>
 
       {chartData.length === 0 ? (
         <div className="h-40 flex items-center justify-center">
-          <p className="text-sm text-muted-foreground">Sin conversaciones</p>
+          <p className="text-sm text-muted-foreground">Todavía no tienes chats</p>
         </div>
       ) : (
         <div style={{ height: Math.max(chartData.length * 40, 120) }} className="w-full">

@@ -58,13 +58,13 @@ export function MessageVolumeChart({ data }: { data: MessageVolumePoint[] }) {
     <div className="rounded-xl border border-border/50 bg-card p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-display text-sm font-semibold text-foreground">
-          Mensajes por día (últimos {data.length} días)
+          💬 Mensajes por día (últimos {data.length} días)
         </h2>
       </div>
 
       {!hasActivity ? (
         <div className="h-56 flex items-center justify-center">
-          <p className="text-sm text-muted-foreground">Sin mensajes en este rango</p>
+          <p className="text-sm text-muted-foreground">Todavía no hay mensajes en estos días</p>
         </div>
       ) : (
         <div className="h-56 w-full">

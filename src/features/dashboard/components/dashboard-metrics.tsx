@@ -68,10 +68,10 @@ function KpiCard({ label, value, icon, accent = false, index = 0 }: KpiCardProps
 }
 
 const STATE_LABELS: Record<ConversationState, string> = {
-  ai_active: "IA activa",
-  human_active: "Humano",
-  handoff_pending: "Handoff",
-  waiting_reply: "Esperando",
+  ai_active: "Responde la IA",
+  human_active: "Respondes tú",
+  handoff_pending: "Te necesita",
+  waiting_reply: "Esperando respuesta",
   paused: "Pausado",
   closed: "Cerrado",
 };
@@ -125,10 +125,10 @@ export function DashboardMetrics({
       {/* Page heading */}
       <div>
         <h1 className="font-display text-xl font-semibold text-foreground">
-          Dashboard
+          📊 Resumen
         </h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Actividad del workspace hoy
+          Esto es lo que pasó hoy en tu negocio
         </p>
       </div>
 
@@ -136,32 +136,32 @@ export function DashboardMetrics({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           index={0}
-          label="Mensajes hoy"
+          label="💬 Mensajes de hoy"
           value={metrics.messagesToday.toLocaleString("es")}
           icon={<MessageCircle className="h-4 w-4" aria-hidden="true" />}
         />
         <KpiCard
           index={1}
-          label="Conversaciones activas"
+          label="🗨️ Chats abiertos ahora"
           value={metrics.activeConversations.toLocaleString("es")}
           icon={<Users className="h-4 w-4" aria-hidden="true" />}
           accent
         />
         <KpiCard
           index={2}
-          label="Handoffs pendientes"
+          label="🙋 Esperando que respondas"
           value={metrics.handoffPending.toLocaleString("es")}
           icon={<AlertCircle className="h-4 w-4" aria-hidden="true" />}
         />
         <KpiCard
           index={3}
-          label="Costo LLM esta semana"
+          label="💰 Gasto de IA esta semana"
           value={formatCost(metrics.llmCostWeekUsd)}
           icon={<DollarSign className="h-4 w-4" aria-hidden="true" />}
         />
         <KpiCard
           index={4}
-          label="Templates enviados (semana)"
+          label="📨 Mensajes automáticos (semana)"
           value={metrics.templatesSentWeek.toLocaleString("es")}
           icon={<Send className="h-4 w-4" aria-hidden="true" />}
         />
@@ -179,13 +179,13 @@ export function DashboardMetrics({
       {/* Recent conversations */}
       <div className={cn("space-y-3", motionClasses.fadeInUp)} style={{ animationDelay: "300ms" }}>
         <h2 className="font-display text-sm font-semibold text-foreground">
-          Actividad reciente hoy
+          🕐 Lo último de hoy
         </h2>
 
         {recentConversations.length === 0 ? (
           <div className="rounded-xl border border-border/50 bg-card px-5 py-10 text-center">
             <p className="text-sm text-muted-foreground">
-              Sin actividad registrada hoy
+              Todavía no ha llegado ningún mensaje hoy
             </p>
           </div>
         ) : (

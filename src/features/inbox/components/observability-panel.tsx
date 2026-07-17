@@ -25,17 +25,17 @@ interface EventTypeStyle {
 
 const EVENT_TYPE_STYLES: Record<string, EventTypeStyle> = {
   llm_usage: {
-    label: "LLM",
+    label: "IA",
     variant: "default",
     className: "bg-blue-500/20 text-blue-300 border-blue-500/30",
   },
   tool_call: {
-    label: "Tool",
+    label: "Acción",
     variant: "default",
     className: "bg-green-500/20 text-green-300 border-green-500/30",
   },
   state_change: {
-    label: "State",
+    label: "Estado",
     variant: "default",
     className: "bg-amber-500/20 text-amber-300 border-amber-500/30",
   },
@@ -45,7 +45,7 @@ const EVENT_TYPE_STYLES: Record<string, EventTypeStyle> = {
     className: "bg-red-500/20 text-red-300 border-red-500/30",
   },
   cost_alert: {
-    label: "Cost",
+    label: "Gasto",
     variant: "default",
     className: "bg-orange-500/20 text-orange-300 border-orange-500/30",
   },
@@ -113,7 +113,7 @@ export function ObservabilityPanel({
       const json = (await res.json()) as ApiResponse;
       setData(json);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al cargar métricas");
+      setError(err instanceof Error ? err.message : "No se pudieron cargar los datos");
     } finally {
       setLoading(false);
     }
@@ -132,7 +132,7 @@ export function ObservabilityPanel({
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="font-display text-sm font-semibold text-foreground">
-          Observabilidad
+          📊 Actividad de la IA
         </h3>
         <Button
           size="sm"
@@ -155,7 +155,7 @@ export function ObservabilityPanel({
       {/* KPI tiles — 4 metrics */}
       <div className="grid grid-cols-2 gap-2">
         <KpiTile
-          label="Tokens"
+          label="Uso de IA"
           value={
             metrics
               ? `${formatTokens(metrics.totalInputTokens + metrics.totalOutputTokens)}`
@@ -163,23 +163,23 @@ export function ObservabilityPanel({
           }
           sub={
             metrics
-              ? `${formatTokens(metrics.totalInputTokens)} in / ${formatTokens(metrics.totalOutputTokens)} out`
+              ? `${formatTokens(metrics.totalInputTokens)} recibido / ${formatTokens(metrics.totalOutputTokens)} generado`
               : undefined
           }
           loading={loading}
         />
         <KpiTile
-          label="LLM calls"
+          label="Respuestas de IA"
           value={metrics ? String(metrics.totalLlmCalls) : "—"}
           loading={loading}
         />
         <KpiTile
-          label="Tool calls"
+          label="Acciones hechas"
           value={metrics ? String(metrics.toolCallCount) : "—"}
           loading={loading}
         />
         <KpiTile
-          label="Costo est."
+          label="Gasto aprox."
           value={metrics ? formatCost(metrics.estimatedCostUsd) : "—"}
           loading={loading}
         />
@@ -188,16 +188,16 @@ export function ObservabilityPanel({
       {/* Event log */}
       <div className="flex flex-col gap-1">
         <p className="text-xs font-medium text-muted-foreground">
-          Últimos {events.length} eventos
+          Últimas {events.length} acciones
         </p>
         <ScrollArea className="max-h-96 rounded-lg border border-border bg-background/40">
           {loading && events.length === 0 ? (
             <div className="px-3 py-6 text-center text-xs text-muted-foreground">
-              Cargando eventos…
+              Cargando…
             </div>
           ) : events.length === 0 ? (
             <div className="px-3 py-6 text-center text-xs text-muted-foreground">
-              Sin eventos registrados
+              Todavía no hay actividad
             </div>
           ) : (
             <div className="divide-y divide-border">

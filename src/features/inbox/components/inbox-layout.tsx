@@ -19,7 +19,7 @@ const TABS: { id: FilterTab; label: string }[] = [
   { id: "all", label: "Todos" },
   { id: "ai_active", label: "IA activa" },
   { id: "human_active", label: "Humano" },
-  { id: "handoff_pending", label: "Handoff" },
+  { id: "handoff_pending", label: "Te necesita" },
 ];
 
 interface InboxLayoutProps {
@@ -77,7 +77,7 @@ export function InboxLayout({
         <div className="shrink-0 px-4 pt-3 pb-2 border-b border-border/50 space-y-2">
           <div className="flex items-baseline justify-between">
             <h1 className="font-display text-sm font-semibold text-foreground">
-              Inbox
+              💬 Conversaciones
             </h1>
             <p className="text-xs text-muted-foreground">
               {filtered.length} de {conversations.length}
@@ -93,7 +93,7 @@ export function InboxLayout({
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por nombre o teléfono..."
+              placeholder="Busca un contacto..."
               className="pl-8 h-8 text-xs bg-muted/30 border-border/40 placeholder:text-muted-foreground/50"
               aria-label="Buscar conversaciones"
             />
@@ -133,7 +133,7 @@ export function InboxLayout({
               <p className="text-sm text-muted-foreground">
                 {search || activeTab !== "all"
                   ? "Sin resultados"
-                  : "No hay conversaciones"}
+                  : "💬 No tienes conversaciones todavía"}
               </p>
               <p className="text-xs text-muted-foreground/60 mt-1">
                 {search || activeTab !== "all"

@@ -79,7 +79,7 @@ export function DayView({ workspaceId, date, onDateChange }: DayViewProps) {
       <div className="space-y-2">
         {tasks.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-8">
-            Sin tareas para este día
+            🎉 No tienes tareas este día
           </p>
         )}
         {tasks.map((task) => (

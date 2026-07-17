@@ -44,7 +44,7 @@ function GeneratingSkeleton() {
     <div
       className="space-y-2 animate-pulse"
       aria-busy="true"
-      aria-label="Generando plantilla..."
+      aria-label="Generando mensaje..."
     >
       <div className="h-3.5 bg-muted rounded w-4/5" />
       <div className="h-3.5 bg-muted rounded w-full" />
@@ -90,14 +90,14 @@ export function AiTemplateGenerator({ workspaceId, onGenerated }: Props) {
         throw new Error(
           typeof json.error === "string"
             ? json.error
-            : "No se pudo generar la plantilla",
+            : "No se pudo generar el mensaje",
         );
       }
 
       setPreview(json.body);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Error al generar la plantilla";
+        err instanceof Error ? err.message : "Error al generar el mensaje";
       toast.error(message);
     } finally {
       setIsLoading(false);
@@ -107,7 +107,7 @@ export function AiTemplateGenerator({ workspaceId, onGenerated }: Props) {
   function handleUseTemplate() {
     if (!preview) return;
     onGenerated(preview);
-    toast.success("Plantilla aplicada al cuerpo del mensaje");
+    toast.success("Mensaje aplicado");
   }
 
   return (
@@ -123,7 +123,7 @@ export function AiTemplateGenerator({ workspaceId, onGenerated }: Props) {
           htmlFor="ai-description"
           className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
         >
-          Objetivo de la plantilla
+          Objetivo del mensaje
         </Label>
         <Textarea
           id="ai-description"
@@ -202,7 +202,7 @@ export function AiTemplateGenerator({ workspaceId, onGenerated }: Props) {
         className="w-full gap-2"
       >
         <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-        {isLoading ? "Generando..." : "Generar plantilla"}
+        {isLoading ? "Generando..." : "Generar mensaje"}
       </Button>
 
       {/* Loading skeleton */}
@@ -223,7 +223,7 @@ export function AiTemplateGenerator({ workspaceId, onGenerated }: Props) {
               type="button"
               onClick={handleGenerate}
               className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded"
-              aria-label="Regenerar plantilla"
+              aria-label="Regenerar mensaje"
               disabled={isLoading}
             >
               <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
@@ -240,7 +240,7 @@ export function AiTemplateGenerator({ workspaceId, onGenerated }: Props) {
             onClick={handleUseTemplate}
             className="w-full"
           >
-            Usar esta plantilla
+            Usar este mensaje
           </Button>
         </div>
       )}

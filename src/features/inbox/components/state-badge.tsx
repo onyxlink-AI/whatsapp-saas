@@ -26,22 +26,22 @@ const STATE_CONFIG: Record<
   }
 > = {
   ai_active: {
-    label: "IA activa",
+    label: "Responde la IA",
     className: "text-[hsl(var(--electric-lime))]",
     Icon: Bot,
   },
   human_active: {
-    label: "Humano",
+    label: "Respondes tú",
     className: "text-blue-400",
     Icon: User,
   },
   handoff_pending: {
-    label: "Handoff pendiente",
+    label: "Te necesita",
     className: "text-amber-400",
     Icon: AlertCircle,
   },
   waiting_reply: {
-    label: "Esperando",
+    label: "Esperando respuesta",
     className: "text-muted-foreground",
     Icon: Clock,
   },

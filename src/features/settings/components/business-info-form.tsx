@@ -110,7 +110,7 @@ export function BusinessInfoForm({ workspaceId, initial }: Props) {
     <div className="space-y-5">
       <div className="space-y-1.5">
         <Label htmlFor="bi-free-text" className="text-sm font-medium">
-          Información libre del negocio
+          Cuéntanos sobre tu negocio
         </Label>
         <Textarea
           id="bi-free-text"
@@ -162,7 +162,7 @@ export function BusinessInfoForm({ workspaceId, initial }: Props) {
 
       <div className="space-y-1.5 sm:max-w-xs">
         <Label htmlFor="bi-country" className="text-sm font-medium">
-          País por defecto
+          País
         </Label>
         <Select value={countryCode} onValueChange={setCountryCode}>
           <SelectTrigger id="bi-country">
@@ -177,7 +177,8 @@ export function BusinessInfoForm({ workspaceId, initial }: Props) {
           </SelectContent>
         </Select>
         <p className="text-[11px] text-muted-foreground">
-          Se usa para números de WhatsApp que llegan sin código de país.
+          Lo usamos para completar los números de WhatsApp que llegan sin
+          código de país.
         </p>
       </div>
 
@@ -198,8 +199,7 @@ export function BusinessInfoForm({ workspaceId, initial }: Props) {
           </SelectContent>
         </Select>
         <p className="text-[11px] text-muted-foreground">
-          El agente la usa para interpretar &ldquo;hoy/mañana&rdquo; y agendar a
-          la hora correcta. Cancún es UTC-5; CDMX es UTC-6.
+          La IA la usa para saber qué hora es cuando agenda citas contigo.
         </p>
       </div>
 

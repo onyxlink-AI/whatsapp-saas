@@ -147,7 +147,7 @@ export function ProjectsBoard({
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar proyecto o cliente..."
+          placeholder="Busca un proyecto..."
           className="h-8 w-56 text-xs"
         />
         <Button
