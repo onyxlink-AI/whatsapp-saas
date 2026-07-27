@@ -2,15 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as svcClient } from "@supabase/supabase-js";
-import {
-  generateChatReply,
-  getWorkspaceModel,
-} from "@/features/inbox/services/openrouter";
-import { resolveSystemPrompt } from "@/features/inbox/services/prompt-resolver";
-import {
-  buildSystemPrompt,
-  type PromptGuardrails,
-} from "@/features/inbox/services/prompt-builder";
+import { generateChatReply } from "@/features/inbox/services/openrouter";
+import { buildSystemPrompt } from "@/features/inbox/services/prompt-builder";
 import {
   searchKb,
   formatKbContext,
@@ -24,6 +17,11 @@ import {
 } from "@/features/inbox/services/business-info";
 import { getEnabledTools } from "@/features/tools/services/tool-configs";
 import type { AgentConfig } from "@/features/agents/types";
+import {
+  loadTestAgent,
+  resolveTestModel,
+  resolveTestPrompt,
+} from "@/features/agents/services/agent-test-context";
 
 // POST /api/workspace/[id]/agents/[agentId]/test-chat
 // In-UI playground: replies with the agent's model + (draft or published) prompt
@@ -88,12 +86,8 @@ export async function POST(
   const db = svc();
 
   // Load the agent and defend against IDOR (workspace mismatch).
-  const { data: agent } = await db
-    .from("agents")
-    .select("id, workspace_id, type, name, model, config")
-    .eq("id", agentId)
-    .maybeSingle();
-  if (!agent || agent.workspace_id !== workspaceId) {
+  const agent = await loadTestAgent(workspaceId, agentId);
+  if (!agent) {
     return NextResponse.json(
       { error: "Agente no encontrado" },
       { status: 404 },
@@ -101,22 +95,16 @@ export async function POST(
   }
 
   // Resolve model + system prompt.
-  const model =
-    parsed.data.modelOverride ??
-    (agent.model as string | null) ??
-    (await getWorkspaceModel(workspaceId));
-
-  let promptBody = parsed.data.draftPromptBody;
-  let guardrails: PromptGuardrails | null = null;
-  if (!promptBody) {
-    const resolved = await resolveSystemPrompt(workspaceId, {
-      mode: agent.type as string,
-    });
-    promptBody =
-      resolved?.body ??
-      "Eres un asistente de WhatsApp. Responde de forma concisa y útil en español.";
-    guardrails = resolved?.guardrails ?? null;
-  }
+  const model = await resolveTestModel(
+    workspaceId,
+    agent,
+    parsed.data.modelOverride,
+  );
+  const { promptBody, guardrails } = await resolveTestPrompt(
+    workspaceId,
+    agent.type,
+    parsed.data.draftPromptBody,
+  );
 
   // Mirror production (buffer.ts) exactly via the shared builder: business info,
   // KB search, response style, variable substitution and strict guardrails.
@@ -160,10 +148,15 @@ export async function POST(
   });
 
   try {
-    // Enable the workspace's tools in the playground so the agent can actually
-    // check availability / book (e.g. GHL). The playground has no live
-    // conversation, so the tool context carries only the workspace; tools that
-    // need a contact (booking) take an explicit contact_phone arg instead.
+    // Enable the workspace's tools in the playground so the agent behaves like
+    // it would in production, but NEVER let it act for real: simulateTools
+    // makes the registry short-circuit every tool call into a canned
+    // "here's what I would have done" message instead of really booking,
+    // posting to a webhook, or calling a live calendar API. This is a test
+    // conversation — it must never create real appointments, contacts, or
+    // side effects. The playground has no live conversation, so the tool
+    // context carries only the workspace; tools that need a contact
+    // (booking) take an explicit contact_phone arg instead.
     const tools = await getEnabledTools(workspaceId);
     const reply = await generateChatReply({
       model,
@@ -177,6 +170,7 @@ export async function POST(
         conversationId: "",
         contactId: "",
       },
+      simulateTools: true,
     });
 
     // Best-effort observability — never blocks the response.
@@ -202,6 +196,7 @@ export async function POST(
       inputTokens: reply.promptTokens,
       outputTokens: reply.completionTokens,
       model,
+      simulatedToolCalls: reply.simulatedToolCalls ?? [],
     });
   } catch (err) {
     console.error("[agents/test-chat]", err);

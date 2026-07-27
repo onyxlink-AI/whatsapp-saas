@@ -55,10 +55,10 @@ export function ColdLeadRecoveryToggle({
             Recuperación de Leads Fríos con IA
           </Label>
           <p className="mt-1 text-xs text-muted-foreground max-w-md">
-            Cada día, la IA revisa los contactos sin respuesta y decide a
-            cuáles merece la pena reenganchar, enviando una plantilla de
-            WhatsApp aprobada con un mensaje personalizado. Requiere al menos
-            una plantilla de marketing aprobada por Meta.
+            Cada día, la IA revisa a los contactos que no contestaron y le
+            vuelve a escribir a los que valen la pena, con un mensaje
+            personalizado ya aprobado por WhatsApp. Necesitas tener al menos
+            un mensaje de ese tipo aprobado.
           </p>
           {!isSuperAdmin && (
             <p className="mt-2 flex items-center gap-1.5 text-[11px] text-[hsl(var(--electric-lime))]">

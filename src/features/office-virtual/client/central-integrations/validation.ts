@@ -30,6 +30,9 @@ export const WorkspaceCapabilitySnapshotSchema: z.ZodType<WorkspaceCapabilitySna
     voice: ChannelIntegrationSnapshotSchema.extend({
       assistantId: IdentifierSchema.nullable(),
     }).strict(),
+    chatbot: ChannelIntegrationSnapshotSchema.extend({
+      provider: z.enum(['whatsapp', 'telegram']).nullable(),
+    }).strict(),
     features: z
       .object({
         advancedMemory: z.boolean(),

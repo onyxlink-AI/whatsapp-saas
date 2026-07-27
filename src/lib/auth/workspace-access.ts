@@ -86,7 +86,7 @@ export async function requireWorkspaceMember(
   return { ok: true, userId: user.id, role };
 }
 
-type SuperAdminOk = { ok: true; userId: string };
+type SuperAdminOk = { ok: true; userId: string; email: string };
 
 /**
  * Authenticates the caller and verifies they are a platform super admin
@@ -128,7 +128,7 @@ export async function requireSuperAdmin(): Promise<SuperAdminOk | MemberFail> {
     };
   }
 
-  return { ok: true, userId: user.id };
+  return { ok: true, userId: user.id, email: user.email ?? user.id };
 }
 
 type JsonOk<T> = { ok: true; body: T };

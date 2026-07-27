@@ -33,6 +33,7 @@ import { useFilesFeed } from './hooks/useFilesFeed';
 import { useInboxFeed } from './hooks/useInboxFeed';
 import { useOfficeActivation } from './hooks/useOfficeActivation';
 import { useOfficeActivityFeed } from './hooks/useOfficeActivityFeed';
+import { useOfficeAgentsRoster } from './hooks/useOfficeAgentsRoster';
 import { useOfficeConfigurator } from './hooks/useOfficeConfigurator';
 import { useOpenRouterConnectionFeed } from './hooks/useOpenRouterConnectionFeed';
 import { useOrchestratorFeed } from './hooks/useOrchestratorFeed';
@@ -40,6 +41,9 @@ import { useRoutineFeed } from './hooks/useRoutineFeed';
 import { useReportsFeed } from './hooks/useReportsFeed';
 import { useSkillsFeed } from './hooks/useSkillsFeed';
 import { useTaskFeed } from './hooks/useTaskFeed';
+import { createSaasOpenRouterConnectionAdapter } from './lib/saasOpenRouterConnectionAdapter';
+import { isChatbotChannelReady, isVoiceChannelReady, isWhatsAppChannelReady } from './central-integrations';
+import { buildOfficeRoomSlots } from './three/officeRoster';
 import type { GlobalSearchResult, GlobalSearchSources, GlobalSearchView } from './central-search';
 import './office-virtual.css';
 
@@ -148,11 +152,12 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
   });
   const reportsFeed = useReportsFeed(workspaceId, reportActor, analyticsFeed.analytics);
   const officeActorRole = isSuperAdmin ? 'onyxlink_super_admin' : 'workspace_admin';
-  const officeActivation = useOfficeActivation(userEmail, officeActorRole);
+  const officeActivation = useOfficeActivation(userEmail, officeActorRole, workspaceId);
   const whatsappAgentName = agents.find((a) => a.id === 'lead-intake')?.name ?? 'Agente WhatsApp';
-  const officeConfigurator = useOfficeConfigurator(workspaceId, userEmail, officeActorRole);
+  const officeConfigurator = useOfficeConfigurator(workspaceId);
   const orchestratorFeed = useOrchestratorFeed(userEmail, workspaceRole, workspaceId);
-  const openRouterConnectionFeed = useOpenRouterConnectionFeed(userEmail, workspaceRole, workspaceId);
+  const openRouterAdapter = useMemo(() => createSaasOpenRouterConnectionAdapter(), []);
+  const openRouterConnectionFeed = useOpenRouterConnectionFeed(userEmail, workspaceRole, workspaceId, openRouterAdapter);
 
   // Visual posture comes from real (simulated, for now) operational events —
   // never from chat "typing" state. See COORDINACION_CLAUDE_CODEX.md.
@@ -163,6 +168,20 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
         status: activitySnapshots[agent.id]?.status ?? agent.status,
       })),
     [activitySnapshots],
+  );
+
+  // 3D scene only: 12 room slots built from the real published specialist
+  // roster + real WhatsApp/voice readiness — never the static/legacy 7-agent
+  // list above, which the chat/other panels still use unchanged.
+  const officeAgentsRoster = useOfficeAgentsRoster(workspaceId);
+  const officeRoomSlots = useMemo(
+    () =>
+      buildOfficeRoomSlots(officeAgentsRoster.seats, {
+        whatsappReady: isWhatsAppChannelReady(officeActivation.snapshot),
+        voiceReady: isVoiceChannelReady(officeActivation.snapshot),
+        chatbotReady: isChatbotChannelReady(officeActivation.snapshot),
+      }),
+    [officeAgentsRoster.seats, officeActivation.snapshot],
   );
 
   const selectedAgent = useMemo(() => officeAgents.find((a) => a.id === selectedId) ?? null, [officeAgents, selectedId]);
@@ -226,7 +245,7 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
         <main className="flex-1 relative overflow-hidden">
           {activeView === 'oficina' ? (
             <OfficeSceneBoundary
-              agents={officeAgents}
+              rooms={officeRoomSlots}
               selectedId={selectedId}
               onSelect={setSelectedId}
               onHover={() => {}}
@@ -304,11 +323,11 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
             />
           ) : activeView === 'activacion' && isSuperAdmin ? (
             <ActivacionView
+              loading={officeActivation.loading}
+              loadError={officeActivation.loadError}
               snapshot={officeActivation.snapshot}
               readiness={officeActivation.readiness}
               whatsappBinding={officeActivation.whatsappBinding}
-              scenario={officeActivation.scenario}
-              onScenarioChange={officeActivation.setScenario}
               lastDecision={officeActivation.lastDecision}
               onActivate={officeActivation.activate}
               onDeactivate={officeActivation.deactivate}

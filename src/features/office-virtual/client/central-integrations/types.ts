@@ -1,3 +1,5 @@
+import type { ChatbotProvider } from '@/features/chatbot/types';
+
 export type WhatsAppAgentType = 'setter' | 'soporte' | 'agendamiento';
 
 export type IntegrationHealth = 'unknown' | 'healthy' | 'degraded' | 'error';
@@ -22,6 +24,9 @@ export type WorkspaceCapabilitySnapshot = {
   ycloud: ChannelIntegrationSnapshot;
   voice: ChannelIntegrationSnapshot & {
     assistantId: string | null;
+  };
+  chatbot: ChannelIntegrationSnapshot & {
+    provider: ChatbotProvider | null;
   };
   features: {
     advancedMemory: boolean;

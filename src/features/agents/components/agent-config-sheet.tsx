@@ -64,6 +64,7 @@ export function AgentConfigSheet({
     Boolean(agent.config.setterFunctions),
   );
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState("identidad");
   const router = useRouter();
 
   async function handleSaveIdentity() {
@@ -125,14 +126,14 @@ export function AgentConfigSheet({
           </div>
         </SheetHeader>
 
-        <Tabs defaultValue="identidad" className="px-4 py-2">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="px-4 py-2">
           <TabsList className="mb-4">
             <TabsTrigger value="identidad">Identidad</TabsTrigger>
             <TabsTrigger value="prompt">Prompt</TabsTrigger>
             {agent.type === "setter" && (
               <TabsTrigger value="avanzado">Avanzado</TabsTrigger>
             )}
-            <TabsTrigger value="prueba">Prueba</TabsTrigger>
+            <TabsTrigger value="prueba">🧪 Probar agente</TabsTrigger>
           </TabsList>
 
           <TabsContent value="identidad" className="space-y-6">
@@ -292,7 +293,11 @@ export function AgentConfigSheet({
           )}
 
           <TabsContent value="prueba">
-            <TestChatPanel workspaceId={workspaceId} agent={agent} />
+            <TestChatPanel
+              workspaceId={workspaceId}
+              agent={agent}
+              onEditInstructions={() => setActiveTab("prompt")}
+            />
           </TabsContent>
         </Tabs>
       </SheetContent>

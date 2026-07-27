@@ -137,18 +137,18 @@ function EmptyState({
       <FileText className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
       <div>
         <p className="text-sm font-medium text-foreground">
-          {filtered ? "Sin resultados" : "Sin plantillas"}
+          {filtered ? "Sin resultados" : "Sin mensajes automáticos"}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
           {filtered
             ? "Prueba con otro filtro."
-            : "Crea una nueva, usa la biblioteca o sincroniza desde YCloud."}
+            : "Crea uno nuevo, usa la biblioteca o sincronízalos desde YCloud."}
         </p>
       </div>
       {!filtered && (
         <Button size="sm" onClick={onNew}>
           <Plus className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-          Nueva plantilla
+          Nuevo mensaje
         </Button>
       )}
     </div>
@@ -318,7 +318,7 @@ function LibraryCard({
         onClick={() => onUse(item)}
         className="mt-1 self-start"
       >
-        Usar esta plantilla
+        Usar este mensaje
         <ArrowRight className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
       </Button>
     </div>
@@ -367,11 +367,11 @@ export function TemplatesTab({ workspaceId, initialTemplates }: Props) {
         data?: TemplateRow[];
         error?: string;
       };
-      if (!res.ok) throw new Error(json.error ?? "Error al cargar plantillas");
+      if (!res.ok) throw new Error(json.error ?? "No se pudieron cargar los mensajes");
       setTemplates(json.data ?? []);
     } catch (err) {
       setLoadError(
-        err instanceof Error ? err.message : "Error al cargar plantillas",
+        err instanceof Error ? err.message : "No se pudieron cargar los mensajes",
       );
     } finally {
       setIsLoadingTemplates(false);
@@ -450,7 +450,7 @@ export function TemplatesTab({ workspaceId, initialTemplates }: Props) {
       );
       const json = (await res.json()) as { warning?: string; error?: string };
       if (!res.ok) throw new Error(json.error ?? "Error al enviar");
-      toast.success("Plantilla enviada a aprobación");
+      toast.success("Mensaje enviado a aprobación");
       if (json.warning) toast(json.warning);
       await fetchTemplates();
     } catch (err) {
@@ -464,7 +464,7 @@ export function TemplatesTab({ workspaceId, initialTemplates }: Props) {
   async function handleDelete(t: TemplateRow) {
     if (
       !window.confirm(
-        `¿Eliminar la plantilla "${t.name}"? Esta acción no se puede deshacer.`,
+        `¿Eliminar el mensaje "${t.name}"? No se puede deshacer.`,
       )
     )
       return;
@@ -476,7 +476,7 @@ export function TemplatesTab({ workspaceId, initialTemplates }: Props) {
       });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(json.error ?? "Error al eliminar");
-      toast.success("Plantilla eliminada");
+      toast.success("Mensaje eliminado");
       setTemplates((prev) => prev.filter((x) => x.id !== t.id));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al eliminar");
@@ -516,11 +516,11 @@ export function TemplatesTab({ workspaceId, initialTemplates }: Props) {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-display text-base font-medium text-foreground">
-              Plantillas de WhatsApp
+              💬 Mensajes automáticos
             </h2>
             {view === "mine" && !isLoadingTemplates && !loadError && (
               <p className="mt-0.5 text-xs text-muted-foreground">
-                {templates.length} plantilla{templates.length !== 1 ? "s" : ""}
+                {templates.length} mensaje{templates.length !== 1 ? "s" : ""}
                 {approvedCount > 0 &&
                   ` · ${approvedCount} aprobada${approvedCount !== 1 ? "s" : ""}`}
                 {pendingCount > 0 &&
@@ -547,7 +547,7 @@ export function TemplatesTab({ workspaceId, initialTemplates }: Props) {
               </Button>
               <Button size="sm" onClick={openNew}>
                 <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-                Nueva plantilla
+                Nuevo mensaje
               </Button>
             </div>
           )}
@@ -557,7 +557,7 @@ export function TemplatesTab({ workspaceId, initialTemplates }: Props) {
         <div className="flex gap-1 border-b border-border pb-0.5">
           {(
             [
-              { value: "mine", label: "Mis plantillas", Icon: FileText },
+              { value: "mine", label: "Mis mensajes", Icon: FileText },
               { value: "library", label: "Biblioteca", Icon: BookOpen },
             ] as const
           ).map((v) => (

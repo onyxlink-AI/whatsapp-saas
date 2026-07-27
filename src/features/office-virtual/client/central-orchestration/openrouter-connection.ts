@@ -64,6 +64,19 @@ export type OpenRouterConnectionBinding = {
   updatedBy: string;
 };
 
+export const OpenRouterConnectionBindingSchema = z.object({
+  workspaceId: IdentifierSchema,
+  connectionId: IdentifierSchema.nullable(),
+  connectionKind: z.enum(OPENROUTER_CONNECTION_KINDS).nullable(),
+  status: z.enum(OPENROUTER_CONNECTION_STATUSES),
+  pendingAction: z.enum(['connect', 'verify', 'revoke']).nullable(),
+  pendingRequestId: IdentifierSchema.nullable(),
+  hasCredential: z.boolean(),
+  statusDetail: z.string().trim().max(500).nullable(),
+  updatedAt: DateTimeSchema,
+  updatedBy: IdentifierSchema,
+}).strict();
+
 export type OpenRouterConnectionAuditEntry = {
   eventId: string;
   eventType: 'request' | 'report';
@@ -181,6 +194,19 @@ export function createOpenRouterConnectionState(workspaceId: string): OpenRouter
     audit: [],
     processedRequestIds: [],
     processedReportIds: [],
+  };
+}
+
+export function restoreOpenRouterConnectionState(
+  workspaceId: string,
+  input: unknown,
+): OpenRouterConnectionState | null {
+  const parsed = OpenRouterConnectionBindingSchema.safeParse(input);
+  if (!parsed.success || parsed.data.workspaceId !== workspaceId) return null;
+
+  return {
+    ...createOpenRouterConnectionState(workspaceId),
+    binding: parsed.data,
   };
 }
 

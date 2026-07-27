@@ -23,10 +23,17 @@ export default async function PipelinePage({
   const membership = await getActiveWorkspace(supabase, user.id);
 
   if (!membership) {
+    // Super admins without a personal workspace belong in the agency panel, not a dead end.
+    const { data: userRow } = await supabase
+      .from("users")
+      .select("is_super_admin")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (userRow?.is_super_admin) redirect("/workspaces");
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <p className="text-muted-foreground text-sm">
-          No tienes un workspace activo.
+          No tienes una empresa activa.
         </p>
       </div>
     );
@@ -48,7 +55,7 @@ export default async function PipelinePage({
     return (
       <div className="flex items-center justify-center min-h-[60vh] px-6 text-center">
         <p className="text-muted-foreground text-sm max-w-sm">
-          Este workspace no tiene ningún producto activo.
+          Esta empresa no tiene ningún producto activo.
         </p>
       </div>
     );

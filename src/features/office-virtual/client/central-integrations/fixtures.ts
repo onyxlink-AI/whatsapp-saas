@@ -21,6 +21,7 @@ export function createReadyWorkspaceFixture(
     },
     ycloud: healthyChannel,
     voice: { ...healthyChannel, assistantId: 'vapi-assistant-1' },
+    chatbot: { ...healthyChannel, provider: 'whatsapp' },
     features: {
       advancedMemory: true,
       crossChannelMemory: true,

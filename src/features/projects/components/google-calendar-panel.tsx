@@ -76,7 +76,7 @@ export function GoogleCalendarPanel({ workspaceId, viewMode, date }: GoogleCalen
 
       {!state.loading && !state.connected && (
         <p className="text-xs text-muted-foreground">
-          Google Calendar no está conectado para este workspace.
+          Google Calendar no está conectado para esta empresa.
         </p>
       )}
 

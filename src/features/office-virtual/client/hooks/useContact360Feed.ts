@@ -1,19 +1,18 @@
 import { useState } from 'react';
 import type { Contact360 } from '../central-contacts/types';
 import type { OfficeActivityEvent } from '../central-events/types';
-import { seedScopedContact } from './workspaceContactFixture';
 
 // Adapter hook for src/central-contacts (Codex's real cross-channel model:
 // contacts + conversations + voice_calls + contact_memories + deals, joined
-// by workspace + phone — see COORDINACION_CLAUDE_CODEX.md). Seeds from the
-// one real fixture Codex ships today, restamped to the real workspaceId (see
-// workspaceContactFixture.ts) so it can never trip searchWorkspace's
-// workspace_mismatch check. Swapping this for live Supabase rows later
-// won't change what ContactosView/Contact360Panel read.
+// by workspace + phone — see COORDINACION_CLAUDE_CODEX.md). adaptSaasContact360
+// isn't wired to a live Supabase query yet, so this honestly starts empty
+// instead of showing the demo fixture (see workspaceContactFixture.ts, still
+// used directly by isolation.test.ts) as if it were the workspace's real
+// contact. Swapping this for live Supabase rows later won't change what
+// ContactosView/Contact360Panel read.
 
-function seedContacts(workspaceId: string): Contact360[] {
-  const contact = seedScopedContact(workspaceId);
-  return contact ? [contact] : [];
+function seedContacts(_workspaceId: string): Contact360[] {
+  return [];
 }
 
 // The mock office feed (src/central-events/mock-feed.ts) narrates a single

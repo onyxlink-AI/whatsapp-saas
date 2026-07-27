@@ -1,6 +1,16 @@
-import type { AgentId } from '../../schemas';
 import type { WorkspaceOfficeConfiguration } from './preset';
+import { CONFIGURABLE_AGENT_IDS, DEFAULT_SPECIALIST_COLORS, FIXED_AGENT_IDS, type ConfigurableOfficeAgentId, type OfficeSeatId } from './specialist-seats';
+import { findSpecialistTemplate, type SpecialistTemplateId } from './specialist-templates';
+import type { SpecialistExtensionId } from './specialist-extensions';
+import type { SpecialistSkillId } from './specialist-skills';
+import type { VerticalId } from './specialist-verticals';
+import { createVerticalApplicationPlan } from './vertical-application-plan';
 import type { OfficeViewer } from './types';
+
+// v2 configuration document. Supersedes the v1 shape (4 pipeline-role seats,
+// 6 fields, no enabled/template/color/sector/extensions/skills/client-layer)
+// — that generation is not persisted going forward, per explicit direction
+// not to keep porting the old 7-agent/6-field configurator as-is.
 
 export const OFFICE_SPECIALIST_ACTIONS = [
   'read_contacts',
@@ -16,14 +26,22 @@ export const OFFICE_SPECIALIST_ACTIONS = [
 export type OfficeSpecialistAction = (typeof OFFICE_SPECIALIST_ACTIONS)[number];
 export type OfficeApprovalPolicy = 'always' | 'sensitive_only' | 'never';
 export type OfficeConfigurationStatus = 'draft' | 'published';
-export type ConfigurableOfficeAgentId = 'proposal' | 'operations' | 'content' | 'review-qa';
+export type { ConfigurableOfficeAgentId };
 
 export type OfficeSpecialistConfiguration = {
   agentId: ConfigurableOfficeAgentId;
+  enabled: boolean;
+  templateId: SpecialistTemplateId | null;
   name: string;
+  color: string;
   function: string;
   objective: string;
+  /** The working instructions actually used — pre-filled from the template, directly editable. */
   instructions: string;
+  /** The only layer the client ever edits directly. Never touched by apply_vertical. */
+  clientLayer: string;
+  extensions: SpecialistExtensionId[];
+  skills: SpecialistSkillId[];
   allowedActions: OfficeSpecialistAction[];
   approvalPolicy: OfficeApprovalPolicy;
 };
@@ -35,6 +53,7 @@ export type OfficeConfigurationDocument = {
   revision: number;
   status: OfficeConfigurationStatus;
   officeDisplayName: string;
+  sectorId: VerticalId | null;
   specialists: Record<ConfigurableOfficeAgentId, OfficeSpecialistConfiguration>;
   updatedAt: string;
   updatedBy: string;
@@ -45,22 +64,9 @@ export type OfficeConfigurationHistoryAction =
   | 'office_updated'
   | 'specialist_updated'
   | 'specialist_reset'
+  | 'vertical_applied'
   | 'published'
   | 'revision_restored';
-
-export type OfficeConfigurationHistoryEntry = {
-  revision: number;
-  action: OfficeConfigurationHistoryAction;
-  actorId: string;
-  occurredAt: string;
-  sourceRevision: number | null;
-  document: OfficeConfigurationDocument;
-};
-
-export type OfficeConfigurationState = {
-  current: OfficeConfigurationDocument;
-  history: OfficeConfigurationHistoryEntry[];
-};
 
 type CommandBase = {
   workspaceId: string;
@@ -69,24 +75,22 @@ type CommandBase = {
   occurredAt: string;
 };
 
+export type SpecialistPatch = Partial<Omit<OfficeSpecialistConfiguration, 'agentId'>>;
+
 export type OfficeConfigurationCommand =
   | (CommandBase & { type: 'update_office'; displayName: string })
-  | (CommandBase & {
-      type: 'update_specialist';
-      agentId: AgentId;
-      patch: Partial<Omit<OfficeSpecialistConfiguration, 'agentId'>>;
-    })
-  | (CommandBase & { type: 'reset_specialist'; agentId: AgentId })
+  /** `openRouterConnected` is computed server-side right before the reducer runs — the pure reducer never queries anything itself, and a client can never claim it's connected when it isn't. */
+  | (CommandBase & { type: 'update_specialist'; agentId: OfficeSeatId; patch: SpecialistPatch; openRouterConnected: boolean })
+  | (CommandBase & { type: 'reset_specialist'; agentId: OfficeSeatId })
+  | (CommandBase & { type: 'apply_vertical'; verticalId: VerticalId | null })
   | (CommandBase & { type: 'publish' })
-  | (CommandBase & { type: 'restore_revision'; revision: number });
+  /** `sourceDocument` is fetched by the server from the revisions table before the command is applied — the pure reducer never needs to hold history itself. */
+  | (CommandBase & { type: 'restore_revision'; revision: number; sourceDocument: OfficeConfigurationDocument });
 
-export type OfficeConfigurationIssue = {
-  field: string;
-  message: string;
-};
+export type OfficeConfigurationIssue = { field: string; message: string };
 
 export type OfficeConfigurationMutationResult =
-  | { success: true; state: OfficeConfigurationState }
+  | { success: true; document: OfficeConfigurationDocument; action: OfficeConfigurationHistoryAction; sourceRevision: number | null }
   | {
       success: false;
       code:
@@ -95,19 +99,13 @@ export type OfficeConfigurationMutationResult =
         | 'stale_revision'
         | 'unknown_specialist'
         | 'protected_seat'
-        | 'revision_not_found'
-        | 'invalid_configuration';
+        | 'unknown_vertical'
+        | 'revision_mismatch'
+        | 'invalid_configuration'
+        | 'openrouter_not_connected';
       issues?: OfficeConfigurationIssue[];
     };
 
-const CONFIGURABLE_AGENT_IDS: ConfigurableOfficeAgentId[] = [
-  'proposal',
-  'operations',
-  'content',
-  'review-qa',
-];
-
-const PROTECTED_AGENT_IDS: AgentId[] = ['coordinator', 'lead-intake', 'strategy'];
 const ACTION_SET = new Set<string>(OFFICE_SPECIALIST_ACTIONS);
 const APPROVAL_POLICY_SET = new Set<string>(['always', 'sensitive_only', 'never']);
 
@@ -117,68 +115,38 @@ function cloneDocument(document: OfficeConfigurationDocument): OfficeConfigurati
     specialists: Object.fromEntries(
       Object.entries(document.specialists).map(([agentId, specialist]) => [
         agentId,
-        { ...specialist, allowedActions: [...specialist.allowedActions] },
+        { ...specialist, allowedActions: [...specialist.allowedActions], extensions: [...specialist.extensions], skills: [...specialist.skills] },
       ]),
     ) as OfficeConfigurationDocument['specialists'],
   };
 }
 
-function defaultSpecialist(
-  agentId: ConfigurableOfficeAgentId,
-  name: string,
-): OfficeSpecialistConfiguration {
+export function defaultSpecialist(agentId: ConfigurableOfficeAgentId): OfficeSpecialistConfiguration {
+  const index = CONFIGURABLE_AGENT_IDS.indexOf(agentId) + 1;
   return {
     agentId,
-    name,
-    function: 'Especialista configurable',
-    objective: 'Adaptar este puesto a las necesidades del workspace.',
+    enabled: false,
+    templateId: null,
+    name: `Especialista ${index}`,
+    color: DEFAULT_SPECIALIST_COLORS[agentId],
+    function: 'Puesto sin configurar',
+    objective: 'Elige una plantilla para preparar este puesto.',
     instructions: 'Trabaja solo dentro de las acciones y aprobaciones configuradas.',
+    clientLayer: '',
+    extensions: [],
+    skills: [],
     allowedActions: ['read_contacts', 'read_memory', 'create_task', 'request_handoff'],
     approvalPolicy: 'sensitive_only',
   };
 }
 
-function appendRevision(
-  state: OfficeConfigurationState,
-  document: OfficeConfigurationDocument,
-  action: OfficeConfigurationHistoryAction,
-  actorId: string,
-  occurredAt: string,
-  sourceRevision: number | null = null,
-): OfficeConfigurationState {
-  const saved = cloneDocument(document);
-  return {
-    current: saved,
-    history: [
-      ...state.history,
-      {
-        revision: saved.revision,
-        action,
-        actorId,
-        occurredAt,
-        sourceRevision,
-        document: cloneDocument(saved),
-      },
-    ],
-  };
-}
-
-function validateText(
-  issues: OfficeConfigurationIssue[],
-  field: string,
-  value: string,
-  maxLength: number,
-): void {
+function validateText(issues: OfficeConfigurationIssue[], field: string, value: string, maxLength: number): void {
   const length = value.trim().length;
   if (length === 0) issues.push({ field, message: 'El campo es obligatorio.' });
-  if (length > maxLength) {
-    issues.push({ field, message: `El campo no puede superar ${maxLength} caracteres.` });
-  }
+  if (length > maxLength) issues.push({ field, message: `El campo no puede superar ${maxLength} caracteres.` });
 }
 
-export function validateOfficeConfiguration(
-  document: OfficeConfigurationDocument,
-): OfficeConfigurationIssue[] {
+export function validateOfficeConfiguration(document: OfficeConfigurationDocument): OfficeConfigurationIssue[] {
   const issues: OfficeConfigurationIssue[] = [];
   validateText(issues, 'officeDisplayName', document.officeDisplayName, 100);
 
@@ -189,10 +157,19 @@ export function validateOfficeConfiguration(
       issues.push({ field: prefix, message: 'Falta la configuración del especialista.' });
       continue;
     }
+    if (typeof specialist.enabled !== 'boolean') {
+      issues.push({ field: `${prefix}.enabled`, message: 'El estado del especialista no es válido.' });
+    }
     validateText(issues, `${prefix}.name`, specialist.name, 80);
     validateText(issues, `${prefix}.function`, specialist.function, 160);
     validateText(issues, `${prefix}.objective`, specialist.objective, 500);
     validateText(issues, `${prefix}.instructions`, specialist.instructions, 4000);
+    if (specialist.clientLayer.length > 4000) {
+      issues.push({ field: `${prefix}.clientLayer`, message: 'La personalización de cliente no puede superar 4000 caracteres.' });
+    }
+    if (!/^#[0-9a-fA-F]{6}$/.test(specialist.color)) {
+      issues.push({ field: `${prefix}.color`, message: 'El color debe ser un valor hexadecimal válido.' });
+    }
     if (specialist.allowedActions.length === 0) {
       issues.push({ field: `${prefix}.allowedActions`, message: 'Selecciona al menos una acción.' });
     }
@@ -205,77 +182,69 @@ export function validateOfficeConfiguration(
     if (!APPROVAL_POLICY_SET.has(specialist.approvalPolicy)) {
       issues.push({ field: `${prefix}.approvalPolicy`, message: 'La política de aprobación no es válida.' });
     }
+    if (new Set(specialist.extensions).size !== specialist.extensions.length) {
+      issues.push({ field: `${prefix}.extensions`, message: 'No puede haber ampliaciones duplicadas.' });
+    }
+    if (new Set(specialist.skills).size !== specialist.skills.length) {
+      issues.push({ field: `${prefix}.skills`, message: 'No puede haber habilidades duplicadas.' });
+    }
   }
 
   return issues;
 }
 
-export function createOfficeConfigurationState(
+export function createOfficeConfigurationDocument(
   provisioned: WorkspaceOfficeConfiguration,
   actorId: string,
   occurredAt: string,
-): OfficeConfigurationState {
+): OfficeConfigurationDocument {
   const specialists = Object.fromEntries(
-    CONFIGURABLE_AGENT_IDS.map((agentId) => {
-      const seat = provisioned.seats.find((item) => item.agentId === agentId);
-      return [agentId, defaultSpecialist(agentId, seat?.displayLabel ?? agentId)];
-    }),
+    CONFIGURABLE_AGENT_IDS.map((agentId) => [agentId, defaultSpecialist(agentId)]),
   ) as OfficeConfigurationDocument['specialists'];
-  const document: OfficeConfigurationDocument = {
+
+  return {
     workspaceId: provisioned.workspaceId,
     presetId: provisioned.presetId,
     presetVersion: provisioned.presetVersion,
     revision: 1,
     status: 'draft',
     officeDisplayName: provisioned.displayName,
+    sectorId: null,
     specialists,
     updatedAt: occurredAt,
     updatedBy: actorId,
   };
-
-  return {
-    current: cloneDocument(document),
-    history: [
-      {
-        revision: 1,
-        action: 'provisioned',
-        actorId,
-        occurredAt,
-        sourceRevision: null,
-        document: cloneDocument(document),
-      },
-    ],
-  };
 }
 
 function specialistResult(
-  state: OfficeConfigurationState,
-  agentId: AgentId,
+  document: OfficeConfigurationDocument,
+  agentId: OfficeSeatId,
 ): OfficeConfigurationMutationResult | OfficeSpecialistConfiguration {
-  if (PROTECTED_AGENT_IDS.includes(agentId)) return { success: false, code: 'protected_seat' };
+  if (FIXED_AGENT_IDS.includes(agentId as (typeof FIXED_AGENT_IDS)[number])) {
+    return { success: false, code: 'protected_seat' };
+  }
   if (!CONFIGURABLE_AGENT_IDS.includes(agentId as ConfigurableOfficeAgentId)) {
     return { success: false, code: 'unknown_specialist' };
   }
-  return state.current.specialists[agentId as ConfigurableOfficeAgentId];
+  return document.specialists[agentId as ConfigurableOfficeAgentId];
 }
 
 export function applyOfficeConfigurationCommand(
-  state: OfficeConfigurationState,
+  current: OfficeConfigurationDocument,
   command: OfficeConfigurationCommand,
 ): OfficeConfigurationMutationResult {
   if (command.actor.role !== 'onyxlink_super_admin') {
     return { success: false, code: 'unauthorized' };
   }
-  if (command.workspaceId !== state.current.workspaceId) {
+  if (command.workspaceId !== current.workspaceId) {
     return { success: false, code: 'workspace_mismatch' };
   }
-  if (command.expectedRevision !== state.current.revision) {
+  if (command.expectedRevision !== current.revision) {
     return { success: false, code: 'stale_revision' };
   }
 
-  const next = cloneDocument(state.current);
+  const next = cloneDocument(current);
   next.revision += 1;
-  next.status = 'draft';
   next.updatedAt = command.occurredAt;
   next.updatedBy = command.actor.actorId;
   let action: OfficeConfigurationHistoryAction;
@@ -283,10 +252,21 @@ export function applyOfficeConfigurationCommand(
 
   if (command.type === 'update_office') {
     next.officeDisplayName = command.displayName.trim();
+    next.status = 'draft';
     action = 'office_updated';
   } else if (command.type === 'update_specialist') {
-    const specialist = specialistResult(state, command.agentId);
+    const specialist = specialistResult(current, command.agentId);
     if ('success' in specialist) return specialist;
+    const nextEnabled = command.patch.enabled ?? specialist.enabled;
+    // A specialist can be fully configured without OpenRouter, but it can
+    // never be SAVED as enabled without it — intellectual capacity (the
+    // minimum to do any work at all) requires a real model connection.
+    // Execution-tier tools (WhatsApp, HighLevel, Calendar, Airtable) are
+    // deliberately NOT checked here: missing those never blocks activation,
+    // only the specific actions that need them (see specialist-readiness.ts).
+    if (nextEnabled && !command.openRouterConnected) {
+      return { success: false, code: 'openrouter_not_connected' };
+    }
     next.specialists[specialist.agentId] = {
       ...specialist,
       ...command.patch,
@@ -295,45 +275,72 @@ export function applyOfficeConfigurationCommand(
       function: command.patch.function?.trim() ?? specialist.function,
       objective: command.patch.objective?.trim() ?? specialist.objective,
       instructions: command.patch.instructions?.trim() ?? specialist.instructions,
-      allowedActions: command.patch.allowedActions
-        ? [...command.patch.allowedActions]
-        : [...specialist.allowedActions],
+      clientLayer: command.patch.clientLayer !== undefined ? command.patch.clientLayer.trim() : specialist.clientLayer,
+      allowedActions: command.patch.allowedActions ? [...command.patch.allowedActions] : [...specialist.allowedActions],
+      extensions: command.patch.extensions ? [...command.patch.extensions] : [...specialist.extensions],
+      skills: command.patch.skills ? [...command.patch.skills] : [...specialist.skills],
     };
+    next.status = 'draft';
     action = 'specialist_updated';
   } else if (command.type === 'reset_specialist') {
-    const specialist = specialistResult(state, command.agentId);
+    const specialist = specialistResult(current, command.agentId);
     if ('success' in specialist) return specialist;
-    const original = state.history[0]?.document.specialists[specialist.agentId];
-    if (!original) return { success: false, code: 'unknown_specialist' };
-    next.specialists[specialist.agentId] = {
-      ...original,
-      allowedActions: [...original.allowedActions],
-    };
+    next.specialists[specialist.agentId] = defaultSpecialist(specialist.agentId);
+    next.status = 'draft';
     action = 'specialist_reset';
+  } else if (command.type === 'apply_vertical') {
+    if (command.verticalId === null) {
+      next.sectorId = null;
+      next.status = 'draft';
+      action = 'vertical_applied';
+    } else {
+      const appliedTemplateByAgent = Object.fromEntries(
+        CONFIGURABLE_AGENT_IDS.map((id) => [id, current.specialists[id].templateId ?? undefined]),
+      ) as Partial<Record<ConfigurableOfficeAgentId, SpecialistTemplateId>>;
+      const clientPromptLayerByAgent = Object.fromEntries(
+        CONFIGURABLE_AGENT_IDS.map((id) => [id, current.specialists[id].clientLayer]),
+      ) as Partial<Record<ConfigurableOfficeAgentId, string>>;
+      const plan = createVerticalApplicationPlan(command.verticalId, appliedTemplateByAgent, clientPromptLayerByAgent);
+      if (!plan) return { success: false, code: 'unknown_vertical' };
+
+      next.sectorId = command.verticalId;
+      for (const change of plan.proposedChanges) {
+        if (!change.willInstallTemplate) continue; // seat already occupied — overlay is resolved live, never persisted here
+        const template = findSpecialistTemplate(change.templateId);
+        if (!template) continue;
+        const existing = next.specialists[change.agentId];
+        next.specialists[change.agentId] = {
+          ...existing,
+          templateId: template.id,
+          name: template.name,
+          function: template.function,
+          objective: template.objective,
+          instructions: template.instructions,
+          allowedActions: [...template.allowedActions],
+          approvalPolicy: template.approvalPolicy,
+          // enabled, color, clientLayer, extensions and skills are never touched by a sector apply.
+        };
+      }
+      next.status = 'draft';
+      action = 'vertical_applied';
+    }
   } else if (command.type === 'publish') {
     next.status = 'published';
     action = 'published';
   } else {
-    const restored = state.history.find((entry) => entry.revision === command.revision);
-    if (!restored) return { success: false, code: 'revision_not_found' };
-    sourceRevision = restored.revision;
-    next.officeDisplayName = restored.document.officeDisplayName;
-    next.specialists = cloneDocument(restored.document).specialists;
+    if (command.sourceDocument.workspaceId !== current.workspaceId || command.sourceDocument.revision !== command.revision) {
+      return { success: false, code: 'revision_mismatch' };
+    }
+    sourceRevision = command.sourceDocument.revision;
+    next.officeDisplayName = command.sourceDocument.officeDisplayName;
+    next.sectorId = command.sourceDocument.sectorId;
+    next.specialists = cloneDocument(command.sourceDocument).specialists;
+    next.status = 'draft';
     action = 'revision_restored';
   }
 
   const issues = validateOfficeConfiguration(next);
   if (issues.length > 0) return { success: false, code: 'invalid_configuration', issues };
 
-  return {
-    success: true,
-    state: appendRevision(
-      state,
-      next,
-      action,
-      command.actor.actorId,
-      command.occurredAt,
-      sourceRevision,
-    ),
-  };
+  return { success: true, document: next, action, sourceRevision };
 }

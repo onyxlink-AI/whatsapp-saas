@@ -118,6 +118,8 @@ export const checkAvailabilityTool: Tool<Args> = {
   description:
     "Consulta los horarios libres reales del calendario de HighLevel en un rango de fechas. Úsalo ANTES de agendar para ofrecer al cliente horarios que sí existen.",
   sensitivity: "read",
+  simulationMessage:
+    "Consultaría la disponibilidad real del calendario de HighLevel.",
   schema,
   enabledFor: () => true,
   run,

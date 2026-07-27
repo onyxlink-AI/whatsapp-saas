@@ -10,7 +10,11 @@ export type SaasBacking =
   | 'future-specialist';
 
 export type OfficeSeatBinding = {
-  agentId: AgentId;
+  /** A real AgentId for the 7 orchestrator-pipeline seats; a plain string
+   *  (e.g. 'chatbot', 'specialist-3') for seats that don't correspond to an
+   *  orchestrator pipeline agent at all — the 3D scene never dereferences
+   *  this back into AgentId-typed orchestrator state for those. */
+  agentId: AgentId | string;
   role: OfficeSeatRole;
   displayLabel: string;
   saasBacking: SaasBacking;

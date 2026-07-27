@@ -24,7 +24,7 @@ export function AgentCard({ agent, busy, onConfigure, onActivate }: Props) {
   const Logo = cat ? PROVIDER_LOGOS[cat.provider] : null;
   const modelLabel = cat
     ? cat.model.label
-    : (agent.model ?? "Modelo del workspace");
+    : (agent.model ?? "Modelo de la empresa");
 
   return (
     <Card

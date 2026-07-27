@@ -3,10 +3,10 @@ import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { STATUS_HEX as STATUS_COLOR, STATUS_LABEL_ES as STATUS_LABEL } from '../lib/statusStyles';
-import type { Agent } from '../types';
+import type { OfficeSceneAgent } from '../types';
 
 type Props = {
-  agent: Agent;
+  agent: OfficeSceneAgent;
   center: [number, number, number];
   patrolAmplitude: number;
   phase: number;

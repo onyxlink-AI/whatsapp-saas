@@ -2,13 +2,13 @@ import { ContactShadows, OrbitControls } from '@react-three/drei';
 import { Canvas, useThree } from '@react-three/fiber';
 import { Suspense, useEffect } from 'react';
 import * as THREE from 'three';
-import type { Agent } from '../types';
 import Building from './Building';
+import type { OfficeRoomSlot } from './officeRoster';
 
 export type CameraMode = 'iso' | '2d';
 
 type Props = {
-  agents: Agent[];
+  rooms: OfficeRoomSlot[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onHover: (id: string | null) => void;
@@ -22,12 +22,14 @@ function ResponsiveCamera({ cameraMode }: { cameraMode: CameraMode }) {
     const narrow = size.width < 640;
 
     if (cameraMode === '2d') {
-      camera.position.set(0, narrow ? 102 : 46, narrow ? 14 : 10);
+      camera.position.set(0, narrow ? 118 : 54, narrow ? 16 : 12);
     } else {
       // Portrait screens need a steeper angle. The previous low angle kept
       // the full width visible but compressed the office depth into a thin
       // strip, making rooms and characters difficult to read on mobile.
-      camera.position.set(0, narrow ? 62 : 16, narrow ? 78 : 26);
+      // Distances bumped ~25% over the 7-room building to keep the wider
+      // 12-room (4x3) building fully framed.
+      camera.position.set(0, narrow ? 76 : 20, narrow ? 96 : 32);
     }
     camera.lookAt(0, 1.35, 3.2);
 
@@ -44,13 +46,13 @@ function ResponsiveCamera({ cameraMode }: { cameraMode: CameraMode }) {
   return null;
 }
 
-export default function OfficeCanvas({ agents, selectedId, onSelect, onHover, cameraMode }: Props) {
+export default function OfficeCanvas({ rooms, selectedId, onSelect, onHover, cameraMode }: Props) {
   const isIso = cameraMode === 'iso';
 
   return (
     <Canvas
       shadows
-      camera={{ position: [0, 16, 26], fov: 40 }}
+      camera={{ position: [0, 20, 32], fov: 40 }}
       onPointerMissed={() => onSelect(null)}
     >
       <color attach="background" args={['#dfe3e1']} />
@@ -79,7 +81,7 @@ export default function OfficeCanvas({ agents, selectedId, onSelect, onHover, ca
 
       <Suspense fallback={null}>
         <ResponsiveCamera cameraMode={cameraMode} />
-        <Building agents={agents} selectedId={selectedId} onSelect={onSelect} onHover={onHover} />
+        <Building rooms={rooms} selectedId={selectedId} onSelect={onSelect} onHover={onHover} />
         <ContactShadows position={[0, -0.12, 4]} opacity={0.24} scale={38} blur={2.8} far={18} />
       </Suspense>
 

@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import type { AgentId } from '../../schemas';
 import type {
   OfficeConfigurationDocument,
   OfficeSpecialistAction,
@@ -10,7 +9,7 @@ import { applyTaskCommand } from '../central-tasks';
 import type { CentralTask, CentralTaskState, TaskPriority } from '../central-tasks';
 import type { WorkspaceOrchestratorBinding } from '../central-orchestrator';
 
-export const HERMES_DISPATCH_AGENT_IDS = ['proposal', 'operations', 'content', 'review-qa'] as const;
+export const HERMES_DISPATCH_AGENT_IDS = ['specialist-1', 'specialist-2', 'specialist-3', 'specialist-4', 'specialist-5', 'specialist-6', 'specialist-7', 'specialist-8'] as const;
 export type HermesDispatchAgentId = (typeof HERMES_DISPATCH_AGENT_IDS)[number];
 export const HERMES_COMMAND_CHANNELS = ['telegram_private', 'telegram_group', 'voice'] as const;
 export type HermesCommandChannel = (typeof HERMES_COMMAND_CHANNELS)[number];
@@ -261,10 +260,9 @@ function requiresApproval(
 
 function specialistFor(
   configuration: OfficeConfigurationDocument,
-  agentId: AgentId,
+  agentId: HermesDispatchAgentId,
 ): OfficeSpecialistConfiguration | null {
-  if (!HERMES_DISPATCH_AGENT_IDS.includes(agentId as HermesDispatchAgentId)) return null;
-  return configuration.specialists[agentId as HermesDispatchAgentId] ?? null;
+  return configuration.specialists[agentId] ?? null;
 }
 
 export function materializeHermesDispatchTask(
@@ -315,7 +313,11 @@ export function materializeHermesDispatchTask(
     description: dispatch.instructions,
     priority: dispatch.priority as TaskPriority,
     source: 'automation',
-    assignedAgentId: dispatch.targetAgentId,
+    // Office specialist seats (specialist-1..8) aren't part of the
+    // orchestrator's own AgentId roster — the specialist target is already
+    // captured in the dispatch receipt (targetAgentId), so the task itself
+    // is left unassigned rather than force-fit into an unrelated id space.
+    assignedAgentId: null,
     contactId: dispatch.contactId,
     requiresApproval: approvalRequired,
   });

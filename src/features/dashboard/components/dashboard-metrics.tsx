@@ -124,7 +124,7 @@ export function DashboardMetrics({
           Dashboard
         </h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Actividad del workspace hoy
+          Actividad de tu empresa hoy
         </p>
       </div>
 

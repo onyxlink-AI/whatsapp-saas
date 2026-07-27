@@ -70,7 +70,7 @@ export default function OpenRouterConnectionPanel({ feed }: Props) {
   const { binding } = feed;
   const [kindDraft, setKindDraft] = useState<OpenRouterConnectionKind>(binding.connectionKind ?? 'shared');
 
-  const busy = binding.pendingAction !== null;
+  const busy = feed.loading || binding.pendingAction !== null;
   const pendingActionLabel = binding.pendingAction ? PENDING_ACTION_LABEL_ES[binding.pendingAction] : null;
   const canConnect = !busy && binding.status !== 'connected';
   const canManageExisting = !busy && binding.status === 'connected';
@@ -87,6 +87,10 @@ export default function OpenRouterConnectionPanel({ feed }: Props) {
         Elige cómo se conecta este workspace a OpenRouter. Conectar, verificar y revocar solo registran una solicitud — el backend es
         quien aprovisiona la conexión real y reporta el resultado; esta pantalla nunca pide ni muestra una API key.
       </p>
+
+      {feed.loading && (
+        <p className="text-[11px] text-white/40 mb-3">Cargando el estado real de la conexión...</p>
+      )}
 
       {feed.error && (
         <div className="rounded-md border border-rose-500/25 bg-rose-500/[0.06] px-3 py-2 text-[11px] text-rose-200/85 mb-3">

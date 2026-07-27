@@ -18,9 +18,16 @@ export default async function AsistenteAiPage() {
   const membership = await getActiveWorkspace(supabase, user.id);
 
   if (!membership) {
+    // Super admins without a personal workspace belong in the agency panel, not a dead end.
+    const { data: userRow } = await supabase
+      .from("users")
+      .select("is_super_admin")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (userRow?.is_super_admin) redirect("/workspaces");
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <p className="text-muted-foreground text-sm">No tienes un workspace activo.</p>
+        <p className="text-muted-foreground text-sm">No tienes una empresa activa.</p>
       </div>
     );
   }
@@ -35,7 +42,7 @@ export default async function AsistenteAiPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh] px-6 text-center">
         <p className="text-muted-foreground text-sm max-w-sm">
-          Este workspace no incluye Asistente AI — tu plan es Onyxlink
+          Esta empresa no incluye Asistente AI — tu plan es Onyxlink
           Gestión.
         </p>
       </div>
@@ -46,8 +53,8 @@ export default async function AsistenteAiPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh] px-6 text-center">
         <p className="text-muted-foreground text-sm max-w-sm">
-          Este workspace no tiene un agente de voz vinculado. Un administrador
-          puede vincularlo en Settings → Negocio.
+          Esta empresa no tiene un agente de voz vinculado. Un administrador
+          puede vincularlo en Ajustes → Negocio.
         </p>
       </div>
     );

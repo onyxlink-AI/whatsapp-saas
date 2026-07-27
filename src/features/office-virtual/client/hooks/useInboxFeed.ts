@@ -4,16 +4,11 @@ import type { InboxFilters, InboxStats, InboxThread } from '../central-inbox/typ
 import { seedScopedContact } from './workspaceContactFixture';
 
 // Adapter hook for src/central-inbox (Codex's multichannel inbox contract —
-// see COORDINACION_CLAUDE_CODEX.md). Seeds from Codex's own fixture shape,
-// wrapping the same workspace-scoped Contact360 useContact360Feed uses (see
-// workspaceContactFixture.ts) plus simulated messages/calls restamped to the
-// same real workspaceId — central-inbox's projectInboxThread rejects the
-// thread outright (`workspace_mismatch`) the moment a message/call disagrees
-// with the contact's workspace, so this can never desync from the contact
-// feed. The only thing owned here is `draftsByContact`: unsent draft replies
-// typed in the UI. They never join `thread.timeline` and are never
-// dispatched anywhere — "no enviaremos mensajes... aparecerán como...
-// borradores".
+// see COORDINACION_CLAUDE_CODEX.md). projectInboxThread isn't wired to a live
+// Supabase query yet, so useInboxFeed honestly starts empty instead of
+// showing the demo fixture as if it were the workspace's real inbox.
+// seedInboxThreads below is kept only for isolation.test.ts, which calls it
+// directly to verify the workspace-scoping logic still holds.
 
 const DEFAULT_FILTERS: InboxFilters = { sort: 'recent' };
 
@@ -28,7 +23,7 @@ export type InboxFeed = {
   addDraftMessage: (contactId: string, text: string) => void;
 };
 
-/** Exported for isolation tests — verifies the thread comes back scoped to the given workspace, not the shared demo fixture. */
+/** Exported for isolation tests only — verifies the thread comes back scoped to the given workspace, not the shared demo fixture. Not used by useInboxFeed in production. */
 export function seedInboxThreads(workspaceId: string): InboxThread[] {
   const contact = seedScopedContact(workspaceId);
   if (!contact) return [];
@@ -70,8 +65,8 @@ export function seedInboxThreads(workspaceId: string): InboxThread[] {
   return result.success ? [result.thread] : [];
 }
 
-export function useInboxFeed(workspaceId: string): InboxFeed {
-  const [threads] = useState<InboxThread[]>(() => seedInboxThreads(workspaceId));
+export function useInboxFeed(_workspaceId: string): InboxFeed {
+  const [threads] = useState<InboxThread[]>([]);
   const [filters, setFiltersState] = useState<InboxFilters>(DEFAULT_FILTERS);
   const [draftsByContact, setDraftsByContact] = useState<Record<string, string[]>>({});
 

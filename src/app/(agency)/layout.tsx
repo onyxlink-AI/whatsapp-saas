@@ -68,16 +68,21 @@ export default async function AgencyLayout({
         </div>
 
         <div className="flex items-center gap-1">
-          <Link href="/inbox">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <Settings className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only sm:ml-2">App</span>
-            </Button>
-          </Link>
+          {/* Below md this duplicates the mobile bottom nav's own Inbox
+              link (and its Settings icon reads as pointing to /settings,
+              not /inbox) — desktop-only, matches MainLayout's header. */}
+          <div className="hidden md:flex items-center gap-1">
+            <Link href="/inbox">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <MessageCircle className="h-4 w-4" aria-hidden="true" />
+                <span className="sr-only sm:not-sr-only sm:ml-2">Ir a la app</span>
+              </Button>
+            </Link>
+          </div>
 
           <form action={logout}>
             <Button
@@ -155,7 +160,7 @@ export default async function AgencyLayout({
           className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
         >
           <Settings className="h-5 w-5" aria-hidden="true" />
-          <span>Settings</span>
+          <span>Ajustes</span>
         </Link>
 
         <Link

@@ -1,11 +1,14 @@
 import { Html } from '@react-three/drei';
 import type { CSSProperties } from 'react';
-import type { Agent } from '../types';
+import type { OfficeSceneAgent } from '../types';
 import { ROOM_D, ROOM_W, WALL_H, WALL_T } from './layout';
+import { officeSignContent } from './officeSign';
 
 type Props = {
-  agent: Agent;
+  agent: OfficeSceneAgent;
   center: [number, number, number];
+  /** False for an inactive/unavailable seat — suppresses the visible floating sign entirely (no name, no department, not even a generic placeholder). */
+  occupied: boolean;
   width?: number;
   depth?: number;
 };
@@ -222,7 +225,7 @@ function NeutralWallArt({ depth }: { depth: number }) {
   );
 }
 
-export default function OfficeRoom({ agent, center, width = ROOM_W, depth = ROOM_D }: Props) {
+export default function OfficeRoom({ agent, center, occupied, width = ROOM_W, depth = ROOM_D }: Props) {
   const executive = agent.id === 'coordinator';
   const deskZ = -depth / 2 + 1.25;
 
@@ -321,12 +324,25 @@ export default function OfficeRoom({ agent, center, width = ROOM_W, depth = ROOM
       </group>
       <IndoorPlant position={[width / 2 - 0.7, 0, 0.8]} />
 
-      <Html position={[0, WALL_H + 0.65, 0]} center zIndexRange={[12, 8]}>
-        <div className="office-sign" style={{ '--agent-color': agent.color } as CSSProperties}>
-          <span className="office-sign__dot" />
-          {agent.department}
-        </div>
-      </Html>
+      {(() => {
+        const sign = officeSignContent(agent, occupied);
+        return sign.visible ? (
+          <Html position={[0, WALL_H + 0.65, 0]} center zIndexRange={[12, 8]}>
+            <div className="office-sign" style={{ '--agent-color': agent.color } as CSSProperties}>
+              <span className="office-sign__dot" />
+              {sign.visibleText}
+            </div>
+          </Html>
+        ) : (
+          // Inactive/unavailable seat: no visible sign at all — not even a
+          // generic "vacant" label. A screen-reader-only description is the
+          // only DOM text present, so the desk still reads as empty to
+          // assistive tech without putting anything on screen.
+          <Html position={[0, WALL_H + 0.65, 0]} center zIndexRange={[12, 8]}>
+            <span className="sr-only">{sign.accessibleText}</span>
+          </Html>
+        );
+      })()}
     </group>
   );
 }

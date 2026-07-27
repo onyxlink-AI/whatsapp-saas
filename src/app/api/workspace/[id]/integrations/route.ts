@@ -9,6 +9,7 @@ import {
 import { encryptCredentials, decryptCredentials } from "@/shared/lib/crypto";
 import { isValidIanaTimezone } from "@/shared/lib/timezone";
 import { logAudit } from "@/features/audit/services/audit-log";
+import { setTelegramWebhook } from "@/features/chatbot/server/telegram-client";
 
 const IntegrationSchema = z.object({
   provider: z.enum([
@@ -17,6 +18,7 @@ const IntegrationSchema = z.object({
     "highlevel",
     "google_calendar",
     "airtable",
+    "telegram",
   ]),
   enabled: z.boolean().optional(),
   credentials: z.record(z.string(), z.string()).optional(),
@@ -187,11 +189,37 @@ export async function PUT(
   ) {
     mergedCreds.highlevel_webhook_secret = randomBytes(24).toString("hex");
   }
+  // Same pattern for Telegram's webhook secret (verified via the
+  // X-Telegram-Bot-Api-Secret-Token header, Telegram's native equivalent of
+  // HighLevel/YCloud's own signing-secret mechanisms) — never overwrite an
+  // existing one so a previously-registered webhook stays valid.
+  if (
+    parsed.data.provider === "telegram" &&
+    typeof mergedCreds.telegram_webhook_secret !== "string"
+  ) {
+    mergedCreds.telegram_webhook_secret = randomBytes(24).toString("hex");
+  }
   const mergedCredsEncrypted = await encryptCredentials(mergedCreds);
-  const mergedConfig = {
+  const mergedConfig: Record<string, unknown> = {
     ...((existing?.config as object) ?? {}),
     ...(parsed.data.config ?? {}),
   };
+
+  // Register (or re-register) the Telegram webhook whenever a bot token is
+  // present — requires a public HTTPS APP_URL; on localhost this call
+  // predictably fails and the resulting status is surfaced to the admin
+  // rather than silently ignored.
+  if (parsed.data.provider === "telegram" && typeof mergedCreds.telegram_bot_token === "string" && mergedCreds.telegram_bot_token) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+    const webhookUrl = `${appUrl}/api/webhooks/telegram?wsid=${workspaceId}`;
+    const result = await setTelegramWebhook(
+      mergedCreds.telegram_bot_token,
+      webhookUrl,
+      mergedCreds.telegram_webhook_secret as string,
+    );
+    mergedConfig.telegram_webhook_status = result.ok ? "registered" : "error";
+    mergedConfig.telegram_webhook_detail = result.ok ? null : result.description;
+  }
 
   const { error } = await svc.from("integrations").upsert(
     {

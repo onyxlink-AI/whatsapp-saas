@@ -19,12 +19,24 @@ function requirement(
   return { id, label, met, reason: met ? null : reason };
 }
 
+/** Whether the workspace's real WhatsApp agent seat is ready to show a character in the 3D office — independent of the overall activation flag. */
+export function isWhatsAppChannelReady(snapshot: WorkspaceCapabilitySnapshot): boolean {
+  return snapshot.whatsappAgent.enabled && snapshot.whatsappAgent.activeAgentId !== null && snapshot.whatsappAgent.activeAgentType !== null;
+}
+
+/** Whether the workspace's real voice assistant seat is ready to show a character in the 3D office. */
+export function isVoiceChannelReady(snapshot: WorkspaceCapabilitySnapshot): boolean {
+  return channelReady(snapshot.voice) && snapshot.voice.assistantId !== null;
+}
+
+/** Whether the workspace's 💬 Chatbot seat is ready to show a character in the 3D office. Not a prerequisite for enabling Oficina Virtual itself — see selectOfficeRequirements, which deliberately omits it. */
+export function isChatbotChannelReady(snapshot: WorkspaceCapabilitySnapshot): boolean {
+  return channelReady(snapshot.chatbot) && snapshot.chatbot.provider !== null;
+}
+
 export function selectOfficeRequirements(snapshot: WorkspaceCapabilitySnapshot): OfficeRequirement[] {
-  const whatsappReady =
-    snapshot.whatsappAgent.enabled &&
-    snapshot.whatsappAgent.activeAgentId !== null &&
-    snapshot.whatsappAgent.activeAgentType !== null;
-  const voiceReady = channelReady(snapshot.voice) && snapshot.voice.assistantId !== null;
+  const whatsappReady = isWhatsAppChannelReady(snapshot);
+  const voiceReady = isVoiceChannelReady(snapshot);
 
   return [
     requirement(

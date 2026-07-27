@@ -26,18 +26,10 @@ export default async function InboxDetailPage({ params }: PageProps) {
 
   if (!user) redirect("/login");
 
-  // 2. Get active membership → workspace_id + role
-  const { data: membership } = await supabase
-    .from("memberships")
-    .select("workspace_id, role")
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-    .limit(1)
-    .single();
-
-  const role = (membership?.role ?? "agent") as WorkspaceRole;
-
-  // 3. Fetch the conversation + contact
+  // 2. Fetch the conversation + contact first — RLS already scopes this to
+  // workspaces the user is an active member of, so a successful fetch here
+  // proves membership. It also gives us the conversation's REAL
+  // workspace_id, which the membership lookup below must be scoped to.
   const { data: convData } = await supabase
     .from("conversations")
     .select("*, contact:contacts(*)")
@@ -47,6 +39,22 @@ export default async function InboxDetailPage({ params }: PageProps) {
   if (!convData) notFound();
 
   const convWithContact = convData as ConversationRow & { contact: ContactRow };
+
+  // 3. Get the membership for THIS conversation's workspace specifically —
+  // a user active in several workspaces (e.g. an agency superadmin) must
+  // never have their role or sidebar computed from an unrelated membership
+  // row. Un-scoped `.limit(1)` here previously picked an arbitrary
+  // membership, which could show the wrong workspace's conversation list
+  // and the wrong role-gated UI for this exact page.
+  const { data: membership } = await supabase
+    .from("memberships")
+    .select("workspace_id, role")
+    .eq("user_id", user.id)
+    .eq("workspace_id", convWithContact.workspace_id)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  const role = (membership?.role ?? "agent") as WorkspaceRole;
 
   // 3b. Memoria Inteligente Avanzada (opt-in): only fetch the contact's
   // memory when the workspace has it enabled — RLS-scoped read, same client
@@ -62,7 +70,7 @@ export default async function InboxDetailPage({ params }: PageProps) {
     return (
       <div className="flex items-center justify-center min-h-[60vh] px-6 text-center">
         <p className="text-muted-foreground text-sm max-w-sm">
-          Este workspace no incluye Agentes de WhatsApp — tu plan es Onyxlink
+          Esta empresa no incluye Agentes de WhatsApp — tu plan es Onyxlink
           Gestión.
         </p>
       </div>

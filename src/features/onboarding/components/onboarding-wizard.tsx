@@ -316,8 +316,8 @@ function Step3({
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            La URL real se mostrará en Configuración → Integraciones una vez
-            creado el workspace.
+            La URL real se mostrará en Ajustes → Integraciones una vez
+            creada la empresa.
           </p>
         </div>
 
@@ -363,7 +363,7 @@ function Step4({
           ¡Todo listo!
         </h1>
         <p className="text-sm text-muted-foreground max-w-sm">
-          Tu workspace ha sido creado. Aquí un resumen de lo configurado.
+          Tu empresa ha sido creada. Aquí un resumen de lo configurado.
         </p>
       </div>
 
@@ -485,7 +485,7 @@ export function OnboardingWizard() {
       setStep(3);
     } catch (err) {
       console.error("[OnboardingWizard] handleFinalize error:", err);
-      toast.error("Error inesperado al crear el workspace");
+      toast.error("Error inesperado al crear la empresa");
     } finally {
       setIsSubmitting(false);
     }

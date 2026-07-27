@@ -200,7 +200,11 @@ export type TaskFeed = {
 
 export function useTaskFeed(workspaceId: string, actor: TaskActor): TaskFeed {
   const [loading, setLoading] = useState(true);
-  const [state, setState] = useState<CentralTaskState>(() => seedTaskState(workspaceId, actor));
+  // Honestly empty — no real task backend is wired yet, so this no longer
+  // seeds the fixture tasks (fake contacts, fake agent assignments) as if
+  // they were the workspace's real work. seedTaskState is kept, unused here,
+  // only for isolation.test.ts to verify workspace-scoping still holds.
+  const [state, setState] = useState<CentralTaskState>(() => createCentralTaskState(workspaceId));
   const [filters, setFiltersState] = useState<TaskFilters>(DEFAULT_FILTERS);
 
   useEffect(() => {

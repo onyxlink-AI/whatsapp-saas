@@ -65,6 +65,9 @@ supabase/cron/*.filled.sql
 /blob-report/
 /playwright/.cache/
 
+# Graphify knowledge graph (regenerable via `graphify update .`)
+graphify-out/
+
 # NOTE: package-lock.json is intentionally NOT ignored.
 # A distribution template must ship its lockfile for reproducible installs.
 .env*

@@ -364,7 +364,9 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
   // Fetch all workspaces
   const { data: workspaces, error: wsError } = await service
     .from("workspaces")
-    .select("id, name, slug, created_at")
+    .select(
+      "id, name, slug, created_at, whatsapp_agent_enabled, gestion_enabled, office_virtual_enabled, chatbot_enabled, vapi_assistant_id",
+    )
     .order("created_at", { ascending: false });
 
   if (wsError) {
@@ -467,6 +469,11 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
       name: string;
       slug: string;
       created_at: string;
+      whatsapp_agent_enabled: boolean | null;
+      gestion_enabled: boolean | null;
+      office_virtual_enabled: boolean | null;
+      chatbot_enabled: boolean | null;
+      vapi_assistant_id: string | null;
     }[]
   ).map((w) => ({
     id: w.id,
@@ -479,6 +486,13 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
     tokens_today: tokensTodayMap.get(w.id) ?? 0,
     tokens_30d: tokens30dMap.get(w.id) ?? 0,
     has_recent_cost_alert: alertMap.get(w.id) ?? false,
+    products: {
+      whatsappAgent: w.whatsapp_agent_enabled !== false,
+      gestion: w.gestion_enabled === true,
+      voice: w.vapi_assistant_id !== null,
+      officeVirtual: w.office_virtual_enabled === true,
+      chatbot: w.chatbot_enabled === true,
+    },
   }));
 
   return { workspaces: result };

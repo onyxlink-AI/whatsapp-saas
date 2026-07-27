@@ -61,9 +61,9 @@ export function VapiAssistantField({
             Asistente AI (agente de voz, Vapi)
           </Label>
           <p className="mt-1 text-xs text-muted-foreground max-w-md">
-            Pega el ID del assistant de Vapi para activar la sección
-            &quot;Asistente AI&quot; en el menú: coste por llamada, resumen,
-            transcripciones y analítica. Déjalo vacío para desactivarla.
+            Conecta tu asistente de voz para activar la sección
+            &quot;Asistente AI&quot; en el menú: cuánto cuesta cada llamada,
+            resumen y transcripción. Déjalo vacío para desactivarla.
           </p>
           {!isSuperAdmin && (
             <p className="mt-2 flex items-center gap-1.5 text-[11px] text-[hsl(var(--electric-lime))]">

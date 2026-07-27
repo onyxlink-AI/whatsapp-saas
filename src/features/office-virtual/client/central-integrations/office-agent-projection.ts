@@ -1,81 +1,58 @@
-import type { Agent } from '../types';
 import type { OfficeConfigurationDocument, OfficeConfigurationIssue } from './configuration';
 import { validateOfficeConfiguration } from './configuration';
+import { CONFIGURABLE_AGENT_IDS, type ConfigurableOfficeAgentId } from './specialist-seats';
+
+// This is the ONLY thing the 3D office (or any non-superadmin surface) is
+// allowed to read from the configuration document: a sanitized, per-seat
+// list with no instructions, no client-layer text, no draft/history
+// metadata — just what a character label needs. A seat with no entry here
+// simply means "room empty", not "hidden room" — the room itself always
+// renders (see three/officeRoster.ts).
+
+export type OfficeAgentSeatProjection = {
+  agentId: ConfigurableOfficeAgentId;
+  name: string;
+  function: string;
+  objective: string;
+  color: string;
+};
 
 export type OfficeAgentProjection = {
   workspaceId: string;
   officeDisplayName: string;
-  presetId: string;
-  presetVersion: string;
   revision: number;
-  agents: Agent[];
+  /** Only enabled seats — disabled seats are simply absent, never a fabricated placeholder. */
+  seats: OfficeAgentSeatProjection[];
 };
 
 export type OfficeAgentProjectionResult =
   | { success: true; projection: OfficeAgentProjection }
-  | {
-      success: false;
-      code: 'workspace_mismatch' | 'configuration_not_published' | 'invalid_configuration';
-      issues?: OfficeConfigurationIssue[];
-    };
+  | { success: false; code: 'workspace_mismatch' | 'configuration_not_published' | 'invalid_configuration'; issues?: OfficeConfigurationIssue[] };
 
-function project(
-  baseAgents: readonly Agent[],
-  configuration: OfficeConfigurationDocument,
-  workspaceId: string,
-  requirePublished: boolean,
-): OfficeAgentProjectionResult {
-  if (configuration.workspaceId !== workspaceId) {
-    return { success: false, code: 'workspace_mismatch' };
-  }
-  if (requirePublished && configuration.status !== 'published') {
-    return { success: false, code: 'configuration_not_published' };
-  }
+function project(document: OfficeConfigurationDocument, workspaceId: string, requirePublished: boolean): OfficeAgentProjectionResult {
+  if (document.workspaceId !== workspaceId) return { success: false, code: 'workspace_mismatch' };
+  if (requirePublished && document.status !== 'published') return { success: false, code: 'configuration_not_published' };
 
-  const issues = validateOfficeConfiguration(configuration);
-  if (issues.length > 0) {
-    return { success: false, code: 'invalid_configuration', issues };
-  }
+  const issues = validateOfficeConfiguration(document);
+  if (issues.length > 0) return { success: false, code: 'invalid_configuration', issues };
+
+  const seats: OfficeAgentSeatProjection[] = CONFIGURABLE_AGENT_IDS.filter((id) => document.specialists[id].enabled).map((id) => {
+    const specialist = document.specialists[id];
+    return { agentId: id, name: specialist.name, function: specialist.function, objective: specialist.objective, color: specialist.color };
+  });
 
   return {
     success: true,
-    projection: {
-      workspaceId,
-      officeDisplayName: configuration.officeDisplayName,
-      presetId: configuration.presetId,
-      presetVersion: configuration.presetVersion,
-      revision: configuration.revision,
-      agents: baseAgents.map((agent) => {
-        if (!agent.seat.configurable) return { ...agent };
-
-        const specialist = configuration.specialists[agent.id as keyof typeof configuration.specialists];
-        if (!specialist) return { ...agent };
-
-        return {
-          ...agent,
-          name: specialist.name,
-          role: specialist.function,
-          description: specialist.objective,
-        };
-      }),
-    },
+    projection: { workspaceId, officeDisplayName: document.officeDisplayName, revision: document.revision, seats },
   };
 }
 
-/** Runtime projection: only a published configuration may reach the live office. */
-export function projectPublishedOfficeAgents(
-  baseAgents: readonly Agent[],
-  configuration: OfficeConfigurationDocument,
-  workspaceId: string,
-): OfficeAgentProjectionResult {
-  return project(baseAgents, configuration, workspaceId, true);
+/** Runtime projection: only a published configuration may reach the live office (regular workspace admins/managers). */
+export function projectPublishedOfficeAgents(document: OfficeConfigurationDocument, workspaceId: string): OfficeAgentProjectionResult {
+  return project(document, workspaceId, true);
 }
 
-/** Admin-only preview projection. Draft values never become runtime state through this entrypoint. */
-export function previewOfficeAgents(
-  baseAgents: readonly Agent[],
-  configuration: OfficeConfigurationDocument,
-  workspaceId: string,
-): OfficeAgentProjectionResult {
-  return project(baseAgents, configuration, workspaceId, false);
+/** Superadmin-only preview projection. Draft values never reach this from a non-superadmin route. */
+export function previewOfficeAgents(document: OfficeConfigurationDocument, workspaceId: string): OfficeAgentProjectionResult {
+  return project(document, workspaceId, false);
 }

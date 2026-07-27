@@ -7,12 +7,14 @@ import {
 } from "@/features/workspace/services/active-workspace";
 import { WorkspaceSwitcher } from "@/features/workspace/components/workspace-switcher";
 import { isOfficeVirtualEnabled } from "@/features/office-virtual/access";
+import { canSeeChatbotNav } from "@/features/chatbot/access";
 import Image from "next/image";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { GlobalSearchLauncher } from "@/features/search/components/global-search-launcher";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
+  Bot,
   Building2,
   FolderKanban,
   Kanban,
@@ -59,7 +61,7 @@ export default async function MainLayout({
     ? (
         await supabase
           .from("workspaces")
-          .select("vapi_assistant_id, whatsapp_agent_enabled, gestion_enabled, office_virtual_enabled")
+          .select("vapi_assistant_id, whatsapp_agent_enabled, gestion_enabled, office_virtual_enabled, chatbot_enabled")
           .eq("id", activeId)
           .maybeSingle()
       ).data
@@ -75,6 +77,11 @@ export default async function MainLayout({
   // route guard uses (see src/features/office-virtual/access.ts) so the nav
   // link and the route can never disagree about who gets access.
   const hasOfficeVirtual = isOfficeVirtualEnabled(activeWorkspaceRow);
+  // Unlike Oficina Virtual, the Chatbot is NOT client self-service — only
+  // the Onyxlink superadmin may see or configure it (product requirement:
+  // clients must never see the nav link, even when the plan flag is on).
+  // Same predicate the route guard uses (src/app/(main)/chatbot/page.tsx).
+  const hasChatbot = canSeeChatbotNav(isSuperAdmin, activeWorkspaceRow);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -246,6 +253,19 @@ export default async function MainLayout({
               </Link>
             )}
 
+            {hasChatbot && (
+              <Link href="/chatbot">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <Bot className="h-4 w-4" aria-hidden="true" />
+                  <span className="sr-only sm:not-sr-only sm:ml-2">Chatbot</span>
+                </Button>
+              </Link>
+            )}
+
             <Link href="/settings">
               <Button
                 variant="ghost"
@@ -253,7 +273,7 @@ export default async function MainLayout({
                 className="text-muted-foreground hover:text-foreground"
               >
                 <Settings className="h-4 w-4" aria-hidden="true" />
-                <span className="sr-only sm:not-sr-only sm:ml-2">Settings</span>
+                <span className="sr-only sm:not-sr-only sm:ml-2">Ajustes</span>
               </Button>
             </Link>
           </div>
@@ -353,12 +373,22 @@ export default async function MainLayout({
           </Link>
         )}
 
+        {hasChatbot && (
+          <Link
+            href="/chatbot"
+            className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            <Bot className="h-5 w-5" aria-hidden="true" />
+            <span>Chatbot</span>
+          </Link>
+        )}
+
         <Link
           href="/settings"
           className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
         >
           <Settings className="h-5 w-5" aria-hidden="true" />
-          <span>Settings</span>
+          <span>Ajustes</span>
         </Link>
 
         {isSuperAdmin && (

@@ -1,5 +1,6 @@
 import type {
   OpenRouterConnectionBackendAction,
+  OpenRouterConnectionBinding,
   OpenRouterConnectionReport,
 } from '../central-orchestration';
 
@@ -16,6 +17,7 @@ import type {
 export type OpenRouterConnectionAdapterRequest = {
   requestId: string;
   workspaceId: string;
+  connectionKind: 'shared' | 'dedicated';
   action: OpenRouterConnectionBackendAction;
 };
 
@@ -26,8 +28,17 @@ export type OpenRouterConnectionAdapterResult =
   | { status: 'ok'; report: OpenRouterConnectionAdapterReport }
   | { status: 'error'; message: string };
 
+export type OpenRouterConnectionAdapterSnapshot = {
+  binding: OpenRouterConnectionBinding;
+  model: string | null;
+};
+
 export type OpenRouterConnectionAdapter = {
   send(request: OpenRouterConnectionAdapterRequest): Promise<OpenRouterConnectionAdapterResult>;
+  load?(workspaceId: string): Promise<
+    | { status: 'ok'; snapshot: OpenRouterConnectionAdapterSnapshot }
+    | { status: 'error'; message: string }
+  >;
 };
 
 /**

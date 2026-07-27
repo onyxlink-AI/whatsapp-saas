@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import { Loader2, MonitorOff, PlayCircle } from 'lucide-react';
 import type { CameraMode } from '../three/OfficeCanvas';
-import type { Agent } from '../types';
+import type { OfficeRoomSlot } from '../three/officeRoster';
 
 // Full-bleed 3D "Oficina" scene, loaded lazily so the rest of the SaaS panel
 // (dashboard, inbox, pipeline...) never pays for the three.js/@react-three
@@ -22,7 +22,7 @@ const OfficeCanvas = dynamic(() => import('../three/OfficeCanvas'), {
 });
 
 type Props = {
-  agents: Agent[];
+  rooms: OfficeRoomSlot[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onHover: (id: string | null) => void;
@@ -57,7 +57,7 @@ function SceneStatus({ icon, title, description, action }: { icon: React.ReactNo
   );
 }
 
-export default function OfficeSceneBoundary({ agents, selectedId, onSelect, onHover, cameraMode }: Props) {
+export default function OfficeSceneBoundary({ rooms, selectedId, onSelect, onHover, cameraMode }: Props) {
   const [availability, setAvailability] = useState<SceneAvailability>('checking');
   const [forceEnabled, setForceEnabled] = useState(false);
 
@@ -104,5 +104,5 @@ export default function OfficeSceneBoundary({ agents, selectedId, onSelect, onHo
     );
   }
 
-  return <OfficeCanvas agents={agents} selectedId={selectedId} onSelect={onSelect} onHover={onHover} cameraMode={cameraMode} />;
+  return <OfficeCanvas rooms={rooms} selectedId={selectedId} onSelect={onSelect} onHover={onHover} cameraMode={cameraMode} />;
 }

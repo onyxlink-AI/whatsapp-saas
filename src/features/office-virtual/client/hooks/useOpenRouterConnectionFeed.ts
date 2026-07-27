@@ -1,5 +1,10 @@
-import { useRef, useState } from 'react';
-import { applyOpenRouterConnectionReport, createOpenRouterConnectionState, handleOpenRouterConnectionRequest } from '../central-orchestration';
+import { useEffect, useRef, useState } from 'react';
+import {
+  applyOpenRouterConnectionReport,
+  createOpenRouterConnectionState,
+  handleOpenRouterConnectionRequest,
+  restoreOpenRouterConnectionState,
+} from '../central-orchestration';
 import type {
   OpenRouterConnectionBackendAction,
   OpenRouterConnectionBinding,
@@ -18,10 +23,13 @@ import { UNCONFIGURED_OPENROUTER_CONNECTION_ADAPTER, type OpenRouterConnectionAd
 type PendingDelivery = {
   requestId: string;
   action: OpenRouterConnectionBackendAction;
+  connectionKind: OpenRouterConnectionKind;
 };
 
 export type OpenRouterConnectionFeed = {
   binding: OpenRouterConnectionBinding;
+  /** True while the initial snapshot is being fetched from the backend. */
+  loading: boolean;
   /** Local validation rejection from the pure reducer. */
   error: string | null;
   sending: boolean;
@@ -45,6 +53,7 @@ export function useOpenRouterConnectionFeed(
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [adapterError, setAdapterError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(Boolean(adapter.load));
   const actor = { actorId: actorEmail, role, workspaceId };
   const systemActor = { actorId: 'openrouter-connection-adapter', role: 'system' as const, workspaceId };
 
@@ -53,11 +62,34 @@ export function useOpenRouterConnectionFeed(
     setConnection(next);
   };
 
+  // Hydrate from the backend's persisted binding on mount. OfficeVirtualApp
+  // remounts this hook via key={workspaceId} on workspace switch, so a plain
+  // mount-only effect never needs to react to workspaceId changing mid-life.
+  useEffect(() => {
+    if (!adapter.load) return;
+    let cancelled = false;
+    adapter.load(workspaceId).then((result) => {
+      if (cancelled) return;
+      if (result.status === 'error') {
+        setAdapterError(result.message);
+        setLoading(false);
+        return;
+      }
+      const restored = restoreOpenRouterConnectionState(workspaceId, result.snapshot.binding);
+      if (restored) commitConnection(restored);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceId]);
+
   const deliver = (delivery: PendingDelivery) => {
     setSending(true);
     setAdapterError(null);
     adapter
-      .send({ requestId: delivery.requestId, workspaceId, action: delivery.action })
+      .send({ requestId: delivery.requestId, workspaceId, connectionKind: delivery.connectionKind, action: delivery.action })
       .then((result) => {
         setSending(false);
         if (result.status === 'error') {
@@ -83,7 +115,7 @@ export function useOpenRouterConnectionFeed(
   };
 
   const dispatch = (request: OpenRouterConnectionRequest) => {
-    if (pendingDeliveryRef.current) {
+    if (loading || pendingDeliveryRef.current) {
       setError('operation_in_progress');
       return;
     }
@@ -96,7 +128,10 @@ export function useOpenRouterConnectionFeed(
     setError(null);
     commitConnection(result.state);
     if (result.status === 'accepted') {
-      const delivery = { requestId: request.requestId, action: result.backendAction };
+      const connectionKind = result.state.binding.connectionKind ?? (
+        result.backendAction.type === 'provision_connection' ? result.backendAction.connectionKind : 'dedicated'
+      );
+      const delivery = { requestId: request.requestId, action: result.backendAction, connectionKind };
       pendingDeliveryRef.current = delivery;
       deliver(delivery);
     }
@@ -123,5 +158,5 @@ export function useOpenRouterConnectionFeed(
   const revoke = () =>
     dispatch({ requestId: crypto.randomUUID(), workspaceId, action: 'revoke', occurredAt: new Date().toISOString() });
 
-  return { binding: connection.binding, error, sending, adapterError, retryDelivery, connect, verify, revoke };
+  return { binding: connection.binding, loading, error, sending, adapterError, retryDelivery, connect, verify, revoke };
 }

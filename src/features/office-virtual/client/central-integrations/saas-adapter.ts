@@ -1,3 +1,4 @@
+import type { ChatbotProvider } from '@/features/chatbot/types';
 import type { IntegrationHealth, WhatsAppAgentType, WorkspaceCapabilitySnapshot } from './types';
 
 export type SaasWorkspaceCapabilityRow = {
@@ -29,12 +30,20 @@ export type SaasIntegrationHealthSignal = {
   issueCode?: string;
 };
 
+/** The Chatbot's own live eligibility/state — computed the same way getChatbotRuntimeConfig computes it, never cached. */
+export type SaasChatbotRow = {
+  configured: boolean;
+  enabled: boolean;
+  provider: ChatbotProvider | null;
+};
+
 export type SaasWorkspaceCapabilityInput = {
   workspace: SaasWorkspaceCapabilityRow;
   activeWhatsappAgent: SaasActiveAgentRow | null;
   ycloudIntegration: SaasYCloudIntegrationRow | null;
   ycloudHealth: SaasIntegrationHealthSignal;
   voiceHealth: SaasIntegrationHealthSignal;
+  chatbot: SaasChatbotRow | null;
   capturedAt: string;
 };
 
@@ -68,6 +77,14 @@ export function adaptSaasWorkspaceCapabilities(
       enabled: voiceConfigured,
       assistantId: workspace.vapi_assistant_id,
       ...input.voiceHealth,
+    },
+    chatbot: {
+      configured: input.chatbot?.configured === true,
+      // Live-recheck (e.g. WhatsApp mutual exclusion) already happened
+      // server-side before this input was built — see capability-snapshot/route.ts.
+      enabled: input.chatbot?.enabled === true,
+      health: input.chatbot?.enabled ? 'healthy' : 'unknown',
+      provider: input.chatbot?.provider ?? null,
     },
     features: {
       advancedMemory: workspace.advanced_memory_enabled,

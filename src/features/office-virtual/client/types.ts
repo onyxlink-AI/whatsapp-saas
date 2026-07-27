@@ -38,6 +38,23 @@ export type Department = {
 // Kept as an alias so chat/hook code reads naturally ("the agent replied").
 export type Agent = Department;
 
+/**
+ * The subset of Agent/Department the 3D scene (Building/OfficeRoom/
+ * OfficeCharacter) actually renders. A real Agent always satisfies this
+ * structurally, so the 3 SaaS-reused seats (coordinator/lead-intake/
+ * strategy) pass through unchanged; the chatbot seat and the 8 configurable
+ * specialist seats build one of these directly instead, since they don't
+ * have (and don't need) a full OfficeSeatBinding.
+ */
+export type OfficeSceneAgent = {
+  id: string;
+  name: string;
+  department: string;
+  color: string;
+  status: AgentStatus;
+  appearance: CharacterAppearance;
+};
+
 export type ChatMessage = {
   id: string;
   role: 'user' | 'agent';

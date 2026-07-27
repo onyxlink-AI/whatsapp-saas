@@ -6,7 +6,6 @@ import type {
 } from '../central-integrations/types';
 import { Power } from 'lucide-react';
 import type { WorkspaceWhatsAppBinding } from '../central-integrations/whatsapp-binding';
-import type { ActivationScenario } from '../hooks/useOfficeActivation';
 import { INTEGRATION_HEALTH_LABEL_ES, INTEGRATION_HEALTH_TW, WHATSAPP_AGENT_TYPE_LABEL_ES } from '../lib/integrationHealthStyles';
 import { ACTIVATION_STATE_BADGE_TW, ACTIVATION_STATE_LABEL_ES } from '../lib/officeActivationStyles';
 import { relativeTime } from '../lib/relativeTime';
@@ -14,23 +13,18 @@ import { WHATSAPP_BINDING_STATE_LABEL_ES, WHATSAPP_BINDING_STATE_TW } from '../l
 import ViewHeader from './ui/ViewHeader';
 
 type Props = {
+  /** True while the initial real snapshot is being fetched from the backend. */
+  loading: boolean;
+  /** Transport/backend failure loading or persisting real state. */
+  loadError: string | null;
   snapshot: WorkspaceCapabilitySnapshot;
   readiness: OfficeProvisioningReadiness;
   whatsappBinding: WorkspaceWhatsAppBinding;
-  scenario: ActivationScenario;
-  onScenarioChange: (scenario: ActivationScenario) => void;
   lastDecision: OfficeActivationDecision | null;
   onActivate: () => void;
   onDeactivate: () => void;
   /** Display name of the agent staffing the WhatsApp seat (lead-intake), e.g. "Sofía". */
   whatsappAgentName: string;
-};
-
-const SCENARIO_LABEL_ES: Record<ActivationScenario, string> = {
-  not_ready: 'Sin requisitos listos',
-  ready_to_enable: 'Todo listo para activar',
-  active: 'Oficina activa',
-  misconfigured: 'Activada con un requisito roto',
 };
 
 const STATE_HELPER_ES: Record<OfficeProvisioningReadiness['state'], string> = {
@@ -50,11 +44,11 @@ const REJECTION_LABEL_ES: Record<Exclude<OfficeActivationDecisionCode, 'approved
 };
 
 export default function ActivacionView({
+  loading,
+  loadError,
   snapshot,
   readiness,
   whatsappBinding,
-  scenario,
-  onScenarioChange,
   lastDecision,
   onActivate,
   onDeactivate,
@@ -86,13 +80,23 @@ export default function ActivacionView({
       />
 
       <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4 max-w-3xl">
+        {loading && (
+          <p className="text-[11px] text-white/40">Cargando el estado real del workspace...</p>
+        )}
+        {loadError && (
+          <div className="rounded-md border border-rose-500/25 bg-rose-500/[0.06] px-3 py-2 text-[11px] text-rose-200/85">
+            No se pudo cargar o guardar el estado real: {loadError}
+          </div>
+        )}
+
         <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-5 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
           <button
             role="switch"
             aria-checked={switchOn}
             aria-label="Oficina Virtual"
+            disabled={loading}
             onClick={() => (switchOn ? onDeactivate() : onActivate())}
-            className={`relative shrink-0 w-14 h-8 rounded-full border transition-colors cursor-pointer ${
+            className={`relative shrink-0 w-14 h-8 rounded-full border transition-colors cursor-pointer disabled:opacity-50 disabled:pointer-events-none ${
               switchOn ? 'bg-emerald-500/80 border-emerald-400/40' : 'bg-white/[0.06] border-white/10'
             }`}
           >
@@ -195,33 +199,7 @@ export default function ActivacionView({
         )}
 
         <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4 text-[11px] text-white/35 flex flex-wrap gap-x-4 gap-y-1">
-          <span>Workspace: {snapshot.workspaceId}</span>
           <span>Datos capturados {relativeTime(snapshot.capturedAt, now)}</span>
-        </div>
-
-        <div className="rounded-lg border border-dashed border-white/10 bg-white/[0.015] p-4">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/30 mb-2">
-            Escenario de datos (solo demo)
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {(Object.keys(SCENARIO_LABEL_ES) as ActivationScenario[]).map((key) => (
-              <button
-                key={key}
-                onClick={() => onScenarioChange(key)}
-                className={`text-[11px] px-2.5 py-1.5 rounded-md border transition-colors ${
-                  scenario === key
-                    ? 'border-violet-400/40 bg-violet-500/10 text-violet-200'
-                    : 'border-white/10 text-white/45 hover:text-white/70'
-                }`}
-              >
-                {SCENARIO_LABEL_ES[key]}
-              </button>
-            ))}
-          </div>
-          <p className="text-[11px] text-white/25 mt-2 leading-relaxed">
-            Sustituye la fuente de datos simulada mientras Codex conecta el snapshot real del workspace vía{' '}
-            <code className="text-white/40">src/central-integrations/saas-adapter.ts</code>.
-          </p>
         </div>
       </div>
     </div>

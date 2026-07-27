@@ -1,38 +1,31 @@
-import { useState } from 'react';
-import { agents as staticOfficeAgents } from '../agents';
-import {
-  applyOfficeConfigurationCommand,
-  createOfficeConfigurationState,
-  provisionWorkspaceOffice,
-} from '../central-integrations';
+import { useEffect, useState } from 'react';
+import { STANDARD_OFFICE_PRESET } from '../central-integrations/preset';
+import { CONFIGURABLE_AGENT_IDS, type ConfigurableOfficeAgentId } from '../central-integrations/specialist-seats';
 import type {
-  ConfigurableOfficeAgentId,
-  OfficeConfigurationMutationResult,
-  OfficeConfigurationState,
+  OfficeConfigurationDocument,
+  OfficeConfigurationStatus,
   OfficeSpecialistConfiguration,
 } from '../central-integrations/configuration';
-import type { WorkspaceOfficeConfiguration, WorkspaceOfficeSeat } from '../central-integrations/preset';
-import type { OfficeActorRole, OfficeViewer } from '../central-integrations/types';
+import { defaultSpecialist } from '../central-integrations/configuration';
+import type { SpecialistTemplateId } from '../central-integrations/specialist-templates';
+import type { VerticalId } from '../central-integrations/specialist-verticals';
+import { createVerticalApplicationPlan, type VerticalApplicationPlan } from '../central-integrations/vertical-application-plan';
+import {
+  fetchOfficeConfiguration,
+  sendOfficeConfigurationCommand,
+  type OfficeConfiguratorCommandInput,
+  type OfficeConfiguratorCommandResult,
+} from '../lib/saasOfficeConfigurationAdapter';
+import type { OpenRouterStatus, RealIntegrationStatusMap } from '../central-integrations/real-integrations';
 
-// Adapter hook for src/central-integrations/configuration.ts (Codex's real
-// draft/publish/history contract) and preset.ts (the template). Every
-// mutation goes through Codex's `applyOfficeConfigurationCommand` reducer —
-// this hook keeps local text-field drafts only so typing doesn't dispatch a
-// command per keystroke, and commits them as commands on save/reset/publish.
-// See COORDINACION_CLAUDE_CODEX.md.
-//
-// `specialistColors` is the one field here that never goes through Codex's
-// reducer: color is a purely cosmetic, visual-layer concern (same spirit as
-// the `VISUAL` table in agents.ts, which already keeps color out of the real
-// agent registry) — it doesn't need permission checks, revisions or an audit
-// trail the way name/function/instructions do. It's still tracked per
-// specialist and reset alongside the rest so "Restablecer" is complete.
-
-const CONFIGURABLE_AGENT_IDS: ConfigurableOfficeAgentId[] = ['proposal', 'operations', 'content', 'review-qa'];
-
-function originalColor(agentId: ConfigurableOfficeAgentId): string {
-  return staticOfficeAgents.find((a) => a.id === agentId)?.color ?? '#a78bfa';
-}
+// Adapter hook for the real, server-persisted Oficina Virtual configuration
+// (src/app/api/workspace/[id]/office-virtual/configurator). Local drafts
+// only exist so typing doesn't send a request per keystroke — "Guardar"
+// commits every changed seat as one update_specialist command per seat,
+// still gated server-side by the same optimistic-concurrency revision check
+// the pure reducer enforces. Template/sector application and publish/reset/
+// restore all go straight to the server (no local staging), since they
+// affect fields the admin didn't necessarily just type.
 
 export type SpecialistDraft = Omit<OfficeSpecialistConfiguration, 'agentId'>;
 
@@ -42,182 +35,246 @@ function cloneSpecialistDrafts(
   const result: Partial<Record<ConfigurableOfficeAgentId, SpecialistDraft>> = {};
   for (const agentId of CONFIGURABLE_AGENT_IDS) {
     const { agentId: _drop, ...draft } = specialists[agentId];
-    result[agentId] = { ...draft, allowedActions: [...draft.allowedActions] };
+    result[agentId] = { ...draft, allowedActions: [...draft.allowedActions], extensions: [...draft.extensions], skills: [...draft.skills] };
   }
   return result as Record<ConfigurableOfficeAgentId, SpecialistDraft>;
 }
 
 function sameSpecialist(a: OfficeSpecialistConfiguration, b: SpecialistDraft): boolean {
   return (
+    a.enabled === b.enabled &&
+    a.templateId === b.templateId &&
     a.name === b.name &&
+    a.color === b.color &&
     a.function === b.function &&
     a.objective === b.objective &&
     a.instructions === b.instructions &&
+    a.clientLayer === b.clientLayer &&
     a.approvalPolicy === b.approvalPolicy &&
     a.allowedActions.length === b.allowedActions.length &&
-    a.allowedActions.every((action) => b.allowedActions.includes(action))
+    a.allowedActions.every((action) => b.allowedActions.includes(action)) &&
+    a.extensions.length === b.extensions.length &&
+    a.extensions.every((id) => b.extensions.includes(id)) &&
+    a.skills.length === b.skills.length &&
+    a.skills.every((id) => b.skills.includes(id))
   );
 }
 
-function seed(workspaceId: string, actorId: string) {
-  const now = new Date().toISOString();
-  const provisioned = provisionWorkspaceOffice(workspaceId, now);
-  const configState = createOfficeConfigurationState(provisioned, actorId, now);
-  return { provisioned, configState };
+function emptyDocument(workspaceId: string): OfficeConfigurationDocument {
+  const specialists = Object.fromEntries(
+    CONFIGURABLE_AGENT_IDS.map((agentId) => [agentId, defaultSpecialist(agentId)]),
+  ) as OfficeConfigurationDocument['specialists'];
+  return {
+    workspaceId,
+    presetId: STANDARD_OFFICE_PRESET.id,
+    presetVersion: STANDARD_OFFICE_PRESET.version,
+    revision: 0,
+    status: 'draft',
+    officeDisplayName: STANDARD_OFFICE_PRESET.displayName,
+    sectorId: null,
+    specialists,
+    updatedAt: new Date(0).toISOString(),
+    updatedBy: 'system',
+  };
 }
 
 export type OfficeConfigurator = {
-  provisioned: WorkspaceOfficeConfiguration;
-  protectedSeats: WorkspaceOfficeSeat[];
-  state: OfficeConfigurationState;
+  loading: boolean;
+  loadError: string | null;
+  saving: boolean;
+  presetVersion: string;
+  status: OfficeConfigurationStatus;
+  revision: number;
+  updatedAt: string;
+  updatedBy: string;
+  sectorId: VerticalId | null;
   officeNameDraft: string;
   setOfficeNameDraft: (name: string) => void;
   specialistDrafts: Record<ConfigurableOfficeAgentId, SpecialistDraft>;
+  /** Live status of the 4 execution-tier integrations (Ajustes → Integraciones) — the only source specialist readiness reads. */
+  realIntegrations: RealIntegrationStatusMap;
+  /** OpenRouter's own canonical status — not a boolean, see real-integrations.ts. */
+  openRouterStatus: OpenRouterStatus;
   updateSpecialistDraft: (agentId: ConfigurableOfficeAgentId, patch: Partial<SpecialistDraft>) => void;
-  resetSpecialistDraft: (agentId: ConfigurableOfficeAgentId) => void;
-  specialistColors: Record<ConfigurableOfficeAgentId, string>;
-  setSpecialistColor: (agentId: ConfigurableOfficeAgentId, color: string) => void;
-  lastResult: OfficeConfigurationMutationResult | null;
+  resetSpecialist: (agentId: ConfigurableOfficeAgentId) => void;
+  lastResult: OfficeConfiguratorCommandResult | null;
+  hasUnsavedChanges: boolean;
   save: () => void;
   publish: () => void;
+  previewVertical: (verticalId: VerticalId) => VerticalApplicationPlan | null;
+  applyVertical: (verticalId: VerticalId | null) => void;
+  restoreRevision: (revision: number) => void;
 };
 
-export function useOfficeConfigurator(
-  workspaceId: string,
-  actorId: string,
-  actorRole: OfficeActorRole,
-): OfficeConfigurator {
-  const [{ provisioned, configState: initialConfigState }] = useState(() => seed(workspaceId, actorId));
-  const [state, setState] = useState<OfficeConfigurationState>(initialConfigState);
-  const [officeNameDraft, setOfficeNameDraft] = useState(initialConfigState.current.officeDisplayName);
-  const [specialistDrafts, setSpecialistDrafts] = useState(() =>
-    cloneSpecialistDrafts(initialConfigState.current.specialists),
+export function useOfficeConfigurator(workspaceId: string): OfficeConfigurator {
+  const [document, setDocument] = useState<OfficeConfigurationDocument>(() => emptyDocument(workspaceId));
+  const [presetVersion, setPresetVersion] = useState(STANDARD_OFFICE_PRESET.version);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [officeNameDraft, setOfficeNameDraft] = useState('');
+  const [specialistDrafts, setSpecialistDrafts] = useState<Record<ConfigurableOfficeAgentId, SpecialistDraft>>(() =>
+    cloneSpecialistDrafts(emptyDocument(workspaceId).specialists),
   );
-  const [lastResult, setLastResult] = useState<OfficeConfigurationMutationResult | null>(null);
-  const [specialistColors, setSpecialistColors] = useState<Record<ConfigurableOfficeAgentId, string>>(() => {
-    const result: Partial<Record<ConfigurableOfficeAgentId, string>> = {};
-    for (const agentId of CONFIGURABLE_AGENT_IDS) result[agentId] = originalColor(agentId);
-    return result as Record<ConfigurableOfficeAgentId, string>;
-  });
+  const [realIntegrations, setRealIntegrations] = useState<RealIntegrationStatusMap>({});
+  const [openRouterStatus, setOpenRouterStatus] = useState<OpenRouterStatus>('not_configured');
+  const [lastResult, setLastResult] = useState<OfficeConfiguratorCommandResult | null>(null);
 
-  const protectedSeats = provisioned.seats.filter((seat) => seat.kind !== 'specialist');
-
-  const setSpecialistColor = (agentId: ConfigurableOfficeAgentId, color: string) => {
-    setSpecialistColors((prev) => ({ ...prev, [agentId]: color }));
+  const applyDocument = (next: OfficeConfigurationDocument) => {
+    setDocument(next);
+    setOfficeNameDraft(next.officeDisplayName);
+    setSpecialistDrafts(cloneSpecialistDrafts(next.specialists));
   };
 
-  const actor = (): OfficeViewer => ({ actorId, role: actorRole, workspaceId });
+  useEffect(() => {
+    let cancelled = false;
+    fetchOfficeConfiguration(workspaceId).then((result) => {
+      if (cancelled) return;
+      if (result.status === 'error') {
+        setLoadError(result.message);
+      } else {
+        setPresetVersion(result.head.presetVersion);
+        applyDocument(result.head.document);
+        setRealIntegrations(result.realIntegrations);
+        setOpenRouterStatus(result.openRouterStatus);
+        setLoadError(null);
+      }
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [workspaceId]);
+
+  const hasUnsavedChanges =
+    officeNameDraft.trim() !== document.officeDisplayName ||
+    CONFIGURABLE_AGENT_IDS.some((agentId) => !sameSpecialist(document.specialists[agentId], specialistDrafts[agentId]));
 
   const updateSpecialistDraft = (agentId: ConfigurableOfficeAgentId, patch: Partial<SpecialistDraft>) => {
     setSpecialistDrafts((prev) => ({ ...prev, [agentId]: { ...prev[agentId], ...patch } }));
   };
 
-  const resetSpecialistDraft = (agentId: ConfigurableOfficeAgentId) => {
-    const result = applyOfficeConfigurationCommand(state, {
-      type: 'reset_specialist',
-      workspaceId,
-      expectedRevision: state.current.revision,
-      actor: actor(),
-      occurredAt: new Date().toISOString(),
-      agentId,
-    });
+  // `revisionOverride` matters when a caller just committed other changes
+  // in this same action (e.g. `publish` calling `save` first): `document`
+  // is a React state closure that only reflects those changes on the next
+  // render, so reading `document.revision` here would send a now-stale
+  // revision and get a spurious 409 from the server's own concurrency
+  // check — not a real conflict, just this hook racing its own state update.
+  const runCommand = async (command: OfficeConfiguratorCommandInput, revisionOverride?: number) => {
+    setSaving(true);
+    const result = await sendOfficeConfigurationCommand(workspaceId, revisionOverride ?? document.revision, command);
+    setSaving(false);
     setLastResult(result);
-    if (result.success) {
-      setState(result.state);
-      setSpecialistDrafts(cloneSpecialistDrafts(result.state.current.specialists));
-      setSpecialistColors((prev) => ({ ...prev, [agentId]: originalColor(agentId) }));
+    if (result.status === 'ok') {
+      applyDocument(result.document);
+      setRealIntegrations(result.realIntegrations);
+      setOpenRouterStatus(result.openRouterStatus);
     }
+    return result;
   };
 
-  const commitDrafts = (base: OfficeConfigurationState) => {
-    let working = base;
+  /** Returns the final persisted document (or null if a command failed partway), so callers like `publish` can chain off the real latest revision instead of the stale closure value. */
+  const save = async (): Promise<OfficeConfigurationDocument | null> => {
+    if (saving) return document;
+    let revision = document.revision;
+    let latestDocument = document;
 
-    if (officeNameDraft.trim() !== working.current.officeDisplayName) {
-      const result = applyOfficeConfigurationCommand(working, {
-        type: 'update_office',
-        workspaceId,
-        expectedRevision: working.current.revision,
-        actor: actor(),
-        occurredAt: new Date().toISOString(),
-        displayName: officeNameDraft,
-      });
-      if (!result.success) return { result, state: working };
-      working = result.state;
+    if (officeNameDraft.trim() !== latestDocument.officeDisplayName) {
+      setSaving(true);
+      const result = await sendOfficeConfigurationCommand(workspaceId, revision, { type: 'update_office', displayName: officeNameDraft });
+      setSaving(false);
+      setLastResult(result);
+      if (result.status !== 'ok') return null;
+      latestDocument = result.document;
+      revision = result.document.revision;
+      setDocument(latestDocument);
+      setRealIntegrations(result.realIntegrations);
+      setOpenRouterStatus(result.openRouterStatus);
     }
 
     for (const agentId of CONFIGURABLE_AGENT_IDS) {
       const draft = specialistDrafts[agentId];
-      const current = working.current.specialists[agentId];
-      if (sameSpecialist(current, draft)) continue;
+      if (sameSpecialist(latestDocument.specialists[agentId], draft)) continue;
 
-      const result = applyOfficeConfigurationCommand(working, {
-        type: 'update_specialist',
-        workspaceId,
-        expectedRevision: working.current.revision,
-        actor: actor(),
-        occurredAt: new Date().toISOString(),
-        agentId,
-        patch: draft,
-      });
-      if (!result.success) return { result, state: working };
-      working = result.state;
+      setSaving(true);
+      const result = await sendOfficeConfigurationCommand(workspaceId, revision, { type: 'update_specialist', agentId, patch: draft });
+      setSaving(false);
+      setLastResult(result);
+      if (result.status !== 'ok') return null;
+      latestDocument = result.document;
+      revision = result.document.revision;
+      setDocument(latestDocument);
+      setRealIntegrations(result.realIntegrations);
+      setOpenRouterStatus(result.openRouterStatus);
     }
 
-    return {
-      result: { success: true, state: working } as OfficeConfigurationMutationResult,
-      state: working,
-    };
+    applyDocument(latestDocument);
+    return latestDocument;
   };
 
-  const syncDrafts = (next: OfficeConfigurationState) => {
-    setOfficeNameDraft(next.current.officeDisplayName);
-    setSpecialistDrafts(cloneSpecialistDrafts(next.current.specialists));
+  const publish = async () => {
+    const saved = await save();
+    if (!saved) return;
+    await runCommand({ type: 'publish' }, saved.revision);
   };
 
-  const save = () => {
-    const committed = commitDrafts(state);
-    setLastResult(committed.result);
-    setState(committed.state);
-    if (!committed.result.success) return;
-
-    syncDrafts(committed.state);
+  // reset/applyVertical/restoreRevision all replace the ENTIRE document from
+  // the server response (applyDocument resets every specialist's local
+  // draft, not just the one being acted on) — so each MUST save() first.
+  // Without this, switching a sector or restoring a revision while another
+  // seat had unsaved edits pending would silently discard that other seat's
+  // work the moment the server's fresh document overwrote local state.
+  const resetSpecialist = async (agentId: ConfigurableOfficeAgentId) => {
+    const saved = await save();
+    if (!saved) return;
+    await runCommand({ type: 'reset_specialist', agentId }, saved.revision);
   };
 
-  const publish = () => {
-    const committed = commitDrafts(state);
-    if (!committed.result.success) {
-      setLastResult(committed.result);
-      setState(committed.state);
-      return;
-    }
+  const previewVertical = (verticalId: VerticalId): VerticalApplicationPlan | null => {
+    const appliedTemplateByAgent = Object.fromEntries(
+      CONFIGURABLE_AGENT_IDS.map((id) => [id, document.specialists[id].templateId ?? undefined]),
+    ) as Partial<Record<ConfigurableOfficeAgentId, SpecialistTemplateId>>;
+    const clientPromptLayerByAgent = Object.fromEntries(
+      CONFIGURABLE_AGENT_IDS.map((id) => [id, document.specialists[id].clientLayer]),
+    ) as Partial<Record<ConfigurableOfficeAgentId, string>>;
+    return createVerticalApplicationPlan(verticalId, appliedTemplateByAgent, clientPromptLayerByAgent);
+  };
 
-    const result = applyOfficeConfigurationCommand(committed.state, {
-      type: 'publish',
-      workspaceId,
-      expectedRevision: committed.state.current.revision,
-      actor: actor(),
-      occurredAt: new Date().toISOString(),
-    });
-    setLastResult(result);
-    if (result.success) {
-      setState(result.state);
-      syncDrafts(result.state);
-    }
+  const applyVertical = async (verticalId: VerticalId | null) => {
+    const saved = await save();
+    if (!saved) return;
+    await runCommand({ type: 'apply_vertical', verticalId }, saved.revision);
+  };
+
+  const restoreRevision = async (revision: number) => {
+    const saved = await save();
+    if (!saved) return;
+    await runCommand({ type: 'restore_revision', revision }, saved.revision);
   };
 
   return {
-    provisioned,
-    protectedSeats,
-    state,
+    loading,
+    loadError,
+    saving,
+    presetVersion,
+    status: document.status,
+    revision: document.revision,
+    updatedAt: document.updatedAt,
+    updatedBy: document.updatedBy,
+    sectorId: document.sectorId,
     officeNameDraft,
     setOfficeNameDraft,
     specialistDrafts,
+    realIntegrations,
+    openRouterStatus,
     updateSpecialistDraft,
-    resetSpecialistDraft,
-    specialistColors,
-    setSpecialistColor,
+    resetSpecialist,
     lastResult,
+    hasUnsavedChanges,
     save,
     publish,
+    previewVertical,
+    applyVertical,
+    restoreRevision,
   };
 }

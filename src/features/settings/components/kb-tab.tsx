@@ -42,7 +42,7 @@ const SOURCE_TYPE_LABELS: Record<SourceType, string> = {
   doc: "Documento",
   faq: "FAQ",
   url: "URL",
-  snippet: "Snippet",
+  snippet: "Texto corto",
 };
 
 const SOURCE_TYPE_COLORS: Record<SourceType, string> = {
@@ -185,10 +185,7 @@ function DocumentRow({
             </ul>
           ) : (
             <p className="text-xs text-muted-foreground">
-              Los chunks se almacenan internamente en la base de datos
-              vectorial.
-              {chunkCount !== null &&
-                ` Este documento tiene ${chunkCount} chunk(s).`}
+              Este documento ya está guardado y listo para que la IA lo use.
             </p>
           )}
         </div>
@@ -270,9 +267,7 @@ export function KbTab({ workspaceId }: Props) {
       };
       if (!res.ok) throw new Error(json.error ?? "Error al agregar documento");
 
-      toast.success(
-        `Documento agregado — ${json.data?.chunksCreated ?? 0} chunks generados`,
-      );
+      toast.success("Documento agregado y listo para usar");
 
       // Reset form
       setTitle("");
@@ -355,8 +350,7 @@ export function KbTab({ workspaceId }: Props) {
             Agregar documento
           </h3>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            El contenido se divide en chunks y se embebe para búsqueda
-            semántica.
+            Guarda esto y tu IA lo va a poder usar para contestar preguntas.
           </p>
         </div>
 
@@ -399,8 +393,8 @@ export function KbTab({ workspaceId }: Props) {
               aria-required="true"
             />
             <p className="text-xs text-muted-foreground">
-              Descargamos la página y extraemos su texto automáticamente para
-              indexarlo. Funciona mejor con páginas públicas de contenido.
+              Leemos la página solos y guardamos su texto. Funciona mejor con
+              páginas públicas.
             </p>
           </div>
         ) : (
@@ -449,7 +443,7 @@ export function KbTab({ workspaceId }: Props) {
           </Button>
           {isAdding && (
             <p className="text-xs text-muted-foreground">
-              Dividiendo en chunks y generando embeddings…
+              Guardando y preparando para que la IA lo use…
             </p>
           )}
         </div>
@@ -478,11 +472,11 @@ export function KbTab({ workspaceId }: Props) {
             />
             <div>
               <p className="text-sm font-medium text-foreground">
-                Sin documentos
+                📄 Todavía no tienes documentos
               </p>
               <p className="mt-1 text-xs text-muted-foreground max-w-xs">
-                La IA usará este knowledge base para responder preguntas. Agrega
-                el primer documento arriba.
+                La IA usa esto para contestar preguntas. Agrega el primero
+                arriba.
               </p>
             </div>
           </div>

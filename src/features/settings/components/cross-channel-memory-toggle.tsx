@@ -57,11 +57,10 @@ export function CrossChannelMemoryToggle({
             Memoria compartida entre canales
           </Label>
           <p className="mt-1 text-xs text-muted-foreground max-w-md">
-            Conecta la memoria del Asistente de voz con la de WhatsApp: lo que
-            un contacto dice en una llamada, el agente de WhatsApp lo sabrá
-            (y viceversa). Requiere tener activas Memoria Inteligente
-            Avanzada y el Asistente de voz — sin este interruptor, ambos
-            canales funcionan de forma independiente.
+            Conecta lo que sabe tu asistente de voz con lo que sabe WhatsApp:
+            si un contacto te dijo algo por teléfono, el agente de WhatsApp
+            también lo sabrá (y al revés). Necesitas tener activas Memoria
+            Inteligente Avanzada y el Asistente de voz.
           </p>
           {!isSuperAdmin && (
             <p className="mt-2 flex items-center gap-1.5 text-[11px] text-[hsl(var(--electric-lime))]">

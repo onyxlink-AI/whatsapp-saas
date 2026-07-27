@@ -448,6 +448,40 @@
   }
 }
 
+/* Floating 3D room sign (OfficeRoom.tsx's <Html> label) — was previously
+   completely unstyled (no matching rule existed anywhere), so it rendered
+   as unreadable default black-on-transparent browser text and, lacking
+   `pointer-events: none`, could intercept drag gestures meant for
+   OrbitControls when the cursor passed over a sign. Font size and contrast
+   are deliberately generous since this sits inside a 3D perspective view,
+   where text reads smaller than its nominal size suggests. */
+.office-sign {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 13px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(8, 8, 12, 0.86);
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.32);
+  pointer-events: none;
+  user-select: none;
+}
+
+.office-sign__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--agent-color, #7c3aed);
+  box-shadow: 0 0 7px var(--agent-color, #7c3aed);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .onyx-app *, .onyx-app *::before, .onyx-app *::after {
     scroll-behavior: auto !important;

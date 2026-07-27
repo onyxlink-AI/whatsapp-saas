@@ -23,12 +23,12 @@ interface Props {
 }
 
 const ACTION_LABEL: Record<string, string> = {
-  "prompt.publish": "Prompt",
+  "prompt.publish": "IA",
   "agent.activate": "Agente",
   "agent.update": "Agente",
-  "tool.enable": "Tool",
-  "tool.disable": "Tool",
-  "tool.config_update": "Tool",
+  "tool.enable": "Herramienta",
+  "tool.disable": "Herramienta",
+  "tool.config_update": "Herramienta",
   "integration.update": "Integración",
 };
 
@@ -88,8 +88,8 @@ export function AuditLogTab({ workspaceId }: Props) {
             Actividad
           </h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Quién cambió qué en este workspace — prompts, agentes, tools e
-            integraciones.
+            Quién cambió qué en tu negocio: la IA, los agentes, las
+            herramientas y las conexiones.
           </p>
         </div>
         <Button
@@ -120,7 +120,7 @@ export function AuditLogTab({ workspaceId }: Props) {
       ) : entries.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground">
           <History className="h-7 w-7 opacity-40" strokeWidth={1.5} />
-          <p className="text-sm">Todavía no hay actividad registrada.</p>
+          <p className="text-sm">📋 Todavía no hay actividad registrada.</p>
         </div>
       ) : (
         <ul className="space-y-1.5">

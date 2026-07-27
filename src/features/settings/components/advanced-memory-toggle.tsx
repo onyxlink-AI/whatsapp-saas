@@ -55,10 +55,9 @@ export function AdvancedMemoryToggle({
             Memoria Inteligente Avanzada
           </Label>
           <p className="mt-1 text-xs text-muted-foreground max-w-md">
-            El agente recuerda a cada contacto entre conversaciones: resumen,
-            intereses, preferencias, objeciones y estado del lead. Se extrae
-            automáticamente tras cada respuesta y nunca guarda contraseñas ni
-            datos bancarios.
+            La IA recuerda a cada contacto entre conversaciones: de qué
+            hablaron, qué le interesa, sus dudas y en qué va. Se guarda solo,
+            sin que hagas nada, y nunca guarda contraseñas ni datos bancarios.
           </p>
           {!isSuperAdmin && (
             <p className="mt-2 flex items-center gap-1.5 text-[11px] text-[hsl(var(--electric-lime))]">
