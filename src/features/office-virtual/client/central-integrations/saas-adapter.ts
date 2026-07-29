@@ -4,6 +4,7 @@ import type { IntegrationHealth, WhatsAppAgentType, WorkspaceCapabilitySnapshot 
 export type SaasWorkspaceCapabilityRow = {
   id: string;
   whatsapp_agent_enabled: boolean;
+  office_whatsapp_enabled: boolean;
   vapi_assistant_id: string | null;
   advanced_memory_enabled: boolean;
   cross_channel_memory_enabled: boolean;
@@ -22,6 +23,7 @@ export type SaasActiveAgentRow = {
 export type SaasYCloudIntegrationRow = {
   provider: 'ycloud';
   enabled: boolean;
+  configured: boolean;
 };
 
 export type SaasIntegrationHealthSignal = {
@@ -64,11 +66,12 @@ export function adaptSaasWorkspaceCapabilities(
     virtualOfficeEnabled: workspace.virtual_office_enabled === true,
     whatsappAgent: {
       enabled: workspace.whatsapp_agent_enabled,
+      officeEnabled: workspace.office_whatsapp_enabled,
       activeAgentId: activeAgent?.id ?? null,
       activeAgentType: activeAgent?.type ?? null,
     },
     ycloud: {
-      configured: ycloudIntegration !== null,
+      configured: ycloudIntegration?.configured === true,
       enabled: ycloudIntegration?.enabled === true,
       ...input.ycloudHealth,
     },

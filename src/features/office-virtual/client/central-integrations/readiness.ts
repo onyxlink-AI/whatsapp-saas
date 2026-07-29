@@ -19,9 +19,14 @@ function requirement(
   return { id, label, met, reason: met ? null : reason };
 }
 
-/** Whether the workspace's real WhatsApp agent seat is ready to show a character in the 3D office — independent of the overall activation flag. */
+/** Prepared in the SaaS panel: entitlement, selected profile and real YCloud connection. */
+export function isWhatsAppChannelConfigured(snapshot: WorkspaceCapabilitySnapshot): boolean {
+  return channelReady(snapshot.ycloud) && snapshot.whatsappAgent.enabled && snapshot.whatsappAgent.activeAgentId !== null && snapshot.whatsappAgent.activeAgentType !== null;
+}
+
+/** Visible and operational only after the separate switch in Oficina Virtual is on. */
 export function isWhatsAppChannelReady(snapshot: WorkspaceCapabilitySnapshot): boolean {
-  return snapshot.whatsappAgent.enabled && snapshot.whatsappAgent.activeAgentId !== null && snapshot.whatsappAgent.activeAgentType !== null;
+  return isWhatsAppChannelConfigured(snapshot) && snapshot.whatsappAgent.officeEnabled;
 }
 
 /** Whether the workspace's real voice assistant seat is ready to show a character in the 3D office. */
@@ -41,9 +46,9 @@ export function selectOfficeRequirements(snapshot: WorkspaceCapabilitySnapshot):
   return [
     requirement(
       'whatsapp_agent',
-      'Agente WhatsApp activo',
+      'Agente WhatsApp configurado y activo',
       whatsappReady,
-      'El workspace necesita exactamente un agente WhatsApp activo.',
+      'Configura y selecciona el agente en el panel, conecta YCloud y actívalo desde la oficina.',
     ),
     requirement(
       'ycloud',

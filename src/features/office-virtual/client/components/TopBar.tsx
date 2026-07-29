@@ -15,6 +15,7 @@ type Props = {
   isOfficeView: boolean;
   cameraMode: CameraMode;
   onCameraModeChange: (mode: CameraMode) => void;
+  canUsePresentation: boolean;
   onOpenSearch: () => void;
   onOpenMobileMenu: () => void;
 };
@@ -41,6 +42,7 @@ export default function TopBar({
   isOfficeView,
   cameraMode,
   onCameraModeChange,
+  canUsePresentation,
   onOpenSearch,
   onOpenMobileMenu,
 }: Props) {
@@ -94,10 +96,12 @@ export default function TopBar({
 
         {isOfficeView && (
           <div className="onyx-segment hidden xl:flex items-center p-0.5 text-[11px] ml-1" aria-label="Estilo visual de la oficina">
-            <button onClick={() => onCameraModeChange('showcase')} aria-pressed={cameraMode === 'showcase'} title="Vista Presentación" className={`h-7 flex items-center gap-1.5 px-2 rounded-[5px] transition-colors ${cameraMode === 'showcase' ? 'bg-violet-600/85 text-white' : 'text-white/38 hover:text-white/75'}`}>
-              <Sparkles className="w-3.5 h-3.5" strokeWidth={1.8} />
-              <span>Presentación</span>
-            </button>
+            {canUsePresentation && (
+              <button onClick={() => onCameraModeChange('showcase')} aria-pressed={cameraMode === 'showcase'} title="Vista Presentación" className={`h-7 flex items-center gap-1.5 px-2 rounded-[5px] transition-colors ${cameraMode === 'showcase' ? 'bg-violet-600/85 text-white' : 'text-white/38 hover:text-white/75'}`}>
+                <Sparkles className="w-3.5 h-3.5" strokeWidth={1.8} />
+                <span>Presentación</span>
+              </button>
+            )}
             <button onClick={() => onCameraModeChange('iso')} aria-pressed={cameraMode === 'iso'} title="Volver a la vista operativa original" className={`h-7 flex items-center gap-1.5 px-2 rounded-[5px] transition-colors ${cameraMode === 'iso' ? 'bg-violet-600/85 text-white' : 'text-white/38 hover:text-white/75'}`}>
               <Box className="w-3.5 h-3.5" strokeWidth={1.8} />
               <span>Operativa</span>

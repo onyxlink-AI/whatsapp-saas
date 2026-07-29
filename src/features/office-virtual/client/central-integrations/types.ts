@@ -18,6 +18,7 @@ export type WorkspaceCapabilitySnapshot = {
   virtualOfficeEnabled: boolean;
   whatsappAgent: {
     enabled: boolean;
+    officeEnabled: boolean;
     activeAgentId: string | null;
     activeAgentType: WhatsAppAgentType | null;
   };

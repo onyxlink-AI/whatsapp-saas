@@ -28,6 +28,7 @@ import {
 import { handleChatbotWhatsAppInbound } from "@/features/chatbot/server/whatsapp-channel";
 import { resolveChannelReadiness } from "@/features/chatbot/server/channel-readiness";
 import type { ChatbotHead } from "@/features/chatbot/server/chatbot-service";
+import { isWhatsAppAgentRuntimeEnabled } from "@/features/agents/services/whatsapp-runtime";
 
 // Keep the function alive long enough for the best-effort fast path below
 // (sleep through the buffer window + AI generation). The cron is the fallback.
@@ -327,6 +328,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!conversation.ai_enabled) {
       if (mediaJob) after(mediaJob);
       return NextResponse.json({ received: true, ai: false });
+    }
+
+    // A profile can be fully configured and selected in the SaaS panel while
+    // remaining stopped. Only the explicit switch in Oficina Virtual starts
+    // the AI runtime; inbound messages are still stored for human attention.
+    if (!(await isWhatsAppAgentRuntimeEnabled(workspaceId))) {
+      if (mediaJob) after(mediaJob);
+      return NextResponse.json({ received: true, ai: false, officeWhatsAppInactive: true });
     }
 
     // Rate-limit check — still runs here to avoid buffering rate-limited contacts

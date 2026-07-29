@@ -50,3 +50,22 @@ export async function setOfficeVirtualEnabled(
     return { status: 'error', message: 'No se pudo contactar con el backend de activación.' };
   }
 }
+
+/** Starts/stops the configured WhatsApp profile from Oficina Virtual. */
+export async function setOfficeWhatsAppEnabled(
+  workspaceId: string,
+  enabled: boolean,
+): Promise<SetOfficeVirtualEnabledResult> {
+  try {
+    const response = await fetch(`/api/workspace/${encodeURIComponent(workspaceId)}/office-virtual`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target: 'whatsapp', enabled }),
+    });
+    if (!response.ok) return { status: 'error', message: await readError(response) };
+    const body = (await response.json()) as { enabled: boolean };
+    return { status: 'ok', enabled: body.enabled };
+  } catch {
+    return { status: 'error', message: 'No se pudo cambiar el estado del Agente de WhatsApp.' };
+  }
+}

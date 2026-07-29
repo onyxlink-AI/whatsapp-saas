@@ -29,6 +29,10 @@ function healthFromEnabled(enabled: boolean): 'healthy' | 'unknown' {
   return enabled ? 'healthy' : 'unknown';
 }
 
+function yCloudReady(enabled: boolean, configured: boolean): boolean {
+  return enabled && configured;
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -43,7 +47,7 @@ export async function GET(
     const { data: workspace, error: workspaceError } = await client
       .from('workspaces')
       .select(
-        'id, office_virtual_enabled, whatsapp_agent_enabled, vapi_assistant_id, advanced_memory_enabled, cross_channel_memory_enabled, pipeline_ai_enabled, cold_lead_recovery_enabled',
+        'id, office_virtual_enabled, whatsapp_agent_enabled, office_whatsapp_enabled, vapi_assistant_id, advanced_memory_enabled, cross_channel_memory_enabled, pipeline_ai_enabled, cold_lead_recovery_enabled',
       )
       .eq('id', workspaceId)
       .maybeSingle();
@@ -63,7 +67,7 @@ export async function GET(
 
     const { data: ycloud, error: ycloudError } = await client
       .from('integrations')
-      .select('id, enabled, config')
+      .select('id, enabled, config, credentials')
       .eq('workspace_id', workspaceId)
       .eq('provider', 'ycloud')
       .maybeSingle();
@@ -72,6 +76,7 @@ export async function GET(
     const workspaceRow: SaasWorkspaceCapabilityRow = {
       id: workspace.id,
       whatsapp_agent_enabled: workspace.whatsapp_agent_enabled,
+      office_whatsapp_enabled: workspace.office_whatsapp_enabled,
       vapi_assistant_id: workspace.vapi_assistant_id,
       advanced_memory_enabled: workspace.advanced_memory_enabled,
       cross_channel_memory_enabled: workspace.cross_channel_memory_enabled,
@@ -84,8 +89,13 @@ export async function GET(
       ? { id: activeAgent.id, type: activeAgent.type, is_active: activeAgent.is_active }
       : null;
 
+    const phoneNumber = (ycloud?.config as Record<string, unknown> | null)?.phone_number;
+    const hasYCloudCredentials = Boolean(
+      ycloud?.credentials && Object.keys(ycloud.credentials as Record<string, unknown>).length > 0,
+    );
+    const ycloudConfigured = typeof phoneNumber === 'string' && phoneNumber.trim().length > 0 && hasYCloudCredentials;
     const ycloudIntegration: SaasYCloudIntegrationRow | null = ycloud
-      ? { provider: 'ycloud', enabled: ycloud.enabled }
+      ? { provider: 'ycloud', enabled: ycloud.enabled, configured: ycloudConfigured }
       : null;
 
     const { data: chatbotRow, error: chatbotError } = await client
@@ -112,13 +122,12 @@ export async function GET(
       workspace: workspaceRow,
       activeWhatsappAgent,
       ycloudIntegration,
-      ycloudHealth: { health: healthFromEnabled(ycloud?.enabled === true) },
+      ycloudHealth: { health: healthFromEnabled(yCloudReady(ycloud?.enabled === true, ycloudConfigured)) },
       voiceHealth: { health: healthFromEnabled(workspace.vapi_assistant_id !== null) },
       chatbot,
       capturedAt,
     });
 
-    const phoneNumber = (ycloud?.config as Record<string, unknown> | null)?.phone_number;
     const whatsappBinding = resolveWorkspaceWhatsAppBinding(
       snapshot,
       ycloud

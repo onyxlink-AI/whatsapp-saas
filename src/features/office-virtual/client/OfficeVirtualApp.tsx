@@ -25,6 +25,7 @@ import Sidebar, { type ViewId } from './components/Sidebar';
 import TareasView from './components/TareasView';
 import TopBar from './components/TopBar';
 import type { CameraMode } from './three/OfficeCanvas';
+import { allowCameraModeForViewer, resolveCameraModeForViewer } from './three/cameraModeAccess';
 import { useAgentChat } from './hooks/useAgentChat';
 import { useAnalyticsFeed } from './hooks/useAnalyticsFeed';
 import { useGlobalSearch } from './hooks/useGlobalSearch';
@@ -104,20 +105,21 @@ const VIEW_TITLES: Record<ViewId, string> = {
 export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<ViewId>('oficina');
-  const [cameraMode, setCameraMode] = useState<CameraMode>('showcase');
+  const [cameraMode, setCameraMode] = useState<CameraMode>(() => resolveCameraModeForViewer(isSuperAdmin, null));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const saved = window.localStorage.getItem('onyxlink-office-camera-mode');
     if (saved === 'showcase' || saved === 'iso' || saved === '2d') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-only: localStorage doesn't exist during SSR, so both server and first client render start in "showcase" (Presentation) mode and only switch after mount if the user had a saved preference — no hydration mismatch.
-      setCameraMode(saved);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-only: localStorage does not exist during SSR; the saved preference is sanitized by role before it can update the camera.
+      setCameraMode(resolveCameraModeForViewer(isSuperAdmin, saved));
     }
-  }, []);
+  }, [isSuperAdmin]);
 
   const changeCameraMode = (mode: CameraMode) => {
-    setCameraMode(mode);
-    window.localStorage.setItem('onyxlink-office-camera-mode', mode);
+    const allowedMode = allowCameraModeForViewer(isSuperAdmin, mode);
+    setCameraMode(allowedMode);
+    window.localStorage.setItem('onyxlink-office-camera-mode', allowedMode);
   };
 
   // Same actor identity (real user, real role, real workspace) threaded into
@@ -264,6 +266,7 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
           isOfficeView={activeView === 'oficina'}
           cameraMode={cameraMode}
           onCameraModeChange={changeCameraMode}
+          canUsePresentation={isSuperAdmin}
           onOpenSearch={() => setActiveView('buscar')}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
         />
@@ -380,9 +383,13 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
               snapshot={officeActivation.snapshot}
               readiness={officeActivation.readiness}
               whatsappBinding={officeActivation.whatsappBinding}
+              whatsappConfigured={officeActivation.whatsappConfigured}
+              whatsappBusy={officeActivation.whatsappBusy}
               lastDecision={officeActivation.lastDecision}
               onActivate={officeActivation.activate}
               onDeactivate={officeActivation.deactivate}
+              onActivateWhatsApp={officeActivation.activateWhatsApp}
+              onDeactivateWhatsApp={officeActivation.deactivateWhatsApp}
               whatsappAgentName={whatsappAgentName}
             />
           ) : activeView === 'configurador' && isSuperAdmin ? (

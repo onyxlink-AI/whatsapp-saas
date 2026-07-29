@@ -74,13 +74,13 @@ export function AgentsTab({
       });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) {
-        toast.error(json.error ?? "No se pudo activar el agente");
+        toast.error(json.error ?? "No se pudo elegir el perfil");
         return;
       }
       setAgents((prev) =>
         prev.map((a) => ({ ...a, isActive: a.id === pending.id })),
       );
-      toast.success(`${pending.name} está activo`);
+      toast.success(`${pending.name} está preparado para conectarse a WhatsApp`);
       router.refresh();
     } catch {
       toast.error("Error de conexión");
@@ -154,7 +154,7 @@ export function AgentsTab({
               Crea, configura y prueba tu agente
             </h2>
             <p className="text-sm leading-6 text-muted-foreground">
-              Prepara distintos perfiles y activa solo el que debe responder.
+              Prepara distintos perfiles y elige cuál se conectará a WhatsApp.
               Puedes probar cada conversación aquí antes de conectar WhatsApp.
             </p>
           </div>
@@ -174,7 +174,7 @@ export function AgentsTab({
           <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-background/65 px-3 py-2.5 text-sm">
             <CheckCircle2 className="h-4 w-4 text-emerald-500" aria-hidden="true" />
             <span>
-              {currentActive ? `${currentActive.name} responde ahora` : "Ningún agente está atendiendo"}
+              {currentActive ? `${currentActive.name} está elegido para WhatsApp` : "Ningún perfil está seleccionado"}
             </span>
           </div>
         </div>
@@ -309,11 +309,11 @@ export function AgentsTab({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Activar a {pending?.name}</DialogTitle>
+            <DialogTitle>Elegir a {pending?.name}</DialogTitle>
             <DialogDescription>
               {currentActive && currentActive.id !== pending?.id
-                ? `Esto desactivará a ${currentActive.name}. Solo un agente puede estar activo a la vez.`
-                : "¿Activar este agente?"}
+                ? `Esto sustituirá a ${currentActive.name}. Solo puedes conectar un perfil a WhatsApp.`
+                : "¿Elegir este perfil para WhatsApp? Después podrás activarlo desde Oficina Virtual."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -321,7 +321,7 @@ export function AgentsTab({
               Cancelar
             </Button>
             <Button onClick={confirmActivate} disabled={busy} aria-busy={busy}>
-              Activar
+              Elegir perfil
             </Button>
           </DialogFooter>
         </DialogContent>

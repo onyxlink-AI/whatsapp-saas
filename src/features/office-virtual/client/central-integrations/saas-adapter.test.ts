@@ -4,6 +4,7 @@ import { adaptSaasWorkspaceCapabilities, type SaasWorkspaceCapabilityRow } from 
 const BASE_WORKSPACE: SaasWorkspaceCapabilityRow = {
   id: 'workspace-a',
   whatsapp_agent_enabled: false,
+  office_whatsapp_enabled: false,
   vapi_assistant_id: null,
   advanced_memory_enabled: false,
   cross_channel_memory_enabled: false,

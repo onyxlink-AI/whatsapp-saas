@@ -29,10 +29,11 @@ export async function getReminderReadiness(
 ): Promise<ReminderReadiness> {
   const db = svc();
 
-  const [activeAgent, openRouterKey, config] = await Promise.all([
+  const [activeAgent, openRouterKey, config, workspaceFlags] = await Promise.all([
     getActiveAgent(workspaceId),
     getOpenRouterApiKey(workspaceId),
     getOrCreateReminderConfig(workspaceId),
+    db.from("workspaces").select("whatsapp_agent_enabled, office_whatsapp_enabled").eq("id", workspaceId).maybeSingle(),
   ]);
 
   const { data: integrations } = await db
@@ -52,6 +53,8 @@ export async function getReminderReadiness(
 
   const ycloud = rows.find((r) => r.provider === "ycloud");
   const whatsappConnected = Boolean(
+    workspaceFlags.data?.whatsapp_agent_enabled === true &&
+    workspaceFlags.data?.office_whatsapp_enabled === true &&
     ycloud?.enabled && ycloud.credentials && Object.keys(ycloud.credentials).length > 0,
   );
 

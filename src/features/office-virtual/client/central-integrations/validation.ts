@@ -22,6 +22,7 @@ export const WorkspaceCapabilitySnapshotSchema: z.ZodType<WorkspaceCapabilitySna
     whatsappAgent: z
       .object({
         enabled: z.boolean(),
+        officeEnabled: z.boolean(),
         activeAgentId: IdentifierSchema.nullable(),
         activeAgentType: z.enum(['setter', 'soporte', 'agendamiento']).nullable(),
       })

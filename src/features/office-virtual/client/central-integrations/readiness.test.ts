@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isChatbotChannelReady, isVoiceChannelReady, isWhatsAppChannelReady } from './readiness';
+import { isChatbotChannelReady, isVoiceChannelReady, isWhatsAppChannelConfigured, isWhatsAppChannelReady } from './readiness';
 import { createReadyWorkspaceFixture, createIncompleteWorkspaceFixture } from './fixtures';
 
 describe('isVoiceChannelReady', () => {
@@ -28,6 +28,35 @@ describe('isVoiceChannelReady', () => {
     expect(empresaB.voice.assistantId).toBeNull();
     expect(isVoiceChannelReady(empresaA)).toBe(true);
     expect(isVoiceChannelReady(empresaB)).toBe(false);
+  });
+});
+
+describe('WhatsApp configuration and office activation', () => {
+  it('does not show WhatsApp when the profile exists but YCloud is not configured', () => {
+    const snapshot = createReadyWorkspaceFixture({
+      ycloud: { configured: false, enabled: false, health: 'unknown' },
+    });
+    expect(isWhatsAppChannelConfigured(snapshot)).toBe(false);
+    expect(isWhatsAppChannelReady(snapshot)).toBe(false);
+  });
+
+  it('does not show WhatsApp when configured but not activated from the office', () => {
+    const snapshot = createReadyWorkspaceFixture({
+      whatsappAgent: {
+        enabled: true,
+        officeEnabled: false,
+        activeAgentId: 'agent-setter-1',
+        activeAgentType: 'setter',
+      },
+    });
+    expect(isWhatsAppChannelConfigured(snapshot)).toBe(true);
+    expect(isWhatsAppChannelReady(snapshot)).toBe(false);
+  });
+
+  it('shows WhatsApp only when panel configuration and office activation are both ready', () => {
+    const snapshot = createReadyWorkspaceFixture();
+    expect(isWhatsAppChannelConfigured(snapshot)).toBe(true);
+    expect(isWhatsAppChannelReady(snapshot)).toBe(true);
   });
 });
 

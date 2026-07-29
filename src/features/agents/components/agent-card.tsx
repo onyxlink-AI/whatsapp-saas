@@ -48,7 +48,7 @@ export function AgentCard({ agent, busy, onConfigure, onActivate }: Props) {
             </h3>
             {agent.isActive && (
               <Badge className="shrink-0" variant="default">
-                Activo
+                Seleccionado
               </Badge>
             )}
           </div>
@@ -74,7 +74,7 @@ export function AgentCard({ agent, busy, onConfigure, onActivate }: Props) {
         {agent.isActive ? (
           <span className="flex flex-1 items-center gap-1.5 text-xs font-medium text-primary">
             <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-            Agente activo
+            Perfil elegido para WhatsApp
           </span>
         ) : (
           <Button
@@ -84,7 +84,7 @@ export function AgentCard({ agent, busy, onConfigure, onActivate }: Props) {
             disabled={busy}
             onClick={() => onActivate(agent.id)}
           >
-            Activar
+            Elegir perfil
           </Button>
         )}
         <Button

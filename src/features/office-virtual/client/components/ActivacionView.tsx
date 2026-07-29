@@ -20,9 +20,13 @@ type Props = {
   snapshot: WorkspaceCapabilitySnapshot;
   readiness: OfficeProvisioningReadiness;
   whatsappBinding: WorkspaceWhatsAppBinding;
+  whatsappConfigured: boolean;
+  whatsappBusy: boolean;
   lastDecision: OfficeActivationDecision | null;
   onActivate: () => void;
   onDeactivate: () => void;
+  onActivateWhatsApp: () => void;
+  onDeactivateWhatsApp: () => void;
   /** Display name of the agent staffing the WhatsApp seat (lead-intake), e.g. "Sofía". */
   whatsappAgentName: string;
 };
@@ -49,14 +53,19 @@ export default function ActivacionView({
   snapshot,
   readiness,
   whatsappBinding,
+  whatsappConfigured,
+  whatsappBusy,
   lastDecision,
   onActivate,
   onDeactivate,
+  onActivateWhatsApp,
+  onDeactivateWhatsApp,
   whatsappAgentName,
 }: Props) {
   // eslint-disable-next-line react-hooks/purity -- relative timestamps are meant to reflect wall-clock time at render.
   const now = Date.now();
   const switchOn = snapshot.virtualOfficeEnabled;
+  const whatsappSwitchOn = snapshot.whatsappAgent.officeEnabled;
 
   const blockingLabels = readiness.requirements
     .filter((req) => readiness.blockingRequirementIds.includes(req.id))
@@ -128,6 +137,43 @@ export default function ActivacionView({
                   {REJECTION_LABEL_ES[lastDecision.code as Exclude<OfficeActivationDecisionCode, 'approved'>]}
                 </p>
               ))}
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-5 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+          <button
+            role="switch"
+            aria-checked={whatsappSwitchOn}
+            aria-label="Agente de WhatsApp en la oficina"
+            disabled={loading || whatsappBusy || (!whatsappConfigured && !whatsappSwitchOn)}
+            onClick={() => (whatsappSwitchOn ? onDeactivateWhatsApp() : onActivateWhatsApp())}
+            className={`relative shrink-0 w-14 h-8 rounded-full border transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none ${
+              whatsappSwitchOn ? 'bg-emerald-500/80 border-emerald-400/40' : 'bg-white/[0.06] border-white/10'
+            }`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-7 h-7 rounded-full bg-white shadow transition-transform ${whatsappSwitchOn ? 'translate-x-6' : 'translate-x-0'}`} />
+          </button>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-semibold text-white/85">Agente de WhatsApp</span>
+              <span className={`text-[11px] font-medium px-2.5 py-1 rounded-full border ${
+                whatsappSwitchOn
+                  ? 'text-emerald-300/80 border-emerald-500/25 bg-emerald-500/[0.06]'
+                  : whatsappConfigured
+                    ? 'text-amber-300/80 border-amber-500/25 bg-amber-500/[0.06]'
+                    : 'text-white/45 border-white/10 bg-white/[0.03]'
+              }`}>
+                {whatsappSwitchOn ? 'Activo en la oficina' : whatsappConfigured ? 'Preparado para activar' : 'Falta configurar'}
+              </span>
+            </div>
+            <p className="text-xs text-white/45 mt-1.5 leading-relaxed">
+              {whatsappSwitchOn
+                ? 'Ya puede aparecer en la oficina y atender conversaciones reales.'
+                : whatsappConfigured
+                  ? 'La configuración está lista. Actívalo aquí cuando quieras ponerlo a trabajar.'
+                  : 'Crea y prueba el agente en Ajustes → Agentes, y conecta YCloud en Ajustes → Integraciones.'}
+            </p>
           </div>
         </div>
 

@@ -16,6 +16,7 @@ export function createReadyWorkspaceFixture(
     virtualOfficeEnabled: false,
     whatsappAgent: {
       enabled: true,
+      officeEnabled: true,
       activeAgentId: 'agent-setter-1',
       activeAgentType: 'setter',
     },

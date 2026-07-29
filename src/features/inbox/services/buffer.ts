@@ -7,6 +7,7 @@ import type { ToolContext } from "@/features/tools/core/tool";
 import { resolvePromptById, resolveSystemPrompt } from "./prompt-resolver";
 import { buildSystemPrompt } from "./prompt-builder";
 import { getActiveAgent } from "@/features/agents/services/active-agent";
+import { isWhatsAppAgentRuntimeEnabled } from "@/features/agents/services/whatsapp-runtime";
 import { maybeAutoProcess } from "@/features/agents/services/auto-tagging";
 import {
   getBusinessInfo,
@@ -296,6 +297,13 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
 
     if (convError || !conversation) {
       throw new Error(`Conversation not found: ${convError?.message}`);
+    }
+
+    // Re-check at execution time so a batch queued just before the office
+    // switch was turned off can never produce or send a late AI reply.
+    if (!(await isWhatsAppAgentRuntimeEnabled(batch.workspace_id))) {
+      await markBatchProcessed(batch.id, mergedText, supabase);
+      return { processed: true, conversationId: batch.conversation_id };
     }
 
     // ── 5. Decision engine: state check + handoff trigger + rate limits ──────

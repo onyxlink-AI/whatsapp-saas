@@ -12,9 +12,9 @@ export function ReadinessChecklist({
   readiness: ReminderReadiness;
 }) {
   const items: { label: string; ok: boolean; hint?: string }[] = [
-    { label: "Agente configurado", ok: readiness.agentConfigured, hint: "Activa un agente en la pestaña 🤖 Agentes." },
+    { label: "Perfil de agente elegido", ok: readiness.agentConfigured, hint: "Elige un perfil en Ajustes → Agentes." },
     { label: "OpenRouter disponible", ok: readiness.openRouterAvailable, hint: "Conecta OpenRouter en Ajustes → Integraciones." },
-    { label: "WhatsApp conectado", ok: readiness.whatsappConnected, hint: "Conecta WhatsApp (YCloud) en Ajustes → Integraciones." },
+    { label: "WhatsApp conectado y activo", ok: readiness.whatsappConnected, hint: "Conecta YCloud en Ajustes y activa el agente desde Oficina Virtual." },
     { label: "Agenda conectada", ok: readiness.agendaConnected, hint: "Conecta Google Calendar o HighLevel y elígela como origen de citas." },
   ];
 

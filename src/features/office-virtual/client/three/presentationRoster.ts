@@ -2,8 +2,10 @@ import type { OfficeSceneAgent } from '../types';
 import type { OfficeRoomSlot } from './officeRoster';
 
 /**
- * A self-contained showroom roster. Presentation mode demonstrates the full
- * product and must never expose a client's inactive draft names or settings.
+ * A self-contained showroom roster. Presentation mode demonstrates the product
+ * and must never expose a client's inactive draft names or settings. WhatsApp
+ * is the exception: it remains empty until that workspace has a real configured
+ * and office-activated agent, so the showroom never invents a connected channel.
  * Operative mode continues to consume the real, activation-filtered roster.
  */
 const PRESENTATION_AGENTS: Record<string, OfficeSceneAgent> = {
@@ -107,6 +109,7 @@ const PRESENTATION_AGENTS: Record<string, OfficeSceneAgent> = {
 
 export function buildPresentationRoomSlots(rooms: OfficeRoomSlot[]): OfficeRoomSlot[] {
   return rooms.map((slot) => {
+    if (slot.seatId === 'lead-intake' && slot.occupant === null) return slot;
     const demoAgent = PRESENTATION_AGENTS[slot.seatId];
     if (!demoAgent) return slot;
     return { seatId: slot.seatId, room: demoAgent, occupant: demoAgent };

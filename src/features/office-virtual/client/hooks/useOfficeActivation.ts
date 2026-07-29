@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { decideVirtualOfficeActivation, selectOfficeProvisioningReadiness } from '../central-integrations';
+import { decideVirtualOfficeActivation, isWhatsAppChannelConfigured, selectOfficeProvisioningReadiness } from '../central-integrations';
 import type {
   OfficeActivationAction,
   OfficeActivationDecision,
@@ -8,7 +8,7 @@ import type {
   WorkspaceCapabilitySnapshot,
 } from '../central-integrations/types';
 import type { WorkspaceWhatsAppBinding } from '../central-integrations/whatsapp-binding';
-import { fetchWorkspaceCapabilitySnapshot, setOfficeVirtualEnabled } from '../lib/saasWorkspaceCapabilityAdapter';
+import { fetchWorkspaceCapabilitySnapshot, setOfficeVirtualEnabled, setOfficeWhatsAppEnabled } from '../lib/saasWorkspaceCapabilityAdapter';
 
 // Real per-workspace data via src/app/api/workspace/[id]/office-virtual/capability-snapshot
 // (GET) and the pre-existing office_virtual_enabled toggle route (PATCH) — no
@@ -20,7 +20,7 @@ function emptySnapshot(workspaceId: string): WorkspaceCapabilitySnapshot {
     workspaceId,
     capturedAt: new Date(0).toISOString(),
     virtualOfficeEnabled: false,
-    whatsappAgent: { enabled: false, activeAgentId: null, activeAgentType: null },
+    whatsappAgent: { enabled: false, officeEnabled: false, activeAgentId: null, activeAgentType: null },
     ycloud: { configured: false, enabled: false, health: 'unknown' },
     voice: { configured: false, enabled: false, health: 'unknown', assistantId: null },
     chatbot: { configured: false, enabled: false, health: 'unknown', provider: null },
@@ -49,9 +49,13 @@ export type OfficeActivation = {
   snapshot: WorkspaceCapabilitySnapshot;
   readiness: OfficeProvisioningReadiness;
   whatsappBinding: WorkspaceWhatsAppBinding;
+  whatsappConfigured: boolean;
+  whatsappBusy: boolean;
   lastDecision: OfficeActivationDecision | null;
   activate: () => void;
   deactivate: () => void;
+  activateWhatsApp: () => void;
+  deactivateWhatsApp: () => void;
 };
 
 export function useOfficeActivation(
@@ -64,6 +68,7 @@ export function useOfficeActivation(
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [lastDecision, setLastDecision] = useState<OfficeActivationDecision | null>(null);
+  const [whatsappBusy, setWhatsappBusy] = useState(false);
   const busyRef = useRef(false);
 
   useEffect(() => {
@@ -85,6 +90,7 @@ export function useOfficeActivation(
   }, [workspaceId]);
 
   const readiness = useMemo(() => selectOfficeProvisioningReadiness(snapshot), [snapshot]);
+  const whatsappConfigured = useMemo(() => isWhatsAppChannelConfigured(snapshot), [snapshot]);
 
   const requestActivation = (action: OfficeActivationAction) => {
     if (loading || busyRef.current) return;
@@ -114,5 +120,43 @@ export function useOfficeActivation(
   const activate = () => requestActivation('enable');
   const deactivate = () => requestActivation('disable');
 
-  return { loading, loadError, snapshot, readiness, whatsappBinding, lastDecision, activate, deactivate };
+  const setWhatsAppActivation = (enabled: boolean) => {
+    if (loading || busyRef.current || whatsappBusy || (enabled && !whatsappConfigured)) return;
+    busyRef.current = true;
+    setWhatsappBusy(true);
+    setOfficeWhatsAppEnabled(workspaceId, enabled).then(async (result) => {
+      if (result.status === 'error') {
+        setLoadError(result.message);
+      } else {
+        const refreshed = await fetchWorkspaceCapabilitySnapshot(workspaceId);
+        if (refreshed.status === 'ok') {
+          setSnapshot(refreshed.snapshot);
+          setWhatsappBinding(refreshed.whatsappBinding);
+          setLoadError(null);
+        } else {
+          setLoadError(refreshed.message);
+        }
+      }
+      busyRef.current = false;
+      setWhatsappBusy(false);
+    });
+  };
+
+  const activateWhatsApp = () => setWhatsAppActivation(true);
+  const deactivateWhatsApp = () => setWhatsAppActivation(false);
+
+  return {
+    loading,
+    loadError,
+    snapshot,
+    readiness,
+    whatsappBinding,
+    whatsappConfigured,
+    whatsappBusy,
+    lastDecision,
+    activate,
+    deactivate,
+    activateWhatsApp,
+    deactivateWhatsApp,
+  };
 }

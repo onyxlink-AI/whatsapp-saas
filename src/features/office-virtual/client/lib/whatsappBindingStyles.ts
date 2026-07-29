@@ -9,6 +9,7 @@ export const WHATSAPP_BINDING_STATE_LABEL_ES: Record<WorkspaceWhatsAppBindingSta
   number_missing: 'Sin número vinculado',
   integration_unhealthy: 'YCloud con problemas',
   agent_inactive: 'Sin agente WhatsApp activo',
+  office_inactive: 'Preparado, pendiente de activar en la oficina',
 };
 
 export const WHATSAPP_BINDING_STATE_TW: Record<WorkspaceWhatsAppBindingState, string> = {
@@ -18,4 +19,5 @@ export const WHATSAPP_BINDING_STATE_TW: Record<WorkspaceWhatsAppBindingState, st
   number_missing: 'text-white/45 border-white/10 bg-white/[0.03]',
   integration_unhealthy: 'text-amber-300/80 border-amber-500/25 bg-amber-500/[0.06]',
   agent_inactive: 'text-white/45 border-white/10 bg-white/[0.03]',
+  office_inactive: 'text-amber-300/80 border-amber-500/25 bg-amber-500/[0.06]',
 };

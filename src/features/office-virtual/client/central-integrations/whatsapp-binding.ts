@@ -15,7 +15,8 @@ export type WorkspaceWhatsAppBindingState =
   | 'not_connected'
   | 'number_missing'
   | 'integration_unhealthy'
-  | 'agent_inactive';
+  | 'agent_inactive'
+  | 'office_inactive';
 
 export type WorkspaceWhatsAppBinding = {
   workspaceId: string;
@@ -83,6 +84,10 @@ export function resolveWorkspaceWhatsAppBinding(
     !snapshot.whatsappAgent.activeAgentType
   ) {
     return unavailableBinding(snapshot, 'agent_inactive');
+  }
+
+  if (!snapshot.whatsappAgent.officeEnabled) {
+    return unavailableBinding(snapshot, 'office_inactive');
   }
 
   return {

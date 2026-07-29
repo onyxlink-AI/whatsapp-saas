@@ -25,6 +25,7 @@ const syncContactToAirtable = vi.fn(async () => {});
 const decryptCredentials = vi.fn(async (creds: Record<string, unknown> | null) => ({ ...(creds ?? {}) }) as Record<string, string>);
 const getChatbotRuntimeConfig = vi.fn(async () => null as unknown);
 const handleChatbotWhatsAppInbound = vi.fn(async () => {});
+const isWhatsAppAgentRuntimeEnabled = vi.fn(async () => true);
 
 vi.mock('@/features/inbox/services/ycloud-webhook-handler', () => ({ verifyYCloudSignature, parseInbound }));
 vi.mock('@/features/inbox/services/normalizer', () => ({ processInbound }));
@@ -37,6 +38,7 @@ vi.mock('@/shared/lib/crypto', () => ({ decryptCredentials }));
 vi.mock('@/features/chatbot/server/chatbot-service', () => ({ getChatbotRuntimeConfig }));
 vi.mock('@/features/chatbot/server/whatsapp-channel', () => ({ handleChatbotWhatsAppInbound }));
 vi.mock('@/features/chatbot/server/channel-readiness', () => ({ resolveChannelReadiness: vi.fn(async () => false) }));
+vi.mock('@/features/agents/services/whatsapp-runtime', () => ({ isWhatsAppAgentRuntimeEnabled }));
 vi.mock('next/server', async (importOriginal) => {
   const actual = await importOriginal<typeof import('next/server')>();
   return { ...actual, after: (fn: () => unknown) => fn() };
@@ -83,6 +85,7 @@ beforeEach(() => {
   decryptCredentials.mockImplementation(async (creds: Record<string, unknown> | null) => ({ ...(creds ?? {}) }) as Record<string, string>);
   checkRateLimits.mockResolvedValue({ allowed: true, reason: null });
   getChatbotRuntimeConfig.mockResolvedValue(null);
+  isWhatsAppAgentRuntimeEnabled.mockResolvedValue(true);
   supabaseResponses = {
     // The test URLs never carry ?wsid=, so the route takes the fallback
     // phone-scan path (.limit(10)), which expects an array.
@@ -126,6 +129,27 @@ describe('ycloud webhook — no Chatbot owns the number (the common/default case
     expect(response.status).toBe(401);
     expect(getChatbotRuntimeConfig).not.toHaveBeenCalled();
     expect(processInbound).not.toHaveBeenCalled();
+  });
+
+  it('stores the inbound message but never buffers an AI reply when WhatsApp is stopped from the office', async () => {
+    isWhatsAppAgentRuntimeEnabled.mockResolvedValue(false);
+    parseInbound.mockReturnValue({ from: '+34611111111', workspacePhone: '+34600000000', type: 'text', text: 'hola', wamid: 'w-off', customerName: null, createTime: '2026-07-24T00:00:00.000Z', mediaLink: null });
+    processInbound.mockResolvedValue({
+      contact: { id: 'contact-1' },
+      conversation: { id: 'conv-1', ai_enabled: true },
+      message: { id: 'msg-1' },
+    });
+
+    const { POST } = await import('./route');
+    const response = await POST(new NextRequest('http://localhost/api/webhooks/ycloud', {
+      method: 'POST',
+      body: JSON.stringify(inboundBody()),
+      headers: { 'YCloud-Signature': 'sig' },
+    }));
+
+    expect(processInbound).toHaveBeenCalledTimes(1);
+    expect(upsertBatch).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({ received: true, ai: false, officeWhatsAppInactive: true });
   });
 });
 

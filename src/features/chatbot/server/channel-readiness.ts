@@ -25,11 +25,11 @@ export async function resolveChannelReadiness(workspaceId: string, provider: Cha
 
   if (provider === 'whatsapp') {
     const [{ data: workspace }, { data: activeAgent }, { data: ycloud }] = await Promise.all([
-      client.from('workspaces').select('whatsapp_agent_enabled').eq('id', workspaceId).maybeSingle(),
+      client.from('workspaces').select('whatsapp_agent_enabled, office_whatsapp_enabled').eq('id', workspaceId).maybeSingle(),
       client.from('agents').select('id').eq('workspace_id', workspaceId).eq('is_active', true).maybeSingle(),
       client.from('integrations').select('enabled').eq('workspace_id', workspaceId).eq('provider', 'ycloud').maybeSingle(),
     ]);
-    const agenteWhatsAppActive = workspace?.whatsapp_agent_enabled === true && activeAgent !== null;
+    const agenteWhatsAppActive = workspace?.whatsapp_agent_enabled === true && workspace?.office_whatsapp_enabled === true && activeAgent !== null;
     return !agenteWhatsAppActive && ycloud?.enabled === true;
   }
 
