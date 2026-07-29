@@ -161,7 +161,7 @@ export function PipelineBoard({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Busca una oportunidad o contacto..."
-          className="h-8 w-56 text-xs"
+          className="h-9 w-64 text-xs"
         />
         <label className="flex items-center gap-2 text-xs text-muted-foreground">
           <Switch checked={showClosed} onCheckedChange={toggleShowClosed} />

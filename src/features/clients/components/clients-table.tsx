@@ -182,7 +182,7 @@ export function ClientsTable({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Busca un cliente..."
-          className="h-8 w-56 text-xs"
+          className="h-9 w-64 text-xs"
         />
 
         <Tabs value={status} onValueChange={(v) => setStatus(v as ClientStatus | "all")}>

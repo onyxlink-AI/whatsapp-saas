@@ -94,7 +94,7 @@ export function InboxLayout({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Busca un contacto..."
-              className="pl-8 h-8 text-xs bg-muted/30 border-border/40 placeholder:text-muted-foreground/50"
+                className="h-9 border-border/60 bg-muted/30 pl-8 text-xs placeholder:text-muted-foreground/60"
               aria-label="Buscar conversaciones"
             />
           </div>

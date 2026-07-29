@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import { Loader2, LockKeyhole } from "lucide-react";
+import { ArrowRight, Loader2, LockKeyhole } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,10 @@ function SubmitButton() {
           Iniciando sesión...
         </>
       ) : (
-        "Iniciar sesión"
+        <>
+          Entrar en OnyxLink
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </>
       )}
     </Button>
   );
@@ -63,10 +66,10 @@ export function LoginForm({ message }: { message?: string }) {
         </div>
         <div className="space-y-1.5">
           <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
-            Bienvenido de vuelta
+            Accede a tu empresa
           </h1>
           <p className="text-sm leading-6 text-muted-foreground">
-            Ingresa a tu cuenta para continuar
+            Introduce tus datos para continuar en OnyxLink.
           </p>
         </div>
 
@@ -81,12 +84,12 @@ export function LoginForm({ message }: { message?: string }) {
 
         <form action={formAction} className="mt-6 space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">Correo electrónico</Label>
             <Input
               id="email"
               name="email"
               type="email"
-              placeholder="tu@email.com"
+              placeholder="nombre@empresa.com"
               autoComplete="email"
               aria-required="true"
               required
@@ -126,14 +129,8 @@ export function LoginForm({ message }: { message?: string }) {
         </div>
       </div>
 
-      <p className="text-center text-sm text-foreground/85">
-        ¿No tienes cuenta?{" "}
-        <Link
-          href="/signup"
-          className="text-primary underline-offset-4 hover:underline transition-colors duration-150"
-        >
-          Crear cuenta
-        </Link>
+      <p className="text-center text-xs leading-5 text-muted-foreground">
+        ¿Necesitas acceso? Pídeselo al administrador de tu empresa.
       </p>
     </div>
   );

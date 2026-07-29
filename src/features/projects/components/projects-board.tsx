@@ -148,7 +148,7 @@ export function ProjectsBoard({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Busca un proyecto..."
-          className="h-8 w-56 text-xs"
+          className="h-9 w-64 text-xs"
         />
         <Button
           size="sm"
