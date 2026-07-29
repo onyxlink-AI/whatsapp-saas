@@ -3,10 +3,8 @@ import {
   selectWorkspaceAnalyticsForActor,
 } from '../central-analytics';
 import type { AnalyticsPeriod, OfficeActivityEvent, TrendBucket } from '../central-events';
-import { createHistoricalOfficeFeed, selectTrendBuckets } from '../central-events';
-import { applyRoutineCommand, createCentralRoutineState, createRoutineFixtures } from '../central-routines';
+import { selectTrendBuckets } from '../central-events';
 import type { CentralRoutineState } from '../central-routines';
-import { applyTaskCommand, createCentralTaskState, createTaskFixtures } from '../central-tasks';
 import type { CentralTaskState } from '../central-tasks';
 import type { AnalyticsActor, WorkspaceAnalytics } from '../central-analytics';
 
@@ -25,40 +23,21 @@ const TIME_ZONE = 'Europe/Madrid';
 export type AnalyticsFeedOptions = {
   workspaceId: string;
   actor: AnalyticsActor;
-  events?: OfficeActivityEvent[];
-  taskState?: CentralTaskState;
-  routineState?: CentralRoutineState;
+  events: OfficeActivityEvent[];
+  taskState: CentralTaskState;
+  routineState: CentralRoutineState;
 };
 
-function createDemoSources(workspaceId: string, now: number) {
-  let taskState = createCentralTaskState(workspaceId);
-  for (const command of createTaskFixtures(workspaceId)) {
-    const result = applyTaskCommand(taskState, command);
-    if (result.success) taskState = result.state;
-  }
-
-  let routineState = createCentralRoutineState(workspaceId);
-  for (const command of createRoutineFixtures(workspaceId)) {
-    const result = applyRoutineCommand(routineState, command);
-    if (result.success) routineState = result.state;
-  }
-
-  return {
-    events: createHistoricalOfficeFeed(workspaceId, new Date(now), 35),
-    taskState,
-    routineState,
-  };
-}
-
 export function useAnalyticsFeed(options: AnalyticsFeedOptions): AnalyticsFeed {
-  const { workspaceId, actor } = options;
+  // Real sources only, always supplied by the caller — this used to
+  // silently fabricate 35 days of demo activity/tasks/routines and present
+  // KPIs computed from them as if they were this workspace's real numbers
+  // whenever a caller omitted these fields. Required (not optional) props
+  // make that fixture landmine impossible instead of merely unused today.
+  const { workspaceId, actor, events, taskState, routineState } = options;
   const [period, setPeriod] = useState<AnalyticsPeriod>('7d');
-  // eslint-disable-next-line react-hooks/purity -- stable reference timestamp for demo analytics sources, intentionally captured once per mount.
+  // eslint-disable-next-line react-hooks/purity -- stable reference timestamp for the analytics window, intentionally captured once per mount.
   const now = useMemo(() => Date.now(), []);
-  const demoSources = useMemo(() => createDemoSources(workspaceId, now), [workspaceId, now]);
-  const events = options.events ?? demoSources.events;
-  const taskState = options.taskState ?? demoSources.taskState;
-  const routineState = options.routineState ?? demoSources.routineState;
   const result = useMemo(() => selectWorkspaceAnalyticsForActor(
     actor,
     { workspaceId, period, now, timeZone: TIME_ZONE },

@@ -59,6 +59,18 @@ const NAV_GROUPS: NavGroup[] = [
   ] },
 ];
 
+const CLIENT_LABELS: Partial<Record<ViewId, string>> = {
+  panel: 'Resumen',
+  agentes: 'Equipo',
+  contactos: 'Clientes',
+  bandeja: 'Conversaciones',
+  actividad: 'Qué está pasando',
+  memoria: 'Información recordada',
+  archivos: 'Documentos',
+  skills: 'Habilidades',
+  analiticas: 'Resultados',
+};
+
 type Props = {
   active: ViewId;
   onSelect: (id: ViewId) => void;
@@ -69,7 +81,15 @@ type Props = {
 };
 
 export function visibleNavGroups(isSuperAdmin: boolean): NavGroup[] {
-  return NAV_GROUPS.filter((group) => !group.adminOnly || isSuperAdmin);
+  return NAV_GROUPS
+    .filter((group) => !group.adminOnly || isSuperAdmin)
+    .map((group) => ({
+      ...group,
+      items: group.items.map((item) => ({
+        ...item,
+        label: isSuperAdmin ? item.label : (CLIENT_LABELS[item.id] ?? item.label),
+      })),
+    }));
 }
 
 function NavButton({ item, active, onSelect, compact = false }: { item: NavItem; active: ViewId; onSelect: (id: ViewId) => void; compact?: boolean }) {
@@ -96,7 +116,7 @@ export default function Sidebar({ active, onSelect, userEmail, isSuperAdmin, mob
 
   return (
     <>
-      <aside className="onyx-sidebar hidden md:flex w-[240px] shrink-0 flex-col z-20">
+      <aside className="hidden">
         <div className="onyx-brand px-4 py-4">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-md border border-violet-400/30 bg-violet-500/10 flex items-center justify-center shrink-0 shadow-[inset_0_0_18px_rgba(124,58,237,.12)]">
@@ -137,9 +157,9 @@ export default function Sidebar({ active, onSelect, userEmail, isSuperAdmin, mob
       </aside>
 
       {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-[60]">
+        <div className="fixed inset-0 z-[60]">
           <button className="absolute inset-0 bg-black/65 backdrop-blur-[2px]" onClick={onCloseMobileMenu} aria-label="Cerrar menú" />
-          <section className="onyx-mobile-sheet absolute inset-x-2 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] max-h-[min(70dvh,36rem)] flex flex-col" aria-label="Todas las secciones de Oficina Virtual">
+          <section className="onyx-mobile-sheet absolute inset-x-2 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] max-h-[min(72dvh,40rem)] flex flex-col md:inset-y-4 md:left-[17rem] md:right-auto md:bottom-4 md:w-[350px] md:max-h-none" aria-label="Todas las secciones de Oficina Virtual">
             <header className="flex items-center justify-between px-4 py-3 border-b border-white/[0.07] shrink-0">
               <div>
                 <div className="text-[10px] uppercase tracking-[0.14em] text-violet-300/60">Navegación</div>
@@ -149,7 +169,7 @@ export default function Sidebar({ active, onSelect, userEmail, isSuperAdmin, mob
                 <X className="w-4 h-4" />
               </button>
             </header>
-            <div className="overflow-y-auto p-3 grid grid-cols-2 gap-2">
+            <div className="overflow-y-auto p-3 grid grid-cols-2 gap-2 onyx-sidebar-nav">
               {visibleGroups.map((group) => (
                 <div key={group.label} className="col-span-2">
                   <div className="px-2 pt-1 pb-1.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-white/30">{group.label}</div>

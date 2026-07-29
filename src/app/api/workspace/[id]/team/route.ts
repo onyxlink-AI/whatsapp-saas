@@ -4,6 +4,8 @@ import { z } from "zod";
 import {
   requireWorkspaceMember,
   readJsonBody,
+  ROLE_RANK,
+  type WorkspaceRole,
 } from "@/lib/auth/workspace-access";
 import { provisionWorkspaceUser } from "@/lib/auth/provision-user";
 
@@ -75,7 +77,9 @@ export async function GET(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Flatten nested users join into a flat member shape
+  // Flatten nested users join into a flat member shape. supabase-js doesn't
+  // infer this nested-relation select — the shape below must stay in sync by
+  // hand with the select() string above; a drift fails silently at runtime.
   const members = (
     (data ?? []) as unknown as Array<{
       id: string;
@@ -126,6 +130,17 @@ export async function POST(
   }
 
   const { email, role, password } = parsed.data;
+
+  // Never let a manager grant a role above their own rank — otherwise any
+  // manager could invite a new "admin" and hand control of the workspace to
+  // them (or to themselves via a second account).
+  if (ROLE_RANK[role] > ROLE_RANK[auth.role]) {
+    return NextResponse.json(
+      { error: "No puedes asignar un rol superior al tuyo" },
+      { status: 403 },
+    );
+  }
+
   const db = svc();
 
   // Provision the account directly — no invite email / SMTP. The agency shares
@@ -199,6 +214,35 @@ export async function PATCH(
   const { userId, role, is_active } = parsed.data;
   const db = svc();
 
+  // Re-fetch the target's CURRENT role first — a manager must never be able
+  // to modify (role or activation) a membership that outranks them (e.g.
+  // deactivate a real admin), and nobody may promote anyone (including
+  // themselves) to a role above their own rank.
+  const { data: target } = await db
+    .from("memberships")
+    .select("role")
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!target) {
+    return NextResponse.json({ error: "Miembro no encontrado" }, { status: 404 });
+  }
+
+  const targetCurrentRole = target.role as WorkspaceRole;
+  if (ROLE_RANK[targetCurrentRole] > ROLE_RANK[auth.role]) {
+    return NextResponse.json(
+      { error: "No puedes modificar a alguien con un rol superior al tuyo" },
+      { status: 403 },
+    );
+  }
+  if (role !== undefined && ROLE_RANK[role] > ROLE_RANK[auth.role]) {
+    return NextResponse.json(
+      { error: "No puedes asignar un rol superior al tuyo" },
+      { status: 403 },
+    );
+  }
+
   const updates: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
   };
@@ -246,6 +290,25 @@ export async function DELETE(
 
   const { userId } = parsed.data;
   const db = svc();
+
+  // Same rule as PATCH: a manager may never deactivate an admin.
+  const { data: target } = await db
+    .from("memberships")
+    .select("role")
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!target) {
+    return NextResponse.json({ error: "Miembro no encontrado" }, { status: 404 });
+  }
+
+  if (ROLE_RANK[target.role as WorkspaceRole] > ROLE_RANK[auth.role]) {
+    return NextResponse.json(
+      { error: "No puedes desactivar a alguien con un rol superior al tuyo" },
+      { status: 403 },
+    );
+  }
 
   const { error } = await db
     .from("memberships")

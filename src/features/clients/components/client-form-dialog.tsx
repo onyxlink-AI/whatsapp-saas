@@ -56,6 +56,7 @@ export function ClientFormDialog({
 
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets the form to the target client's values each time the dialog opens.
     setName(client?.name ?? "");
     setPhone(client?.phone ?? "");
     setEmail(client?.email ?? "");

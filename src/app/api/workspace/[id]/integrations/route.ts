@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   requireWorkspaceMember,
   readJsonBody,
+  ROLE_RANK,
 } from "@/lib/auth/workspace-access";
 import { encryptCredentials, decryptCredentials } from "@/shared/lib/crypto";
 import { isValidIanaTimezone } from "@/shared/lib/timezone";
@@ -77,9 +78,12 @@ export async function GET(
       };
 
       // The HighLevel inbound-sync webhook token is low-sensitivity (it only
-      // authorizes inbound contact-sync), so expose it unmasked (decrypted)
-      // plus a prebuilt URL so the settings UI can render the webhook endpoint.
-      if (row.provider === "highlevel") {
+      // authorizes inbound contact-sync), so admins/managers who actually
+      // configure the integration see it unmasked (decrypted) plus a
+      // prebuilt URL to paste into HighLevel's dashboard. A plain agent/
+      // viewer has no reason to read this secret, so they get the same
+      // masked shape as every other provider.
+      if (row.provider === "highlevel" && ROLE_RANK[auth.role] >= ROLE_RANK.manager) {
         const decrypted = await decryptCredentials(row.credentials);
         const secret = decrypted.highlevel_webhook_secret ?? "";
         return {

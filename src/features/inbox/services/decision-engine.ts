@@ -11,6 +11,7 @@ import {
 import { checkRateLimits } from "./cost-tracker";
 import { getEnabledTools } from "@/features/tools/services/tool-configs";
 import type { Tool } from "@/features/tools/core/tool";
+import { checkSensitiveSignal, flagNeedsAttentionForContact } from "@/features/reminders/services/sensitive-guard";
 
 function svc() {
   return createSbClient(
@@ -25,6 +26,45 @@ export interface DecisionResult {
   decision: Decision;
   reason: string;
   availableTools?: Tool[];
+}
+
+/** Shared by both handoff paths (keyword phrase, sensitive signal) — flips the conversation to handoff_pending and logs it. */
+async function applyHandoffTransition(
+  supabase: ReturnType<typeof svc>,
+  conversationId: string,
+  workspaceId: string,
+  currentState: ConversationState,
+  trigger: string,
+): Promise<void> {
+  const { error: updateError } = await supabase
+    .from("conversations")
+    .update({
+      state: "handoff_pending",
+      ai_enabled: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", conversationId);
+
+  if (updateError) {
+    console.error(
+      "[decision-engine] failed to transition to handoff_pending:",
+      updateError,
+    );
+    return;
+  }
+
+  await supabase.from("events").insert({
+    type: "state_change",
+    level: "info",
+    workspace_id: workspaceId,
+    conversation_id: conversationId,
+    payload: {
+      from: currentState,
+      to: "handoff_pending",
+      trigger,
+      actor: "system",
+    },
+  });
 }
 
 /**
@@ -65,39 +105,27 @@ export async function decide(opts: {
     return { decision: "abstain", reason: `state:${currentState}` };
   }
 
-  // 3. Detect handoff trigger in message text
+  // 3a. Reminders/follow-up safety net: a business-configured sensitive
+  // keyword (pain, fever, pus, worrying inflammation...) always forces a
+  // human handoff and pauses that contact's automated sequence — the AI is
+  // never trusted to judge this itself. Additive: a no-op for workspaces
+  // that don't have the reminders engine enabled.
+  const sensitiveCheck = await checkSensitiveSignal(workspaceId, mergedText);
+  if (sensitiveCheck.matched) {
+    if (canTransition(currentState, "handoff_pending")) {
+      await applyHandoffTransition(supabase, conversationId, workspaceId, currentState, "sensitive_signal");
+    }
+    void flagNeedsAttentionForContact(contactId, sensitiveCheck.keyword ?? "").catch((err) =>
+      console.error("[decision-engine] flagNeedsAttentionForContact failed:", err),
+    );
+    return { decision: "handoff", reason: "sensitive_signal" };
+  }
+
+  // 3b. Detect handoff trigger in message text
   if (detectsHandoffTrigger(mergedText)) {
     // Validate the transition is legal before applying
     if (canTransition(currentState, "handoff_pending")) {
-      const { error: updateError } = await supabase
-        .from("conversations")
-        .update({
-          state: "handoff_pending",
-          ai_enabled: false,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", conversationId);
-
-      if (updateError) {
-        console.error(
-          "[decision-engine] failed to transition to handoff_pending:",
-          updateError,
-        );
-      } else {
-        // Log the state change to events
-        await supabase.from("events").insert({
-          type: "state_change",
-          level: "info",
-          workspace_id: workspaceId,
-          conversation_id: conversationId,
-          payload: {
-            from: currentState,
-            to: "handoff_pending",
-            trigger: "keyword",
-            actor: "system",
-          },
-        });
-      }
+      await applyHandoffTransition(supabase, conversationId, workspaceId, currentState, "keyword");
     }
 
     return { decision: "handoff", reason: "handoff_trigger" };

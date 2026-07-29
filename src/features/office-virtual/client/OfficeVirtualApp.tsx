@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Building2, UsersRound } from 'lucide-react';
 import { agents } from './agents';
 import ActivacionView from './components/ActivacionView';
 import ActividadView from './components/ActividadView';
@@ -103,8 +104,21 @@ const VIEW_TITLES: Record<ViewId, string> = {
 export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<ViewId>('oficina');
-  const [cameraMode, setCameraMode] = useState<CameraMode>('iso');
+  const [cameraMode, setCameraMode] = useState<CameraMode>('showcase');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem('onyxlink-office-camera-mode');
+    if (saved === 'showcase' || saved === 'iso' || saved === '2d') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-only: localStorage doesn't exist during SSR, so both server and first client render start in "showcase" (Presentation) mode and only switch after mount if the user had a saved preference — no hydration mismatch.
+      setCameraMode(saved);
+    }
+  }, []);
+
+  const changeCameraMode = (mode: CameraMode) => {
+    setCameraMode(mode);
+    window.localStorage.setItem('onyxlink-office-camera-mode', mode);
+  };
 
   // Same actor identity (real user, real role, real workspace) threaded into
   // every hook below that dispatches commands or seeds per-workspace state —
@@ -154,10 +168,16 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
   const officeActorRole = isSuperAdmin ? 'onyxlink_super_admin' : 'workspace_admin';
   const officeActivation = useOfficeActivation(userEmail, officeActorRole, workspaceId);
   const whatsappAgentName = agents.find((a) => a.id === 'lead-intake')?.name ?? 'Agente WhatsApp';
-  const officeConfigurator = useOfficeConfigurator(workspaceId);
+  const officeConfigurator = useOfficeConfigurator(workspaceId, isSuperAdmin);
   const orchestratorFeed = useOrchestratorFeed(userEmail, workspaceRole, workspaceId);
   const openRouterAdapter = useMemo(() => createSaasOpenRouterConnectionAdapter(), []);
-  const openRouterConnectionFeed = useOpenRouterConnectionFeed(userEmail, workspaceRole, workspaceId, openRouterAdapter);
+  const openRouterConnectionFeed = useOpenRouterConnectionFeed(
+    userEmail,
+    workspaceRole,
+    workspaceId,
+    openRouterAdapter,
+    isSuperAdmin,
+  );
 
   // Visual posture comes from real (simulated, for now) operational events —
   // never from chat "typing" state. See COORDINACION_CLAUDE_CODEX.md.
@@ -182,6 +202,10 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
         chatbotReady: isChatbotChannelReady(officeActivation.snapshot),
       }),
     [officeAgentsRoster.seats, officeActivation.snapshot],
+  );
+  const activeSeatCount = useMemo(
+    () => officeRoomSlots.filter((slot) => slot.occupant !== null).length,
+    [officeRoomSlots],
   );
 
   const selectedAgent = useMemo(() => officeAgents.find((a) => a.id === selectedId) ?? null, [officeAgents, selectedId]);
@@ -230,27 +254,54 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
 
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar
-          agents={officeAgents}
           onSelectAgent={selectAgent}
           pendingApproval={pendingApproval}
           onNewTask={startNewTask}
+          activeView={activeView}
+          onSelectView={setActiveView}
+          activeSeatCount={activeSeatCount}
           viewTitle={VIEW_TITLES[activeView]}
           isOfficeView={activeView === 'oficina'}
           cameraMode={cameraMode}
-          onCameraModeChange={setCameraMode}
+          onCameraModeChange={changeCameraMode}
           onOpenSearch={() => setActiveView('buscar')}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
         />
 
         <main className="flex-1 relative overflow-hidden">
           {activeView === 'oficina' ? (
-            <OfficeSceneBoundary
-              rooms={officeRoomSlots}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              onHover={() => {}}
-              cameraMode={cameraMode}
-            />
+            <>
+              <OfficeSceneBoundary
+                rooms={officeRoomSlots}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onHover={() => {}}
+                cameraMode={cameraMode}
+              />
+              {cameraMode === 'showcase' && (
+                <div className="onyx-camera-hint" aria-hidden="true">
+                  Arrastra para girar · rueda para acercar
+                </div>
+              )}
+              <section className="onyx-office-hud" aria-label="Estado del equipo digital">
+                <div className="onyx-office-hud__icon"><Building2 size={18} /></div>
+                <div className="min-w-0">
+                  <div className="onyx-office-hud__eyebrow">Tu equipo digital</div>
+                  <div className="onyx-office-hud__title">
+                    {activeSeatCount > 0 ? `${activeSeatCount} puestos activos` : 'La oficina está preparada'}
+                  </div>
+                  <p>
+                    {activeSeatCount > 0
+                      ? 'Solo ves a las personas y canales que están conectados ahora.'
+                      : 'Activa tu primer especialista o canal y aparecerá aquí automáticamente.'}
+                  </p>
+                </div>
+                <button onClick={() => setActiveView('agentes')} className="onyx-office-hud__action">
+                  <UsersRound size={14} />
+                  <span>{activeSeatCount > 0 ? 'Ver equipo' : 'Consultar equipo'}</span>
+                </button>
+              </section>
+            </>
           ) : activeView === 'actividad' ? (
             <ActividadView
               events={recentEvents}
@@ -262,10 +313,11 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
               openRequestId={searchOpenTarget?.requestId}
             />
           ) : activeView === 'panel' ? (
-            <PanelView state={activityState} agents={officeAgents} onSelectAgent={selectAgent} />
+            <PanelView state={activityState} agents={officeAgents} activeSeatCount={activeSeatCount} onSelectAgent={selectAgent} />
           ) : activeView === 'agentes' ? (
             <AgentesView
               agents={officeAgents}
+              rooms={officeRoomSlots}
               snapshots={activitySnapshots}
               onOpenOffice={selectAgent}
               onOpenChat={openChat}
@@ -301,7 +353,7 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
           ) : activeView === 'archivos' ? (
             <ArchivosView feed={filesFeed} agents={officeAgents} />
           ) : activeView === 'skills' ? (
-            <SkillsView feed={skillsFeed} />
+            <SkillsView feed={skillsFeed} isSuperAdmin={isSuperAdmin} />
           ) : activeView === 'buscar' ? (
             <BuscarView feed={globalSearch} onOpenResult={openSearchResult} />
           ) : activeView === 'analiticas' ? (
@@ -313,7 +365,7 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
               agents={officeAgents}
             />
           ) : activeView === 'informes' ? (
-            <InformesView feed={reportsFeed} agents={officeAgents} />
+            <InformesView feed={reportsFeed} agents={officeAgents.filter((agent) => officeRoomSlots.some((slot) => slot.occupant?.id === agent.id))} isSuperAdmin={isSuperAdmin} />
           ) : activeView === 'memoria' ? (
             <MemoriaView
               state={memoryState}
@@ -338,7 +390,7 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
           ) : activeView === 'orquestador' && isSuperAdmin ? (
             <OrquestadorView feed={orchestratorFeed} agents={officeAgents} connectionFeed={openRouterConnectionFeed} />
           ) : (
-            <PanelView state={activityState} agents={officeAgents} onSelectAgent={selectAgent} />
+            <PanelView state={activityState} agents={officeAgents} activeSeatCount={activeSeatCount} onSelectAgent={selectAgent} />
           )}
         </main>
       </div>

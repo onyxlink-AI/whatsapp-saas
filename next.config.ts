@@ -5,6 +5,11 @@ const isDev = process.env.NODE_ENV !== "production";
 // connect-src: realtime needs the wss:// scheme explicitly (a schemeless
 // host-source does not reliably match WebSocket connections). In dev we also
 // allow the localhost HMR/RSC sockets so Turbopack's runtime works under CSP.
+// CSP matches hosts literally — "localhost" does NOT also match "127.0.0.1" —
+// and the local Supabase CLI's default NEXT_PUBLIC_SUPABASE_URL is
+// http://127.0.0.1:54321, so both loopback forms must be listed or the
+// Realtime websocket silently gets blocked (confirmed via a real browser
+// console during the E2E audit: CSP violation on the 127.0.0.1 socket).
 const connectSrc = [
   "'self'",
   "*.supabase.co",
@@ -12,7 +17,9 @@ const connectSrc = [
   "api.ycloud.com",
   "openrouter.ai",
   "services.leadconnectorhq.com",
-  ...(isDev ? ["ws://localhost:*", "http://localhost:*"] : []),
+  ...(isDev
+    ? ["ws://localhost:*", "http://localhost:*", "ws://127.0.0.1:*", "http://127.0.0.1:*"]
+    : []),
 ].join(" ");
 
 const securityHeaders = [

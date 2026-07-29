@@ -7,6 +7,7 @@
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { syncContactToHL } from "./highlevel-client";
+import { cancelJobsForContact } from "@/features/reminders/services/job-scheduling";
 import type { ContactRow } from "@/features/inbox/types";
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -80,6 +81,14 @@ export async function updateContact(
   syncContactToHL(workspace_id, contactId).catch((err: unknown) => {
     console.warn("[updateContact] HL sync failed (non-critical):", err);
   });
+
+  // "No me escribáis más": opting out stops every future automated reminder
+  // step for this contact — never touches already-sent history.
+  if (parsed.data.opt_in === false) {
+    cancelJobsForContact(contactId, "opt_out").catch((err: unknown) => {
+      console.warn("[updateContact] cancelJobsForContact failed (non-critical):", err);
+    });
+  }
 
   return { ok: true, data: { id: updatedId } };
 }

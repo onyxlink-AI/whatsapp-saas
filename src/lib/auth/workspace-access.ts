@@ -15,7 +15,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export type WorkspaceRole = "admin" | "manager" | "agent" | "viewer";
 
-const ROLE_RANK: Record<WorkspaceRole, number> = {
+export const ROLE_RANK: Record<WorkspaceRole, number> = {
   viewer: 0,
   agent: 1,
   manager: 2,

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { SlidersHorizontal, ExternalLink } from 'lucide-react';
+import { CheckCircle2, ExternalLink, SlidersHorizontal, WandSparkles } from 'lucide-react';
 import { STANDARD_OFFICE_PRESET } from '../central-integrations/preset';
 import { CONFIGURABLE_AGENT_IDS, type ConfigurableOfficeAgentId } from '../central-integrations/specialist-seats';
 import type { OfficeApprovalPolicy, OfficeSpecialistAction } from '../central-integrations/configuration';
@@ -323,58 +323,67 @@ function SpecialistCard({
           </div>
 
           <div>
-            <label className="text-[10px] uppercase tracking-wide text-white/30">Instrucciones (base)</label>
-            <textarea value={draft.instructions} onChange={(e) => onChange({ instructions: e.target.value })} rows={6} className="onyx-input w-full rounded-md px-3 py-2 text-xs leading-relaxed mt-1 resize-y" />
-          </div>
-
-          <div>
-            <label className="text-[10px] uppercase tracking-wide text-white/30">Instrucciones del cliente</label>
-            <p className="text-[10px] text-white/25 mb-1">Capa propia de esta empresa. Nunca se borra al cambiar de plantilla o de sector.</p>
+            <label className="text-[10px] uppercase tracking-wide text-white/30">Cómo debe trabajar para esta empresa</label>
+            <p className="text-[10px] text-white/25 mb-1">Añade tono, prioridades y reglas propias. Este contenido se conserva aunque cambies la plantilla.</p>
             <textarea value={draft.clientLayer} onChange={(e) => onChange({ clientLayer: e.target.value })} rows={3} className="onyx-input w-full rounded-md px-3 py-2 text-xs leading-relaxed resize-y" />
           </div>
 
-          <button onClick={() => setShowCompiled((v) => !v)} className="text-[11px] text-violet-300/70 hover:text-violet-200 text-left w-fit">
-            {showCompiled ? 'Ocultar vista previa compilada' : 'Ver instrucciones compiladas (base + cliente)'}
-          </button>
-          {showCompiled && (
-            <pre className="text-[10px] text-white/50 bg-black/20 rounded-md p-3 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto">{compiled.compiledText}</pre>
-          )}
+          <details className="group rounded-lg border border-white/[0.07] bg-black/15 p-3">
+            <summary className="cursor-pointer list-none text-[11px] font-semibold text-violet-200/80 flex items-center justify-between">
+              Ajustes técnicos avanzados
+              <span className="text-white/30 group-open:rotate-180 transition-transform">⌄</span>
+            </summary>
+            <p className="mt-1 text-[10px] text-white/30">Solo necesitas abrir esta sección para cambiar el prompt base, permisos, ampliaciones o aprobaciones.</p>
+            <div className="mt-3 space-y-3 border-t border-white/[0.06] pt-3">
+              <div>
+                <label className="text-[10px] uppercase tracking-wide text-white/30">Prompt base de la plantilla</label>
+                <textarea value={draft.instructions} onChange={(e) => onChange({ instructions: e.target.value })} rows={6} className="onyx-input w-full rounded-md px-3 py-2 text-xs leading-relaxed mt-1 resize-y" />
+              </div>
 
-          <div>
-            <label className="text-[10px] uppercase tracking-wide text-white/30 mb-1.5 block">Ampliaciones</label>
-            <TogglePills options={SPECIALIST_EXTENSIONS.map((e) => e.id)} labels={Object.fromEntries(SPECIALIST_EXTENSIONS.map((e) => [e.id, `${e.icon} ${e.name}`])) as Record<string, string>} active={draft.extensions} onToggle={toggleExtension} />
-          </div>
+              <button onClick={() => setShowCompiled((v) => !v)} className="text-[11px] text-violet-300/70 hover:text-violet-200 text-left w-fit">
+                {showCompiled ? 'Ocultar prompt final' : 'Comprobar prompt final'}
+              </button>
+              {showCompiled && (
+                <pre className="text-[10px] text-white/50 bg-black/20 rounded-md p-3 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto">{compiled.compiledText}</pre>
+              )}
 
-          <div>
-            <label className="text-[10px] uppercase tracking-wide text-white/30 mb-1.5 block">Habilidades internas</label>
-            <TogglePills options={SPECIALIST_SKILLS.map((s) => s.id)} labels={Object.fromEntries(SPECIALIST_SKILLS.map((s) => [s.id, `${s.icon} ${s.name}`])) as Record<string, string>} active={draft.skills} onToggle={toggleSkill} />
-          </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wide text-white/30 mb-1.5 block">Ampliaciones</label>
+                <TogglePills options={SPECIALIST_EXTENSIONS.map((e) => e.id)} labels={Object.fromEntries(SPECIALIST_EXTENSIONS.map((e) => [e.id, `${e.icon} ${e.name}`])) as Record<string, string>} active={draft.extensions} onToggle={toggleExtension} />
+              </div>
 
-          <div>
-            <label className="text-[10px] uppercase tracking-wide text-white/30 mb-1.5 block">Acciones permitidas</label>
-            <TogglePills options={ALL_ACTIONS} labels={SPECIALIST_ACTION_LABEL_ES} active={draft.allowedActions} onToggle={toggleAction} />
-          </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wide text-white/30 mb-1.5 block">Habilidades internas</label>
+                <TogglePills options={SPECIALIST_SKILLS.map((s) => s.id)} labels={Object.fromEntries(SPECIALIST_SKILLS.map((s) => [s.id, `${s.icon} ${s.name}`])) as Record<string, string>} active={draft.skills} onToggle={toggleSkill} />
+              </div>
 
-          <div>
-            <label className="text-[10px] uppercase tracking-wide text-white/30 mb-1.5 block">Aprobación humana</label>
-            <div className="flex flex-wrap gap-1.5">
-              {ALL_APPROVAL_POLICIES.map((policy) => (
-                <button
-                  key={policy}
-                  onClick={() => onChange({ approvalPolicy: policy })}
-                  className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
-                    draft.approvalPolicy === policy ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/40 hover:text-white/65'
-                  }`}
-                >
-                  {APPROVAL_POLICY_LABEL_ES[policy]}
-                </button>
-              ))}
+              <div>
+                <label className="text-[10px] uppercase tracking-wide text-white/30 mb-1.5 block">Acciones permitidas</label>
+                <TogglePills options={ALL_ACTIONS} labels={SPECIALIST_ACTION_LABEL_ES} active={draft.allowedActions} onToggle={toggleAction} />
+              </div>
+
+              <div>
+                <label className="text-[10px] uppercase tracking-wide text-white/30 mb-1.5 block">Aprobación humana</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {ALL_APPROVAL_POLICIES.map((policy) => (
+                    <button
+                      key={policy}
+                      onClick={() => onChange({ approvalPolicy: policy })}
+                      className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
+                        draft.approvalPolicy === policy ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/40 hover:text-white/65'
+                      }`}
+                    >
+                      {APPROVAL_POLICY_LABEL_ES[policy]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button onClick={onReset} className="onyx-control text-[11px] font-medium text-white/60 px-2.5 py-1.5 transition-colors w-fit">
+                Restablecer puesto
+              </button>
             </div>
-          </div>
-
-          <button onClick={onReset} className="onyx-control text-[11px] font-medium text-white/60 px-2.5 py-1.5 transition-colors w-fit">
-            Restablecer puesto
-          </button>
+          </details>
         </div>
       )}
     </div>
@@ -474,6 +483,23 @@ export default function ConfiguradorView(props: Props) {
   // eslint-disable-next-line react-hooks/purity -- relative "last saved/published" display is meant to reflect wall-clock time at render.
   const now = Date.now();
   const [sectorPreview, setSectorPreview] = useState<ReturnType<OfficeConfigurator['previewVertical']>>(null);
+  const configuredCount = CONFIGURABLE_AGENT_IDS.filter((id) => specialistDrafts[id].templateId !== null).length;
+  const enabledCount = CONFIGURABLE_AGENT_IDS.filter((id) => specialistDrafts[id].enabled).length;
+  const nextEmptySeat = CONFIGURABLE_AGENT_IDS.find((id) => specialistDrafts[id].templateId === null) ?? null;
+
+  const addTemplateToNextSeat = (templateId: SpecialistTemplateId) => {
+    const template = findSpecialistTemplate(templateId);
+    if (!template || !nextEmptySeat) return;
+    updateSpecialistDraft(nextEmptySeat, {
+      templateId,
+      name: template.name,
+      function: template.function,
+      objective: template.objective,
+      instructions: template.instructions,
+      allowedActions: [...template.allowedActions],
+      approvalPolicy: template.approvalPolicy,
+    });
+  };
 
   return (
     <div className="h-full min-h-0 flex flex-col overflow-hidden">
@@ -510,6 +536,52 @@ export default function ConfiguradorView(props: Props) {
             </div>
           )}
 
+          <section className="onyx-config-launchpad">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-semibold text-white/90"><WandSparkles size={16} className="text-violet-300" /> Puesta en marcha rápida</div>
+                <p className="mt-1 text-[11px] text-white/40">Elige el sector, añade los perfiles que necesites y publica. Los detalles técnicos quedan disponibles dentro de cada puesto.</p>
+              </div>
+              <div className="flex gap-2 text-[10px]">
+                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-white/50">{configuredCount}/8 preparados</span>
+                <span className="rounded-full border border-emerald-400/20 bg-emerald-400/[0.06] px-2.5 py-1 text-emerald-200/70">{enabledCount} activos</span>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              {[
+                ['1', 'Elige el sector', sectorId ? 'Sector aplicado' : 'Usa las opciones de abajo'],
+                ['2', 'Prepara el equipo', configuredCount > 0 ? `${configuredCount} puestos listos` : 'Añade perfiles recomendados'],
+                ['3', 'Activa y publica', enabledCount > 0 ? `${enabledCount} visibles al publicar` : 'Activa solo los necesarios'],
+              ].map(([step, title, detail], index) => (
+                <div key={step} className="rounded-lg border border-white/[0.06] bg-black/15 p-3 flex gap-2.5">
+                  <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold ${index < (sectorId ? 1 : 0) || index < (configuredCount ? 2 : 0) || index < (enabledCount ? 3 : 0) ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200' : 'border-white/10 text-white/35'}`}>
+                    {index < (enabledCount ? 3 : configuredCount ? 2 : sectorId ? 1 : 0) ? <CheckCircle2 size={13} /> : step}
+                  </span>
+                  <div><div className="text-[11px] font-semibold text-white/75">{title}</div><div className="mt-0.5 text-[10px] text-white/30">{detail}</div></div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 border-t border-white/[0.06] pt-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-white/35">Añadir perfil al siguiente puesto libre</span>
+                {!nextEmptySeat && <span className="text-[10px] text-emerald-300/65">Los 8 puestos están preparados</span>}
+              </div>
+              <div className="flex gap-1.5 overflow-x-auto pb-1">
+                {SPECIALIST_TEMPLATES.map((template) => (
+                  <button
+                    key={template.id}
+                    onClick={() => addTemplateToNextSeat(template.id)}
+                    disabled={!nextEmptySeat}
+                    title={template.summary}
+                    className="shrink-0 rounded-lg border border-white/[0.07] bg-white/[0.025] px-3 py-2 text-left hover:border-violet-400/25 hover:bg-violet-500/[0.06] disabled:opacity-35"
+                  >
+                    <span className="mr-1.5">{template.icon}</span><span className="text-[11px] font-medium text-white/68">{template.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
+
           <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4">
             <label className="text-[10px] uppercase tracking-wide text-white/30">Nombre visible de la oficina</label>
             <input value={officeNameDraft} onChange={(e) => setOfficeNameDraft(e.target.value)} className="onyx-input w-full max-w-sm rounded-md px-3 py-2 text-xs mt-1" />
@@ -529,11 +601,14 @@ export default function ConfiguradorView(props: Props) {
             }}
           />
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {PROTECTED_SEATS.map((seat) => (
-              <ProtectedSeatCard key={seat.agentId} displayLabel={seat.displayLabel} />
-            ))}
-          </div>
+          <details className="rounded-lg border border-white/[0.06] bg-white/[0.015] p-3">
+            <summary className="cursor-pointer list-none text-[11px] font-medium text-white/55">Ver puestos conectados desde el SaaS <span className="text-white/25">({PROTECTED_SEATS.length})</span></summary>
+            <div className="mt-3 grid sm:grid-cols-2 lg:grid-cols-4 gap-3 border-t border-white/[0.05] pt-3">
+              {PROTECTED_SEATS.map((seat) => (
+                <ProtectedSeatCard key={seat.agentId} displayLabel={seat.displayLabel} />
+              ))}
+            </div>
+          </details>
 
           <div className="grid sm:grid-cols-2 gap-4">
             {CONFIGURABLE_AGENT_IDS.map((agentId: ConfigurableOfficeAgentId, index) => (

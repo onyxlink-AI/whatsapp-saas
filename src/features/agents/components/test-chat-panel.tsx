@@ -181,8 +181,8 @@ export function TestChatPanel({
 
   const send = useCallback(() => {
     void sendMessage(input.trim());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input, loading, messages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sendMessage itself isn't memoized and is intentionally omitted; its own closure vars (workspaceId, agent.id) are listed explicitly instead so a stale request is never sent to the wrong agent when this panel is reused without remounting per agent (e.g. reminder-simulator.tsx).
+  }, [input, loading, messages, workspaceId, agent.id]);
 
   function resetConversation() {
     setMessages([]);
@@ -232,8 +232,8 @@ export function TestChatPanel({
   return (
     <div className="flex flex-col gap-3">
       <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700 dark:text-amber-400">
-        🧪 Modo de prueba: ningún mensaje se enviará a clientes ni modificará
-        datos reales.
+        🧪 Modo de prueba seguro: funciona con OpenRouter y no necesita YCloud.
+        Ningún mensaje se envía a WhatsApp ni modifica datos reales.
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">

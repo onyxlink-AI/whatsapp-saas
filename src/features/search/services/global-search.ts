@@ -48,6 +48,9 @@ export async function globalSearch(
 
   const results: SearchResultItem[] = [];
 
+  // supabase-js doesn't infer nested-relation selects (the company join above)
+  // — this shape must stay in sync by hand with the select() string; a drift
+  // fails silently at runtime, not at compile time.
   for (const row of (clientsRes.data ?? []) as unknown as {
     id: string;
     name: string | null;
@@ -66,6 +69,7 @@ export async function globalSearch(
     results.push({ type: "project", id: row.id, title: row.name, subtitle: null });
   }
 
+  // Same nested-select type-sync caveat as the clientsRes loop above.
   for (const row of (dealsRes.data ?? []) as unknown as {
     id: string;
     title: string;

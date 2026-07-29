@@ -42,29 +42,14 @@ function applyOrKeep(state: CentralReportState, command: Parameters<typeof apply
   return result.success ? result.state : state;
 }
 
-function seedState(workspaceId: string, actor: ReportActor, analytics: WorkspaceAnalytics | null): CentralReportState {
-  const now = new Date().toISOString();
-  let state = applyOrKeep(createCentralReportState(workspaceId), {
-    type: 'report.created', commandId: 'report-seed-created-overview', reportId: 'report-overview', workspaceId,
-    actor, occurredAt: now, title: 'Resumen operativo', kind: 'overview', period: '7d', agentIds: [],
-  });
-  state = applyOrKeep(state, {
-    type: 'report.created', commandId: 'report-seed-created-agents', reportId: 'report-agents', workspaceId,
-    actor, occurredAt: now, title: 'Rendimiento por agente', kind: 'agents', period: '7d', agentIds: [],
-  });
-  if (!analytics) return state;
-  state = applyOrKeep(state, {
-    type: 'report.generation_started', commandId: 'report-seed-started-overview', reportId: 'report-overview', workspaceId,
-    expectedRevision: 1, actor, occurredAt: now,
-  });
-  return applyOrKeep(state, {
-    type: 'report.generated', commandId: 'report-seed-generated-overview', reportId: 'report-overview', workspaceId,
-    expectedRevision: 2, actor, occurredAt: now, content: buildReportContent({ kind: 'overview', analytics }),
-  });
-}
-
 export function useReportsFeed(workspaceId: string, actor: ReportActor, analytics: WorkspaceAnalytics | null): ReportsFeed {
-  const [state, setState] = useState(() => seedState(workspaceId, actor, analytics));
+  // Honestly empty — no reports exist until someone actually asks for one
+  // (createReport + generateReport, both already real user actions below).
+  // This used to auto-seed two reports and mark one as already "generated"
+  // with content derived from fixture-tainted analytics the moment this
+  // hook mounted — indistinguishable from a real report to an admin who
+  // never asked for it (see useTaskFeed.ts for the same honesty pattern).
+  const [state, setState] = useState(() => createCentralReportState(workspaceId));
   const [error, setError] = useState<string | null>(null);
   const [lastExportRequest, setLastExportRequest] = useState<ReportExportRequest | null>(null);
 

@@ -45,6 +45,10 @@ export async function listAgents(
 
   if (error) throw error;
 
+  // supabase-js doesn't infer this doubly-nested relation select
+  // (prompt -> active_version) — RawAgentRow must stay in sync by hand with
+  // the select() string above; a drift fails silently at runtime, not at
+  // compile time.
   return ((data ?? []) as unknown as RawAgentRow[]).map((row) => {
     const prompt = firstOrSelf(row.prompt);
     const version = firstOrSelf(prompt?.active_version);

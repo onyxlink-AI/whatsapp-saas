@@ -3,7 +3,7 @@ import type { AgentId } from '../../schemas';
 import { agents } from '../agents';
 import type { CentralTaskState } from '../central-tasks';
 import {
-  applySkillCommand, createCentralSkillState, createSkillFixtures, detectSkillCandidates,
+  applySkillCommand, createCentralSkillState, detectSkillCandidates,
   selectSkillAudit, selectSkills, selectSkillTestRuns, selectSkillVersions,
   SKILL_ELIGIBLE_AGENT_IDS,
 } from '../central-skills';
@@ -37,13 +37,6 @@ export type EligibleSkillAssignee = { agentId: AgentId; name: string; role: stri
 
 function cloneDefinition(definition: CentralSkillDefinition): SkillDefinition {
   return JSON.parse(JSON.stringify(definition)) as SkillDefinition;
-}
-
-function seedState(workspaceId: string) {
-  return createSkillFixtures(workspaceId).reduce((state, command) => {
-    const result = applySkillCommand(state, command);
-    return result.success ? result.state : state;
-  }, createCentralSkillState(workspaceId));
 }
 
 function viewStatus(state: CentralSkillState, skill: SkillRecord): SkillStatus {
@@ -100,6 +93,7 @@ export type SkillsFeed = {
   simulationRuns: Record<string, SkillSimulationRun>;
   loading: boolean;
   error: string | null;
+  createBlankSkill: (name: string) => string | null;
   createSkillFromProposal: (proposalId: string) => string | null;
   dismissProposal: (proposalId: string) => void;
   saveDraft: (skillId: string, definition: SkillDefinition) => void;
@@ -115,7 +109,10 @@ export type SkillsFeed = {
 };
 
 export function useSkillsFeed(taskState: CentralTaskState | undefined, workspaceId: string, actor: SkillActor): SkillsFeed {
-  const [state, setState] = useState(() => seedState(workspaceId));
+  // Honestly empty — no real skills backend is wired yet, so this no longer
+  // seeds curated demo skills as if they were the workspace's real trained
+  // skills (see useTaskFeed.ts for the same pattern already applied there).
+  const [state, setState] = useState(() => createCentralSkillState(workspaceId));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dismissedProposalIds, setDismissedProposalIds] = useState<string[]>([]);
@@ -179,6 +176,34 @@ export function useSkillsFeed(taskState: CentralTaskState | undefined, workspace
     return skillId;
   };
 
+  const createBlankSkill = (name: string) => {
+    const cleanName = name.trim();
+    if (!cleanName) {
+      setError('Escribe un nombre para crear la habilidad.');
+      return null;
+    }
+    const skillId = crypto.randomUUID();
+    dispatch({
+      type: 'skill.created', ...base(), skillId, name: cleanName,
+      description: 'Habilidad creada manualmente. Completa su objetivo y sus pasos antes de probarla.',
+      risk: 'medium', ownerAgentId: 'coordinator', assignedAgentIds: ['coordinator'],
+      definition: {
+        objective: `Realizar ${cleanName} de forma consistente, segura y revisable.`,
+        triggers: [{ id: `${skillId}-trigger-manual`, type: 'manual', description: 'Cuando una persona la solicite' }],
+        inputs: [{ id: `${skillId}-input-context`, name: 'Información necesaria', description: 'Datos autorizados para realizar el trabajo.', required: true }],
+        tools: [],
+        steps: [
+          { id: `${skillId}-step-understand`, order: 1, title: 'Entender la petición', description: '', toolId: null },
+          { id: `${skillId}-step-work`, order: 2, title: 'Realizar el trabajo', description: '', toolId: null },
+          { id: `${skillId}-step-review`, order: 3, title: 'Revisar el resultado', description: '', toolId: null },
+        ],
+        outputs: [{ id: `${skillId}-output-result`, name: 'Resultado final', description: 'Entrega preparada para revisar.' }],
+        approval: { policy: 'always', note: 'Una persona debe aprobarla antes de usarla de forma autónoma.' },
+      },
+    });
+    return skillId;
+  };
+
   const saveDraft = (skillId: string, definition: SkillDefinition) => forSkill(skillId, (skill) => ({ type: 'skill.updated', ...base(), skillId, expectedRevision: skill.revision, patch: { definition: cloneDefinition(definition) } }));
   const testSkill = (skillId: string) => forSkill(skillId, (skill) => ({
     type: 'skill.test_recorded', ...base(), skillId, expectedRevision: skill.revision,
@@ -232,7 +257,7 @@ export function useSkillsFeed(taskState: CentralTaskState | undefined, workspace
     state,
     skills: selectSkills(state).filter((skill) => skill.status !== 'archived').map((skill) => projectSkill(state, skill)),
     proposals, eligibleAssignees, simulationRuns, loading, error,
-    createSkillFromProposal,
+    createBlankSkill, createSkillFromProposal,
     dismissProposal: (id) => setDismissedProposalIds((ids) => [...new Set([...ids, id])]),
     saveDraft, testSkill, approveSkill, publishSkill, pauseSkill, improveSkill, rejectSkill,
     assignSkill, unassignSkill, restoreVersion,

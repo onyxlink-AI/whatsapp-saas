@@ -2,13 +2,23 @@
 
 import Link from "next/link";
 import {
+  AlertTriangle,
+  ArrowRight,
+  Bot,
+  CheckCircle2,
+  ChevronRight,
+  CircleDollarSign,
+  Clock3,
   MessageCircle,
-  Users,
-  AlertCircle,
-  DollarSign,
   Send,
+  Settings2,
+  Users,
+  Workflow,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/page-header";
 import type {
   WorkspaceMetrics,
   RecentConversation,
@@ -24,49 +34,144 @@ interface DashboardMetricsProps {
   recentConversations: RecentConversation[];
   messageVolume: MessageVolumePoint[];
   conversationStates: ConversationStateCount[];
+  hasOfficeVirtual: boolean;
 }
 
 interface KpiCardProps {
   label: string;
   value: string;
-  icon: React.ReactNode;
-  accent?: boolean;
+  helper: string;
+  icon: LucideIcon;
+  tone?: "neutral" | "primary" | "warning";
 }
 
-function KpiCard({ label, value, icon, accent = false }: KpiCardProps) {
+function KpiCard({
+  label,
+  value,
+  helper,
+  icon: Icon,
+  tone = "neutral",
+}: KpiCardProps) {
   return (
     <div
       className={cn(
-        "rounded-xl p-5 flex items-start gap-4 transition-colors",
-        accent ? "glass-accent" : "border border-border/50 bg-card",
+        "surface-card min-h-36 p-5 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md",
+        tone === "primary" &&
+          "border-primary/20 bg-gradient-to-br from-primary/[0.1] via-card to-card",
+        tone === "warning" &&
+          "border-warning/25 bg-gradient-to-br from-warning/[0.12] via-card to-card",
       )}
     >
-      <div
-        className={cn(
-          "shrink-0 rounded-lg p-2",
-          accent
-            ? "bg-primary/10 text-primary"
-            : "bg-muted text-muted-foreground",
-        )}
-      >
-        {icon}
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+      <div className="flex items-start justify-between gap-3">
+        <p className="max-w-[12rem] text-xs font-medium leading-5 text-muted-foreground">
           {label}
         </p>
-        <p className="font-display text-2xl font-semibold text-foreground mt-0.5 tabular-nums">
-          {value}
+        <div
+          className={cn(
+            "shrink-0 rounded-lg p-2",
+            tone === "primary" && "bg-primary text-primary-foreground",
+            tone === "warning" && "bg-warning/15 text-warning",
+            tone === "neutral" && "bg-muted text-muted-foreground",
+          )}
+        >
+          <Icon className="h-4 w-4" aria-hidden="true" />
+        </div>
+      </div>
+      <p className="mt-5 font-display text-2xl font-semibold tracking-tight text-foreground tabular-nums">
+        {value}
+      </p>
+      <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{helper}</p>
+    </div>
+  );
+}
+
+interface PriorityRowProps {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  tone?: "success" | "primary" | "warning" | "muted";
+  href?: string;
+}
+
+function PriorityRow({
+  icon: Icon,
+  title,
+  description,
+  tone = "muted",
+  href,
+}: PriorityRowProps) {
+  const content = (
+    <>
+      <div
+        className={cn(
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+          tone === "success" && "bg-success/10 text-success",
+          tone === "primary" && "bg-primary/10 text-primary",
+          tone === "warning" && "bg-warning/10 text-warning",
+          tone === "muted" && "bg-muted text-muted-foreground",
+        )}
+      >
+        <Icon className="h-4 w-4" aria-hidden="true" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-foreground">{title}</p>
+        <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+          {description}
         </p>
       </div>
-    </div>
+      {href && (
+        <ChevronRight
+          className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground"
+          aria-hidden="true"
+        />
+      )}
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="group flex items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return <div className="flex items-center gap-3 px-3 py-3">{content}</div>;
+}
+
+interface QuickActionProps {
+  href: string;
+  icon: LucideIcon;
+  title: string;
+  description: string;
+}
+
+function QuickAction({ href, icon: Icon, title, description }: QuickActionProps) {
+  return (
+    <Link
+      href={href}
+      className="group flex min-h-20 items-center gap-3 rounded-xl border border-border/70 bg-card px-3.5 py-3 transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        <Icon className="h-4 w-4" aria-hidden="true" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs font-semibold text-foreground">{title}</p>
+        <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
+          {description}
+        </p>
+      </div>
+    </Link>
   );
 }
 
 const STATE_LABELS: Record<ConversationState, string> = {
   ai_active: "IA activa",
   human_active: "Humano",
-  handoff_pending: "Handoff",
+  handoff_pending: "Necesita ayuda",
   waiting_reply: "Esperando",
   paused: "Pausado",
   closed: "Cerrado",
@@ -85,7 +190,7 @@ function StateBadge({ state }: { state: ConversationState }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0",
+        "inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-medium",
         STATE_COLORS[state] ?? "bg-muted text-muted-foreground",
       )}
     >
@@ -115,95 +220,279 @@ export function DashboardMetrics({
   recentConversations,
   messageVolume,
   conversationStates,
+  hasOfficeVirtual,
 }: DashboardMetricsProps) {
-  return (
-    <div className="p-6 space-y-8 max-w-5xl mx-auto">
-      {/* Page heading */}
-      <div>
-        <h1 className="font-display text-xl font-semibold text-foreground">
-          Dashboard
-        </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Actividad de tu empresa hoy
-        </p>
-      </div>
+  const hasMessageVolume = messageVolume.some(
+    (point) => point.inbound > 0 || point.outbound > 0,
+  );
+  const hasConversationStates = conversationStates.some((row) => row.count > 0);
+  const needsAttention = metrics.handoffPending > 0;
 
-      {/* KPI grid — 2x2 on mobile, 1x4 on lg */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  return (
+    <div className="page-shell space-y-6">
+      <PageHeader
+        eyebrow="Centro de mando"
+        title={
+          needsAttention
+            ? "Hay conversaciones que necesitan tu ayuda"
+            : "Tu empresa, de un vistazo"
+        }
+        description={
+          needsAttention
+            ? "Revisa primero las conversaciones derivadas por la IA y continúa después con el resto de la actividad."
+            : "Consulta lo importante, revisa la actividad y accede rápidamente a las tareas habituales."
+        }
+        actions={
+          <Button
+            asChild
+            size="sm"
+            variant={needsAttention ? "default" : "outline"}
+            className="min-h-11 sm:min-h-9"
+          >
+            <Link href="/inbox">
+              Abrir conversaciones
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </Button>
+        }
+      />
+
+      <section className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
+        <div className="surface-card overflow-hidden">
+          <div className="flex items-start justify-between gap-4 border-b border-border/60 px-5 py-4">
+            <div>
+              <h2 className="font-display text-base font-semibold text-foreground">
+                Prioridades de hoy
+              </h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Empieza por lo que necesita una decisión humana.
+              </p>
+            </div>
+            <span
+              className={cn(
+                "inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold",
+                needsAttention
+                  ? "bg-warning/10 text-warning"
+                  : "bg-success/10 text-success",
+              )}
+            >
+              {needsAttention
+                ? `${metrics.handoffPending} pendiente${metrics.handoffPending === 1 ? "" : "s"}`
+                : "Sin derivaciones"}
+            </span>
+          </div>
+
+          <div className="divide-y divide-border/50 p-2">
+            {needsAttention ? (
+              <PriorityRow
+                icon={AlertTriangle}
+                title={`${metrics.handoffPending} conversación${metrics.handoffPending === 1 ? "" : "es"} esperando a una persona`}
+                description="La IA ha detenido su intervención para que puedas continuar personalmente."
+                tone="warning"
+                href="/inbox"
+              />
+            ) : (
+              <PriorityRow
+                icon={CheckCircle2}
+                title="Sin conversaciones esperando a una persona"
+                description="Ahora mismo no hay ninguna derivación pendiente de revisión."
+                tone="success"
+              />
+            )}
+
+            <PriorityRow
+              icon={MessageCircle}
+              title={
+                metrics.activeConversations > 0
+                  ? `${metrics.activeConversations} conversación${metrics.activeConversations === 1 ? "" : "es"} en marcha`
+                  : "No hay conversaciones activas ahora"
+              }
+              description={
+                metrics.activeConversations > 0
+                  ? "Puedes seguir su evolución desde la bandeja de conversaciones."
+                  : "Cuando llegue un nuevo mensaje, aparecerá aquí automáticamente."
+              }
+              tone={metrics.activeConversations > 0 ? "primary" : "muted"}
+              href="/inbox"
+            />
+
+            <PriorityRow
+              icon={metrics.messagesToday > 0 ? Send : Clock3}
+              title={
+                metrics.messagesToday > 0
+                  ? `${metrics.messagesToday} mensaje${metrics.messagesToday === 1 ? "" : "s"} gestionado${metrics.messagesToday === 1 ? "" : "s"} hoy`
+                  : "Aún no ha entrado actividad hoy"
+              }
+              description={
+                metrics.messagesToday > 0
+                  ? "El total incluye mensajes recibidos y respuestas enviadas."
+                  : "El panel se actualizará en cuanto empiece la actividad del día."
+              }
+              tone={metrics.messagesToday > 0 ? "primary" : "muted"}
+            />
+          </div>
+        </div>
+
+        <div className="surface-subtle p-4 sm:p-5">
+          <div>
+            <h2 className="font-display text-base font-semibold text-foreground">
+              Acciones rápidas
+            </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Accede directamente a las tareas más habituales.
+            </p>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+            <QuickAction
+              href="/inbox"
+              icon={MessageCircle}
+              title="Ver conversaciones"
+              description="Revisa mensajes y derivaciones."
+            />
+            <QuickAction
+              href="/settings"
+              icon={Settings2}
+              title="Configurar agentes"
+              description="Ajusta cómo responde tu equipo."
+            />
+            <QuickAction
+              href="/pipeline"
+              icon={Workflow}
+              title="Revisar ventas"
+              description="Continúa las oportunidades abiertas."
+            />
+            {hasOfficeVirtual && (
+              <QuickAction
+                href="/oficina-virtual"
+                icon={Bot}
+                title="Abrir la oficina"
+                description="Consulta tu equipo digital."
+              />
+            )}
+          </div>
+          <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/60 pt-4 text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-2">
+              <CircleDollarSign className="h-3.5 w-3.5" aria-hidden="true" />
+              Uso de IA · últimos 7 días
+            </span>
+            <span className="font-semibold tabular-nums text-foreground">
+              {formatCost(metrics.llmCostWeekUsd)}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <section aria-label="Indicadores principales" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
-          label="Mensajes hoy"
+          label="Mensajes gestionados hoy"
           value={metrics.messagesToday.toLocaleString("es")}
-          icon={<MessageCircle className="h-4 w-4" aria-hidden="true" />}
+          helper="Recibidos y enviados durante el día."
+          icon={MessageCircle}
         />
         <KpiCard
           label="Conversaciones activas"
           value={metrics.activeConversations.toLocaleString("es")}
-          icon={<Users className="h-4 w-4" aria-hidden="true" />}
-          accent
+          helper="Conversaciones que siguen abiertas."
+          icon={Users}
+          tone="primary"
         />
         <KpiCard
-          label="Handoffs pendientes"
+          label="Necesitan tu ayuda"
           value={metrics.handoffPending.toLocaleString("es")}
-          icon={<AlertCircle className="h-4 w-4" aria-hidden="true" />}
+          helper="La IA ha solicitado intervención humana."
+          icon={AlertTriangle}
+          tone={needsAttention ? "warning" : "neutral"}
         />
         <KpiCard
-          label="Costo LLM esta semana"
-          value={formatCost(metrics.llmCostWeekUsd)}
-          icon={<DollarSign className="h-4 w-4" aria-hidden="true" />}
-        />
-        <KpiCard
-          label="Templates enviados (semana)"
+          label="Automatizaciones esta semana"
           value={metrics.templatesSentWeek.toLocaleString("es")}
-          icon={<Send className="h-4 w-4" aria-hidden="true" />}
+          helper="Mensajes automáticos enviados en 7 días."
+          icon={Bot}
         />
-      </div>
+      </section>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <MessageVolumeChart data={messageVolume} />
-        <ConversationStateChart data={conversationStates} />
-      </div>
-
-      {/* Recent conversations */}
-      <div className="space-y-3">
-        <h2 className="font-display text-sm font-semibold text-foreground">
-          Actividad reciente hoy
-        </h2>
-
-        {recentConversations.length === 0 ? (
-          <div className="rounded-xl border border-border/50 bg-card px-5 py-10 text-center">
-            <p className="text-sm text-muted-foreground">
-              Sin actividad registrada hoy
+      {(hasMessageVolume || hasConversationStates) && (
+        <section className="space-y-3" aria-labelledby="activity-analysis-title">
+          <div>
+            <h2 id="activity-analysis-title" className="font-display text-base font-semibold text-foreground">
+              Evolución de la actividad
+            </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Datos reales de las conversaciones de tu empresa.
             </p>
           </div>
-        ) : (
-          <ul
-            role="list"
-            className="rounded-xl border border-border/50 bg-card divide-y divide-border/30 overflow-hidden"
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {hasMessageVolume && <MessageVolumeChart data={messageVolume} />}
+            {hasConversationStates && (
+              <ConversationStateChart data={conversationStates} />
+            )}
+          </div>
+        </section>
+      )}
+
+      <section className="surface-card overflow-hidden" aria-labelledby="recent-activity-title">
+        <div className="flex items-center justify-between gap-4 border-b border-border/60 px-5 py-4">
+          <div>
+            <h2 id="recent-activity-title" className="font-display text-base font-semibold text-foreground">
+              Actividad reciente
+            </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Las últimas conversaciones atendidas hoy.
+            </p>
+          </div>
+          <Link
+            href="/inbox"
+            className="inline-flex min-h-11 items-center text-xs font-semibold text-primary hover:underline sm:min-h-0"
           >
-            {recentConversations.map((c) => (
-              <li key={c.id}>
+            Ver todas
+          </Link>
+        </div>
+
+        {recentConversations.length === 0 ? (
+          <div className="px-5 py-10 text-center">
+            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <MessageCircle className="h-5 w-5" aria-hidden="true" />
+            </div>
+            <p className="mt-3 text-sm font-medium text-foreground">
+              Todavía no hay conversaciones hoy
+            </p>
+            <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-muted-foreground">
+              Cuando llegue un mensaje, aparecerá aquí. Mientras tanto puedes revisar la configuración de tus agentes.
+            </p>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="mt-4 min-h-11 sm:min-h-9"
+            >
+              <Link href="/settings">
+                Revisar configuración
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </Button>
+          </div>
+        ) : (
+          <ul role="list" className="divide-y divide-border/50">
+            {recentConversations.map((conversation) => (
+              <li key={conversation.id}>
                 <Link
-                  href={`/inbox/${c.id}`}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors"
+                  href={`/inbox/${conversation.id}`}
+                  className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/30"
                 >
-                  {/* Contact name + preview */}
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {c.contactName ?? c.contactPhone}
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {conversation.contactName ?? conversation.contactPhone}
                     </p>
-                    {c.lastMessagePreview && (
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">
-                        {c.lastMessagePreview}
+                    {conversation.lastMessagePreview && (
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        {conversation.lastMessagePreview}
                       </p>
                     )}
                   </div>
-
-                  {/* State badge + time */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <StateBadge state={c.state} />
+                  <div className="flex shrink-0 items-center gap-2">
+                    <StateBadge state={conversation.state} />
                     <span className="font-mono text-[10px] text-muted-foreground/70">
-                      {formatRelativeTime(c.lastMessageAt)}
+                      {formatRelativeTime(conversation.lastMessageAt)}
                     </span>
                   </div>
                 </Link>
@@ -211,7 +500,7 @@ export function DashboardMetrics({
             ))}
           </ul>
         )}
-      </div>
+      </section>
     </div>
   );
 }

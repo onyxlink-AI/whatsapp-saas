@@ -3,7 +3,6 @@ import type { AgentId } from '../../schemas';
 import {
   applyOrchestratorCommand,
   createCentralOrchestratorState,
-  createOrchestratorFixtures,
   selectActiveOrchestratorConfig,
   selectOpenRouterExecutionForAgent,
   selectOpenRouterModelForAgent,
@@ -38,10 +37,6 @@ function applyOrKeep(state: CentralOrchestratorState, command: OrchestratorComma
   return result.success ? result.state : state;
 }
 
-function seedState(workspaceId: string): CentralOrchestratorState {
-  return createOrchestratorFixtures(workspaceId).reduce(applyOrKeep, createCentralOrchestratorState(workspaceId));
-}
-
 export type OrchestratorFeed = {
   binding: WorkspaceOrchestratorBinding;
   activeConfig: OpenRouterConfig | HermesTelegramConfig;
@@ -62,7 +57,12 @@ export type OrchestratorFeed = {
 };
 
 export function useOrchestratorFeed(actorEmail: string, role: OrchestratorActorRole, workspaceId: string): OrchestratorFeed {
-  const [state, setState] = useState<CentralOrchestratorState>(() => seedState(workspaceId));
+  // Honestly empty — no real orchestrator backend is wired yet, so this no
+  // longer seeds a fake "already configured" model policy (see
+  // useTaskFeed.ts for the same pattern). createCentralOrchestratorState's
+  // own default (activeMode 'openrouter', blank configs) IS the correct
+  // "not configured yet" state, not a placeholder needing a fixture on top.
+  const [state, setState] = useState<CentralOrchestratorState>(() => createCentralOrchestratorState(workspaceId));
   const [error, setError] = useState<string | null>(null);
   const actor = { actorId: actorEmail, role, workspaceId };
 

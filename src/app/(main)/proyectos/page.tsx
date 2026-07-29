@@ -15,6 +15,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { PageHeader } from "@/components/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -75,9 +76,14 @@ export default async function ProyectosPage({
   ]);
 
   return (
-    <div className="p-4 sm:p-6 h-full flex flex-col">
+    <div className="page-shell flex min-h-[calc(100vh-4rem)] max-w-none flex-col gap-6">
+      <PageHeader
+        eyebrow="Operaciones"
+        title="Proyectos"
+        description="Organiza entregas, tareas y agenda sin perder de vista el avance del equipo."
+      />
       <Tabs defaultValue="tablero" className="flex flex-col h-full">
-        <TabsList className="w-fit">
+        <TabsList className="surface-card h-11 w-fit bg-card p-1">
           <TabsTrigger value="tablero">Tablero</TabsTrigger>
           <TabsTrigger value="tareas">Tareas</TabsTrigger>
           <TabsTrigger value="agenda">Agenda</TabsTrigger>

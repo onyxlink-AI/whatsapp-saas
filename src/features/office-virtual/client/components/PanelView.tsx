@@ -15,12 +15,13 @@ import ViewHeader from './ui/ViewHeader';
 type Props = {
   state: OfficeActivityState;
   agents: Agent[];
+  activeSeatCount: number;
   onSelectAgent: (id: string) => void;
 };
 
 type StatCard = { label: string; value: number; total?: number; color: string };
 
-export default function PanelView({ state, agents, onSelectAgent }: Props) {
+export default function PanelView({ state, agents, activeSeatCount, onSelectAgent }: Props) {
   // eslint-disable-next-line react-hooks/purity -- the office overview snapshot is meant to reflect wall-clock time at render.
   const now = Date.now();
   const agentById = new Map(agents.map((a) => [a.id, a]));
@@ -41,7 +42,7 @@ export default function PanelView({ state, agents, onSelectAgent }: Props) {
     .slice(0, 6);
 
   const stats: StatCard[] = [
-    { label: 'Agentes trabajando ahora', value: overview.workingAgents, total: AGENT_ORDER.length, color: '#fbbf24' },
+    { label: 'Miembros trabajando ahora', value: overview.workingAgents, total: activeSeatCount, color: '#fbbf24' },
     { label: 'Actividades en cola', value: overview.queuedActivities, color: '#38bdf8' },
     { label: 'Tareas completadas', value: overview.completedActivities, color: '#5eead4' },
     { label: 'Errores y bloqueos', value: errorsAndBlocks, color: '#f43f5e' },

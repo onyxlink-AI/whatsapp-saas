@@ -148,11 +148,11 @@ export function ProjectsBoard({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar proyecto o cliente..."
-          className="h-8 w-56 text-xs"
+          className="h-9 w-64 text-xs"
         />
         <Button
           size="sm"
-          className="h-8 text-xs gap-1.5 ml-auto"
+          className="ml-auto h-9 gap-1.5 text-xs"
           onClick={() => setCreateOpen(true)}
         >
           <Plus className="h-3.5 w-3.5" />

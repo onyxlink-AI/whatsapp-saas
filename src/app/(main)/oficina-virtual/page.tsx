@@ -44,7 +44,7 @@ export default async function OficinaVirtualPage() {
   }
 
   return (
-    <div className="h-full">
+    <div className="h-[calc(100dvh-8rem)] lg:h-[calc(100dvh-4rem)]">
       <OfficeVirtualApp
         key={membership.workspace_id}
         userEmail={user.email ?? "desconocido"}

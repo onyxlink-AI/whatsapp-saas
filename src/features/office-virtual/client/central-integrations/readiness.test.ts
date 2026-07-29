@@ -1,6 +1,35 @@
 import { describe, expect, it } from 'vitest';
 import { isChatbotChannelReady, isVoiceChannelReady, isWhatsAppChannelReady } from './readiness';
-import { createReadyWorkspaceFixture } from './fixtures';
+import { createReadyWorkspaceFixture, createIncompleteWorkspaceFixture } from './fixtures';
+
+describe('isVoiceChannelReady', () => {
+  it('is ready when a real assistantId is linked and the channel is configured/enabled/healthy', () => {
+    const snapshot = createReadyWorkspaceFixture();
+    expect(isVoiceChannelReady(snapshot)).toBe(true);
+  });
+
+  it('is NOT ready without a linked assistantId — Voz nunca se activa sin configuración', () => {
+    const snapshot = createIncompleteWorkspaceFixture();
+    expect(snapshot.voice.assistantId).toBeNull();
+    expect(isVoiceChannelReady(snapshot)).toBe(false);
+  });
+
+  it('is NOT ready if assistantId exists but the channel is not configured/enabled', () => {
+    const snapshot = createReadyWorkspaceFixture({
+      voice: { configured: false, enabled: false, health: 'unknown', assistantId: 'vapi-assistant-1' },
+    });
+    expect(isVoiceChannelReady(snapshot)).toBe(false);
+  });
+
+  it('cada workspace es independiente — el snapshot de una empresa nunca hereda el assistantId de otra', () => {
+    const empresaA = createReadyWorkspaceFixture({ workspaceId: 'empresa-a' });
+    const empresaB = createIncompleteWorkspaceFixture();
+    expect(empresaA.workspaceId).toBe('empresa-a');
+    expect(empresaB.voice.assistantId).toBeNull();
+    expect(isVoiceChannelReady(empresaA)).toBe(true);
+    expect(isVoiceChannelReady(empresaB)).toBe(false);
+  });
+});
 
 describe('isChatbotChannelReady', () => {
   it('is ready when the chatbot channel is configured, enabled, healthy, and bound to a provider', () => {

@@ -27,31 +27,36 @@ export async function GET(
 
     const { id: conversationId } = await params;
 
-    // 2. Resolve user workspace
-    const { data: member, error: memberError } = await supabase
-      .from("memberships")
-      .select("workspace_id")
-      .eq("user_id", user.id)
-      .limit(1)
-      .single();
-
-    if (memberError || !member) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
-
-    // 3. Verify the conversation belongs to the user's workspace
+    // 2. Resolve the conversation's REAL workspace first — looking up "any
+    // one" of the caller's memberships (as this route previously did) is
+    // wrong for a super admin or multi-workspace user: it could pick an
+    // unrelated workspace and reject a legitimate request, or — combined
+    // with a missing is_active filter — let a deactivated member keep
+    // reading events via their still-existing membership row.
     const { data: conversation, error: convError } = await supabase
       .from("conversations")
       .select("id, workspace_id")
       .eq("id", conversationId)
-      .eq("workspace_id", member.workspace_id)
-      .single();
+      .maybeSingle();
 
     if (convError || !conversation) {
       return NextResponse.json(
         { error: "Conversación no encontrada" },
         { status: 404 },
       );
+    }
+
+    // 3. Verify the caller is an ACTIVE member of THAT specific workspace.
+    const { data: member, error: memberError } = await supabase
+      .from("memberships")
+      .select("workspace_id")
+      .eq("workspace_id", conversation.workspace_id)
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (memberError || !member) {
+      return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
     }
 
     // 4. Fetch metrics and events

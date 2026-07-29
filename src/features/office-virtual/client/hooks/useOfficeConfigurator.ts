@@ -106,10 +106,10 @@ export type OfficeConfigurator = {
   restoreRevision: (revision: number) => void;
 };
 
-export function useOfficeConfigurator(workspaceId: string): OfficeConfigurator {
+export function useOfficeConfigurator(workspaceId: string, enabled = true): OfficeConfigurator {
   const [document, setDocument] = useState<OfficeConfigurationDocument>(() => emptyDocument(workspaceId));
   const [presetVersion, setPresetVersion] = useState(STANDARD_OFFICE_PRESET.version);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [officeNameDraft, setOfficeNameDraft] = useState('');
@@ -127,6 +127,11 @@ export function useOfficeConfigurator(workspaceId: string): OfficeConfigurator {
   };
 
   useEffect(() => {
+    // The configurator API is superadmin-only server-side (by design — see
+    // office-virtual/configurator/route.ts) — skip the fetch entirely for
+    // everyone else instead of letting every workspace admin/client trigger
+    // an expected-but-noisy 403 on every Oficina Virtual page load.
+    if (!enabled) return;
     let cancelled = false;
     fetchOfficeConfiguration(workspaceId).then((result) => {
       if (cancelled) return;
@@ -144,7 +149,7 @@ export function useOfficeConfigurator(workspaceId: string): OfficeConfigurator {
     return () => {
       cancelled = true;
     };
-  }, [workspaceId]);
+  }, [workspaceId, enabled]);
 
   const hasUnsavedChanges =
     officeNameDraft.trim() !== document.officeDisplayName ||

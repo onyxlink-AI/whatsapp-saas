@@ -3,16 +3,15 @@
 @tailwind utilities;
 
 /*
- * Design System — Agente WhatsApp · "Glass + Onyxlink Violet"
+ * Design System — OnyxLink Business OS
  * Source of truth: /ui (component showcase). Ver COMPONENT_RULES.md.
  *
  * Tokens almacenados como triplets OKLch crudos -> Tailwind inyecta alpha vía
  * oklch(var(--token) / <alpha-value>). Esto habilita modificadores de opacidad
  * (bg-primary/10) manteniendo color OKLch nativo.
  *
- * Glassmorphism (estilo Apple/visionOS): la translucidez se aplica con utilidades
- * explícitas (.glass) — NO via los tokens semánticos, para que el vidrio "lea"
- * sobre el glow ambiental del fondo.
+ * La interfaz prioriza estructura, legibilidad y superficies de gestión serenas.
+ * Glass se conserva para overlays y casos especiales, no como superficie base.
  *
  * .glass-accent: variante de .glass con un 10% (14% en dark) de tinte violeta
  * de marca. Uso SELECTIVO para superficies de énfasis (KPI destacado, nav
@@ -22,10 +21,10 @@
 @layer base {
   :root {
     /* Light mode (toggle) — blanco frío neutro, NUNCA crema */
-    --background: 0.99 0.002 247;
-    --foreground: 0.2 0.01 264;
+    --background: 0.975 0.006 264;
+    --foreground: 0.19 0.016 264;
 
-    --card: 1 0 0;
+    --card: 0.998 0.001 264;
     --card-foreground: 0.2 0.01 264;
 
     --popover: 1 0 0;
@@ -35,13 +34,13 @@
     --primary: 0.53 0.29 293;
     --primary-foreground: 0.98 0.005 293;
 
-    --secondary: 0.96 0.003 247;
+    --secondary: 0.955 0.007 264;
     --secondary-foreground: 0.25 0.01 264;
 
-    --muted: 0.96 0.003 247;
-    --muted-foreground: 0.5 0.012 264;
+    --muted: 0.955 0.007 264;
+    --muted-foreground: 0.48 0.018 264;
 
-    --accent: 0.95 0.008 247;
+    --accent: 0.945 0.012 274;
     --accent-foreground: 0.22 0.01 264;
 
     --destructive: 0.58 0.22 25;
@@ -51,8 +50,8 @@
     --warning: 0.78 0.16 80;
     --info: 0.62 0.15 250;
 
-    --border: 0.91 0.004 264;
-    --input: 0.91 0.004 264;
+    --border: 0.895 0.009 264;
+    --input: 0.885 0.011 264;
     --ring: 0.53 0.29 293;
 
     --chart-1: 0.53 0.29 293;
@@ -75,7 +74,7 @@
     --glass-tint-alpha: 0.1;
     --glass-tint-border-alpha: 0.35;
 
-    --radius: 0.875rem;
+    --radius: 0.75rem;
 
     /* Legacy HSL accent (badges/avatars) — kept in sync with --primary */
     --electric-lime: 269 100% 50%;
@@ -83,25 +82,25 @@
 
   .dark {
     /* Dark mode (default) — deep cool black para que el glass + lime brillen */
-    --background: 0.17 0.006 264;
+    --background: 0.145 0.009 264;
     --foreground: 0.97 0.002 247;
 
-    --card: 0.21 0.006 264;
+    --card: 0.19 0.01 264;
     --card-foreground: 0.97 0.002 247;
 
-    --popover: 0.2 0.006 264;
+    --popover: 0.18 0.01 264;
     --popover-foreground: 0.97 0.002 247;
 
     --primary: 0.53 0.29 293;
     --primary-foreground: 0.98 0.005 293;
 
-    --secondary: 0.26 0.006 264;
+    --secondary: 0.235 0.012 264;
     --secondary-foreground: 0.97 0.002 247;
 
-    --muted: 0.26 0.006 264;
+    --muted: 0.235 0.012 264;
     --muted-foreground: 0.7 0.012 264;
 
-    --accent: 0.27 0.006 264;
+    --accent: 0.245 0.018 274;
     --accent-foreground: 0.97 0.002 247;
 
     --destructive: 0.62 0.21 25;
@@ -111,8 +110,8 @@
     --warning: 0.82 0.16 85;
     --info: 0.68 0.14 250;
 
-    --border: 0.28 0.006 264;
-    --input: 0.3 0.006 264;
+    --border: 0.275 0.014 264;
+    --input: 0.295 0.016 264;
     --ring: 0.53 0.29 293;
 
     --chart-1: 0.53 0.29 293;
@@ -147,19 +146,31 @@
 
   body {
     @apply bg-background text-foreground font-body antialiased;
-    /* Glow ambiental violeta muy sutil para que el glass "lea" (estilo Apple) */
+    min-height: 100vh;
     background-image:
       radial-gradient(
-        60rem 40rem at 15% -10%,
-        oklch(0.53 0.29 293 / 0.08),
+        52rem 34rem at 35% -20%,
+        oklch(0.53 0.29 293 / 0.045),
         transparent 60%
       ),
       radial-gradient(
-        50rem 40rem at 110% 10%,
-        oklch(0.53 0.29 293 / 0.04),
+        42rem 32rem at 105% 5%,
+        oklch(0.62 0.15 250 / 0.025),
         transparent 55%
       );
     background-attachment: fixed;
+  }
+
+  ::selection {
+    background: oklch(var(--primary) / 0.2);
+    color: oklch(var(--foreground));
+  }
+}
+
+@layer utilities {
+  .duration-350 {
+    transition-duration: 350ms;
+    animation-duration: 350ms;
   }
 }
 
@@ -230,5 +241,404 @@
       oklch(1 0 0 / 0.14),
       oklch(1 0 0 / 0) 35%
     );
+  }
+
+  .app-sidebar {
+    background:
+      radial-gradient(
+        28rem 24rem at -10% -10%,
+        oklch(0.53 0.29 293 / 0.22),
+        transparent 58%
+      ),
+      linear-gradient(180deg, #17131f 0%, #100e16 100%);
+    box-shadow: 18px 0 55px -44px rgb(15 23 42 / 0.7);
+  }
+
+  .auth-hero {
+    isolation: isolate;
+    background:
+      radial-gradient(44rem 30rem at 78% 78%, rgb(123 0 255 / 0.16), transparent 68%),
+      linear-gradient(145deg, #15101e 0%, #0d0b12 55%, #07070a 100%);
+  }
+
+  .auth-hero__grid {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    opacity: 0.12;
+    background-image:
+      linear-gradient(rgb(255 255 255 / 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(255 255 255 / 0.07) 1px, transparent 1px);
+    background-size: 64px 64px;
+    -webkit-mask-image: linear-gradient(to bottom, black, transparent 85%);
+    mask-image: linear-gradient(to bottom, black, transparent 85%);
+  }
+
+  .auth-hero__aurora {
+    position: absolute;
+    z-index: 1;
+    border-radius: 999px;
+    filter: blur(34px);
+    opacity: 0.28;
+    animation: auth-aurora-drift 9s ease-in-out infinite alternate;
+  }
+
+  .auth-hero__aurora--one {
+    top: 14%;
+    right: 10%;
+    width: 18rem;
+    height: 18rem;
+    background: rgb(123 0 255 / 0.34);
+  }
+
+  .auth-hero__aurora--two {
+    right: 34%;
+    bottom: 4%;
+    width: 13rem;
+    height: 13rem;
+    background: rgb(98 58 255 / 0.2);
+    animation-delay: -4s;
+  }
+
+  .auth-system-status {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 2rem;
+    padding: 0.45rem 0.7rem;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.045);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgb(255 255 255 / 0.58);
+    backdrop-filter: blur(12px);
+  }
+
+  .auth-system-status__pulse {
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 999px;
+    background: rgb(52 211 153);
+    box-shadow: 0 0 0 0 rgb(52 211 153 / 0.5);
+    animation: auth-status-pulse 2.4s ease-out infinite;
+  }
+
+  .auth-capability-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-width: 7.5rem;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    border-radius: 0.75rem;
+    background: linear-gradient(135deg, rgb(255 255 255 / 0.065), rgb(255 255 255 / 0.025));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+    backdrop-filter: blur(14px);
+  }
+
+  .auth-hero__robot-stage {
+    pointer-events: none;
+    position: absolute;
+    z-index: 8;
+    inset: -3%;
+    max-width: none;
+    perspective: 1100px;
+    transform-style: preserve-3d;
+  }
+
+  .auth-hero__robot {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    user-select: none;
+    opacity: 0.88;
+    filter: contrast(1.04) saturate(1.04);
+  }
+
+  .auth-hero__robot-glow {
+    position: absolute;
+    z-index: 6;
+    right: -8rem;
+    bottom: -9rem;
+    width: 42rem;
+    height: 34rem;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgb(123 0 255 / 0.26), transparent 66%);
+    filter: blur(18px);
+  }
+
+  .auth-hero__image-shade {
+    pointer-events: none;
+    position: absolute;
+    z-index: 12;
+    inset: 0;
+    background:
+      linear-gradient(90deg, #110e18 0%, rgb(17 14 24 / 0.92) 35%, transparent 68%),
+      linear-gradient(0deg, rgb(10 8 14 / 0.72) 0%, transparent 26%);
+  }
+
+  .auth-hero__scan {
+    pointer-events: none;
+    position: absolute;
+    z-index: 16;
+    top: 12%;
+    right: 3%;
+    width: 48%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(182 139 255 / 0.72), transparent);
+    box-shadow: 0 0 18px 2px rgb(123 0 255 / 0.25);
+    opacity: 0;
+  }
+
+  .auth-neural-field {
+    pointer-events: none;
+    position: absolute;
+    z-index: 18;
+    inset: 0;
+    perspective: 900px;
+    transform-style: preserve-3d;
+  }
+
+  .auth-neural-network {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    opacity: 0.72;
+    filter: drop-shadow(0 0 7px rgb(123 0 255 / 0.42));
+  }
+
+  .auth-neural-network path {
+    fill: none;
+    stroke: url(#auth-neural-gradient);
+    stroke-width: 0.18;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+    filter: url(#auth-neural-glow);
+  }
+
+  .auth-data-node {
+    --node-depth: 40px;
+    position: absolute;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin: -1.25rem 0 0 -1.25rem;
+    transform-style: preserve-3d;
+    will-change: transform, opacity;
+  }
+
+  .auth-data-node__halo,
+  .auth-data-node__sphere,
+  .auth-data-node__core,
+  .auth-data-node__specular,
+  .auth-data-node__orbit,
+  .auth-data-node__pulse {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+  }
+
+  .auth-data-node__halo {
+    inset: -32%;
+    background: radial-gradient(circle, rgb(168 85 247 / 0.28), rgb(123 0 255 / 0.08) 38%, transparent 68%);
+    filter: blur(7px);
+    transform: translateZ(calc(var(--node-depth) * -0.45));
+  }
+
+  .auth-data-node__sphere {
+    inset: 27%;
+    overflow: hidden;
+    border: 1px solid rgb(221 214 254 / 0.72);
+    background:
+      radial-gradient(circle at 31% 24%, rgb(255 255 255 / 0.98) 0 5%, rgb(221 214 254 / 0.9) 7%, transparent 19%),
+      radial-gradient(circle at 36% 32%, #c084fc 0%, #7c3aed 34%, #3b0764 70%, #12021f 100%);
+    box-shadow:
+      inset -5px -7px 10px rgb(16 1 31 / 0.82),
+      inset 3px 3px 6px rgb(233 213 255 / 0.42),
+      0 0 7px rgb(233 213 255 / 0.8),
+      0 0 22px rgb(123 0 255 / 0.94),
+      0 0 48px rgb(123 0 255 / 0.38);
+    transform: translateZ(var(--node-depth));
+  }
+
+  .auth-data-node__sphere::after {
+    content: "";
+    position: absolute;
+    inset: 12% 16% 52% 18%;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgb(255 255 255 / 0.7), transparent 65%);
+    filter: blur(1px);
+    transform: rotate(-18deg);
+  }
+
+  .auth-data-node__core {
+    inset: 34%;
+    background: #f5f3ff;
+    box-shadow: 0 0 9px 3px rgb(216 180 254 / 0.95);
+    animation: auth-node-core 2.2s ease-in-out infinite;
+  }
+
+  .auth-data-node__specular {
+    inset: 13% 48% 55% 16%;
+    background: rgb(255 255 255 / 0.92);
+    filter: blur(0.5px);
+  }
+
+  .auth-data-node__orbit {
+    border: 1px solid rgb(196 181 253 / 0.52);
+    box-shadow: inset 0 0 5px rgb(168 85 247 / 0.2), 0 0 8px rgb(123 0 255 / 0.28);
+    transform-style: preserve-3d;
+  }
+
+  .auth-data-node__orbit--one {
+    inset: 16% -7%;
+    height: 68%;
+    top: 16%;
+  }
+
+  .auth-data-node__orbit--two {
+    inset: -7% 18%;
+    width: 64%;
+    left: 18%;
+    border-color: rgb(168 85 247 / 0.36);
+  }
+
+  .auth-data-node__satellite {
+    position: absolute;
+    top: 50%;
+    right: -0.12rem;
+    width: 0.23rem;
+    height: 0.23rem;
+    margin-top: -0.115rem;
+    border-radius: 50%;
+    background: #ede9fe;
+    box-shadow: 0 0 5px #ffffff, 0 0 11px #a855f7;
+  }
+
+  .auth-data-node__pulse {
+    inset: 10%;
+    border: 1px solid rgb(196 181 253 / 0.68);
+    animation: auth-node-pulse 2.8s ease-out infinite;
+  }
+
+  .auth-data-node:nth-of-type(2n) .auth-data-node__core,
+  .auth-data-node:nth-of-type(2n) .auth-data-node__pulse {
+    animation-delay: -1.15s;
+  }
+
+  .auth-login-canvas {
+    background:
+      radial-gradient(30rem 24rem at 105% 5%, oklch(0.53 0.29 293 / 0.075), transparent 65%),
+      oklch(var(--background));
+  }
+
+  .auth-login-canvas::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.16;
+    background-image: radial-gradient(oklch(var(--foreground) / 0.17) 0.7px, transparent 0.7px);
+    background-size: 20px 20px;
+    -webkit-mask-image: radial-gradient(circle at 70% 42%, black, transparent 62%);
+    mask-image: radial-gradient(circle at 70% 42%, black, transparent 62%);
+  }
+
+  .auth-login-canvas__glow {
+    position: absolute;
+    top: 20%;
+    right: -8rem;
+    width: 22rem;
+    height: 22rem;
+    border-radius: 50%;
+    background: oklch(var(--primary) / 0.055);
+    filter: blur(60px);
+  }
+
+  .auth-login-card {
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+      0 1px 2px rgb(15 23 42 / 0.04),
+      0 24px 70px -44px rgb(80 0 180 / 0.38);
+  }
+
+  .auth-login-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 10%;
+    width: 80%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, oklch(var(--primary) / 0.72), transparent);
+  }
+
+  @keyframes auth-aurora-drift {
+    from { transform: translate3d(-1rem, -0.5rem, 0) scale(0.94); }
+    to { transform: translate3d(1.5rem, 1rem, 0) scale(1.08); }
+  }
+
+  @keyframes auth-status-pulse {
+    0% { box-shadow: 0 0 0 0 rgb(52 211 153 / 0.5); }
+    70%, 100% { box-shadow: 0 0 0 0.45rem rgb(52 211 153 / 0); }
+  }
+
+  @keyframes auth-node-core {
+    0%, 100% { opacity: 0.72; transform: scale(0.72); }
+    50% { opacity: 1; transform: scale(1.18); }
+  }
+
+  @keyframes auth-node-pulse {
+    0% { opacity: 0.78; transform: scale(0.4) translateZ(8px); }
+    75%, 100% { opacity: 0; transform: scale(1.9) translateZ(8px); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .auth-hero__aurora,
+    .auth-system-status__pulse,
+    .auth-data-node__core,
+    .auth-data-node__pulse {
+      animation: none;
+    }
+  }
+
+  .page-shell {
+    width: 100%;
+    max-width: 80rem;
+    margin-inline: auto;
+    padding: 1.5rem 1rem;
+  }
+
+  .surface-card {
+    background: oklch(var(--card));
+    border: 1px solid oklch(var(--border) / 0.8);
+    border-radius: calc(var(--radius) + 0.25rem);
+    box-shadow:
+      0 1px 2px rgb(15 23 42 / 0.035),
+      0 8px 28px -22px rgb(15 23 42 / 0.28);
+  }
+
+  .surface-subtle {
+    background: oklch(var(--muted) / 0.55);
+    border: 1px solid oklch(var(--border) / 0.65);
+    border-radius: var(--radius);
+  }
+
+  @media (min-width: 640px) {
+    .page-shell {
+      padding-inline: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .page-shell {
+      padding: 2rem;
+    }
   }
 }

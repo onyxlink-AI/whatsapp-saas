@@ -127,6 +127,13 @@ export function AgentConfigSheet({
         </SheetHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="px-4 py-2">
+          <div className="mb-4 grid grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/25 p-1 text-center text-[11px] text-muted-foreground">
+            <span className="rounded-lg bg-background px-2 py-2 font-medium text-foreground shadow-sm">
+              1. Configura
+            </span>
+            <span className="px-2 py-2">2. Prueba</span>
+            <span className="px-2 py-2">3. Conecta WhatsApp</span>
+          </div>
           <TabsList className="mb-4">
             <TabsTrigger value="identidad">Identidad</TabsTrigger>
             <TabsTrigger value="prompt">Prompt</TabsTrigger>

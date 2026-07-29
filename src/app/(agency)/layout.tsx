@@ -1,22 +1,20 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { LogOut, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
   getActiveWorkspace,
   getDefaultRouteForWorkspace,
 } from "@/features/workspace/services/active-workspace";
-import { cn } from "@/lib/utils";
-import {
-  Building2,
-  Kanban,
-  LayoutDashboard,
-  LogOut,
-  MessageCircle,
-  Settings,
-} from "lucide-react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { logout } from "@/features/auth/services/actions";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
+import {
+  AppMobileNavigation,
+  AppSidebarNavigation,
+  type AppNavItem,
+} from "@/components/app-navigation";
 
 export default async function AgencyLayout({
   children,
@@ -24,7 +22,6 @@ export default async function AgencyLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -46,131 +43,122 @@ export default async function AgencyLayout({
     );
   }
 
+  const navItems: AppNavItem[] = [
+    {
+      href: "/workspaces",
+      label: "Empresas",
+      icon: "companies",
+      section: "Administración",
+      mobilePrimary: true,
+    },
+    {
+      href: "/dashboard",
+      label: "Volver al inicio",
+      shortLabel: "Inicio",
+      icon: "dashboard",
+      section: "Aplicación",
+      mobilePrimary: true,
+    },
+    {
+      href: "/inbox",
+      label: "Conversaciones",
+      shortLabel: "Mensajes",
+      icon: "messages",
+      section: "Aplicación",
+      mobilePrimary: true,
+    },
+    {
+      href: "/settings",
+      label: "Ajustes de empresa",
+      shortLabel: "Ajustes",
+      icon: "settings",
+      section: "Aplicación",
+      mobilePrimary: true,
+    },
+  ];
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <header
-        className={cn(
-          "glass-strong sticky top-0 z-50 h-14 shrink-0",
-          "flex items-center justify-between px-3 sm:px-6",
-          "border-b border-border/50",
-        )}
-      >
-        <div className="flex items-center gap-2.5">
-          <span className="font-display text-base font-semibold text-primary tracking-tight">
-            Agente Onyxlink
-          </span>
-          <Badge
-            variant="outline"
-            className="border-primary/30 bg-primary/10 text-primary text-xs font-mono px-1.5 py-0"
-          >
-            Agency
-          </Badge>
+    <div className="min-h-screen bg-background">
+      <aside className="app-sidebar fixed inset-y-0 left-0 z-40 hidden w-64 flex-col lg:flex">
+        <div className="flex h-20 flex-col items-start justify-center px-5">
+          <Image
+            src="/brand/onyxlink-logo.png"
+            alt="OnyxLink"
+            width={150}
+            height={30}
+            className="h-auto w-[9.4rem]"
+            priority
+          />
+          <p className="mt-1 text-[9px] font-medium uppercase tracking-[0.18em] text-white/30">
+            Agency Console
+          </p>
         </div>
 
-        <div className="flex items-center gap-1">
-          {/* Below md this duplicates the mobile bottom nav's own Inbox
-              link (and its Settings icon reads as pointing to /settings,
-              not /inbox) — desktop-only, matches MainLayout's header. */}
-          <div className="hidden md:flex items-center gap-1">
-            <Link href="/inbox">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <MessageCircle className="h-4 w-4" aria-hidden="true" />
-                <span className="sr-only sm:not-sr-only sm:ml-2">Ir a la app</span>
-              </Button>
-            </Link>
+        <div className="mx-3 mb-6 flex items-center gap-3 rounded-xl border border-primary/25 bg-primary/15 px-3 py-3 text-white">
+          <ShieldCheck className="h-5 w-5 text-violet-300" aria-hidden="true" />
+          <div>
+            <p className="text-xs font-semibold">Panel de administración</p>
+            <p className="text-[10px] text-white/45">Solo para OnyxLink</p>
           </div>
+        </div>
 
+        <AppSidebarNavigation items={navItems} />
+
+        <div className="border-t border-white/10 p-3">
+          <div className="mb-2 flex items-center gap-3 rounded-lg px-3 py-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-white">
+              {(user.email?.[0] ?? "O").toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-xs font-medium text-white/80">{user.email}</p>
+              <p className="text-[10px] text-white/35">Superadministrador</p>
+            </div>
+          </div>
           <form action={logout}>
-            <Button
+            <button
               type="submit"
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground"
+              className="flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-white/55 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
             >
-              <LogOut className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only sm:ml-2">Salir</span>
-            </Button>
+              <LogOut className="h-[18px] w-[18px]" aria-hidden="true" />
+              Cerrar sesión
+            </button>
           </form>
         </div>
-      </header>
+      </aside>
 
-      {/* Agency sub-nav */}
-      <nav
-        className="glass border-b border-border/50 px-3 sm:px-6"
-        aria-label="Navegación de agencia"
-      >
-        <div className="flex items-center gap-0.5 h-10">
-          <Link
-            href="/workspaces"
-            className={cn(
-              "flex items-center gap-1.5 px-3 h-full",
-              "text-sm text-muted-foreground hover:text-foreground",
-              "border-b-2 border-transparent hover:border-border",
-              "transition-colors duration-150",
-            )}
-          >
-            <Building2 className="h-4 w-4" aria-hidden="true" />
-            Workspaces
+      <div className="flex min-h-screen flex-col lg:pl-64">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/70 bg-background/85 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
+          <Link href="/workspaces" className="app-sidebar rounded-lg px-3 py-2 lg:hidden">
+            <Image
+              src="/brand/onyxlink-logo.png"
+              alt="OnyxLink"
+              width={112}
+              height={22}
+              className="h-auto w-28"
+              priority
+            />
           </Link>
-        </div>
-      </nav>
+          <div className="hidden items-center gap-2 lg:flex">
+            <ShieldCheck className="h-4 w-4 text-primary" aria-hidden="true" />
+            <span className="text-xs font-semibold text-foreground">Administración OnyxLink</span>
+            <span className="text-xs text-muted-foreground">· Empresas y productos</span>
+          </div>
+          <div className="ml-auto flex items-center gap-1.5">
+            <ThemeToggle />
+            <form action={logout} className="lg:hidden">
+              <Button type="submit" variant="ghost" size="icon" aria-label="Cerrar sesión">
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </form>
+          </div>
+        </header>
 
-      <main className="flex-1 px-3 sm:px-6 py-6 pb-20 md:pb-6">{children}</main>
+        <main className="min-w-0 flex-1 px-4 py-6 pb-20 sm:px-6 lg:px-8 lg:pb-8">
+          {children}
+        </main>
+      </div>
 
-      {/* Mobile bottom nav — hidden on md+, matches MainLayout's so it's
-          never missing while navigating between the client app and agency. */}
-      <nav
-        className={cn(
-          "md:hidden fixed bottom-0 inset-x-0 z-50 h-14",
-          "glass-strong border-t border-border/50",
-          "flex items-center justify-around px-4",
-        )}
-        aria-label="Navegación móvil"
-      >
-        <Link
-          href="/inbox"
-          className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-        >
-          <MessageCircle className="h-5 w-5" aria-hidden="true" />
-          <span>Inbox</span>
-        </Link>
-
-        <Link
-          href="/dashboard"
-          className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-        >
-          <LayoutDashboard className="h-5 w-5" aria-hidden="true" />
-          <span>Dashboard</span>
-        </Link>
-
-        <Link
-          href="/pipeline"
-          className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-        >
-          <Kanban className="h-5 w-5" aria-hidden="true" />
-          <span>Pipeline</span>
-        </Link>
-
-        <Link
-          href="/settings"
-          className="flex flex-col items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-        >
-          <Settings className="h-5 w-5" aria-hidden="true" />
-          <span>Ajustes</span>
-        </Link>
-
-        <Link
-          href="/workspaces"
-          className="flex flex-col items-center gap-0.5 text-xs text-primary transition-colors"
-        >
-          <Building2 className="h-5 w-5" aria-hidden="true" />
-          <span>Agency</span>
-        </Link>
-      </nav>
+      <AppMobileNavigation items={navItems} />
     </div>
   );
 }

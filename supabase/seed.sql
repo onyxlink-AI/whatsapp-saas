@@ -179,8 +179,14 @@ UPDATE public.prompts SET active_version_id = 'a6ebcc56-e782-436c-b314-48a1f98a9
 UPDATE public.prompts SET active_version_id = '7c977843-27c3-40f9-aefa-24a1ae85674c' WHERE id = 'b5a21a44-a453-4ffa-8b4a-c74d838f2107';
 UPDATE public.prompts SET active_version_id = 'bfd55a28-df9e-4de0-8b8c-d0ed829abf02' WHERE id = '068deea6-7fbc-4998-8a86-031d14b7c0ad';
 
+-- ON CONFLICT targets the primary key, not (workspace_id, type): migration
+-- 20260728000000_agents_multiple_profiles.sql intentionally dropped the
+-- unique constraint on (workspace_id, type) to allow several saved profiles
+-- per type, so that pair is no longer a valid ON CONFLICT target for
+-- `supabase db reset` to stay idempotent — each seeded row keeps a fixed id
+-- instead, which re-running this file still satisfies safely.
 INSERT INTO public.agents (id, workspace_id, type, name, avatar_key, model, is_active, prompt_id) VALUES
   ('06f9c280-9483-4321-a1c9-43fdc4539d20', '1b807ae9-03a2-4cf5-84af-8b72a7078ad9', 'setter', 'Carlos', 'setter', NULL, TRUE, 'f8be9292-4ebb-4850-a0e0-645915ee5c96'),
   ('d239dde4-2f33-438a-b03c-1b01657bdf61', '1b807ae9-03a2-4cf5-84af-8b72a7078ad9', 'soporte', 'Sofía', 'soporte', NULL, FALSE, 'b5a21a44-a453-4ffa-8b4a-c74d838f2107'),
   ('e0998df2-f58f-4271-bdec-f9ba8d8e666f', '1b807ae9-03a2-4cf5-84af-8b72a7078ad9', 'agendamiento', 'Andrés', 'agendamiento', NULL, FALSE, '068deea6-7fbc-4998-8a86-031d14b7c0ad')
-ON CONFLICT (workspace_id, type) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;

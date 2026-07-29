@@ -1,88 +1,146 @@
-# Component Rules — Agente WhatsApp
+# Reglas de componentes — OnyxLink Business OS
 
-Agentes: leer este archivo antes de crear o modificar cualquier componente UI.
-Última actualización: 2026-06-08
+Leer este archivo antes de crear o modificar cualquier componente visual.
+Última actualización: 2026-07-27.
 
-Design system: **Glass + Electric Lime** (glassmorphism estilo Apple/visionOS).
-Fuente de verdad visual: `http://localhost:3000/ui` (solo desarrollo).
+## Dirección visual
 
----
+OnyxLink debe sentirse como un sistema operativo empresarial: limpio, sereno, compacto y fácil de recorrer. La referencia de categoría es la claridad de productos como Holded, sin copiar su marca, colores, ilustraciones ni composición literal.
 
-## Regla 1 — Referencia el showcase primero
+La identidad propia de OnyxLink se mantiene mediante:
 
-Antes de crear cualquier componente, abre `/ui`.
-Si el componente que necesitas ya existe ahí, usa esa variante exacta.
-No crear variantes nuevas sin actualizar el showcase primero.
+- Violeta como color de acción y estados activos.
+- Barra lateral oscura en escritorio.
+- Superficies claras, ordenadas y con poco ruido.
+- Tipografía Space Grotesk en títulos y Geist Sans en interfaz.
+- Lenguaje sencillo en español.
 
-## Regla 2 — Tokens de color, nunca hex
+La fuente de verdad visual es `http://localhost:3000/ui` en desarrollo y los componentes compartidos de `src/components/ui`.
 
-Correcto: `className="bg-primary text-primary-foreground"`
-Incorrecto: `className="bg-[#B5F23D] text-black"`
+## 1. Estructura de producto
 
-Tokens (OKLch via CSS vars, soportan opacidad — `bg-primary/10`):
-`bg-background, bg-card, bg-muted, bg-primary, bg-secondary, bg-accent,`
-`bg-destructive, bg-success, bg-warning, bg-info, bg-border, bg-input`
-`text-foreground, text-muted-foreground, text-primary, text-destructive`
+- En escritorio, la navegación principal vive en la barra lateral.
+- La cabecera superior se reserva para contexto, búsqueda y utilidades.
+- En móvil, se muestran hasta cuatro destinos principales y un menú “Más” cuando sea necesario.
+- Cada ruta debe indicar claramente la sección activa.
+- No volver a colocar todos los productos como botones en la cabecera.
 
-El acento lime (`--primary`) es raro a propósito: úsalo para EL CTA, no para todo.
+## 2. Jerarquía de página
 
-## Regla 3 — Fuentes del proyecto
+Las pantallas de gestión utilizan:
 
-- Display/headings: **Space Grotesk** → `font-display`
-- Body/UI: **Geist Sans** → `font-body` (default)
-- Datos (teléfonos, wamid, IDs, código): **Geist Mono** → `font-mono`
+- `.page-shell` para ancho y separación exterior.
+- `PageHeader` para categoría, título, descripción y acciones.
+- `.surface-card` para contenido principal.
+- `.surface-subtle` para columnas, agrupaciones y fondos secundarios.
 
-Nunca Inter, Roboto ni Arial.
+No comenzar una pantalla con una tarjeta decorativa o banner si retrasa la tarea principal.
 
-## Regla 4 — Glassmorphism
+## 3. Tokens de color
 
-Usa la utilidad `.glass` (o `.glass-strong`) para superficies hero, navs sticky y overlays.
-NO anidar glass dentro de glass. El glass necesita el glow ambiental del fondo (ya en `body`).
+Usar siempre tokens semánticos:
 
-## Regla 5 — Motion system
+`background`, `foreground`, `card`, `muted`, `primary`, `secondary`, `accent`, `destructive`, `success`, `warning`, `info`, `border`, `input`.
 
-Importar de: `@/features/ui-kit/motion`
-Duraciones: instant(75ms), sm(150ms), md(200ms), lg(350ms), xl(500ms)
-Easing default: `cubic-bezier(0.16, 1, 0.3, 1)` (ease-out-expo)
-Animar solo: transform, opacity, filter, color, background-color, border-color, box-shadow
-NUNCA animar: width, height, padding, margin, top, left
+Ejemplo correcto: `bg-primary text-primary-foreground`.
 
-## Regla 6 — Los 4 estados obligatorios
+No introducir hexadecimales dentro de componentes. Los valores físicos solo pueden existir en la definición central del sistema, como el fondo especial de `.app-sidebar`.
 
-Todo componente que carga datos implementa los 4:
+El violeta es selectivo: CTA principal, navegación activa, foco y estados destacados. No teñir todas las superficies.
 
-1. Loading: skeleton que imita el layout real (no spinner genérico)
-2. Error: mensaje + botón retry
-3. Empty: ilustración/ícono + heading + CTA
-4. Data: el render principal
+## 4. Tipografía
 
-## Regla 7 — Iconografía
+- Títulos: `font-display` — Space Grotesk.
+- Interfaz y cuerpo: Geist Sans.
+- Identificadores y datos técnicos: `font-mono` — Geist Mono.
 
-Solo Lucide React (outline). h-4 w-4 (inline), h-5 w-5 (sidebar/nav), h-6 w-6 (standalone).
-Nunca mezclar con otras librerías de íconos.
+Los títulos de página deben explicar el resultado esperado, no repetir términos técnicos internos.
 
-## Regla 8 — Accesibilidad no negociable
+## 5. Superficies
 
-- Botones icon-only → `aria-label`
-- Inputs → `<Label htmlFor>` ↔ `id`
-- Focus visible siempre (nunca `outline-none` sin ring equivalente)
-- Botones en loading → `disabled` + `aria-busy`
+- `surface-card`: paneles, tablas, formularios y tarjetas principales.
+- `surface-subtle`: columnas Kanban y agrupaciones secundarias.
+- `glass` y `glass-strong`: solo overlays o casos especiales. No son la superficie predeterminada.
+- Nunca anidar vidrio dentro de vidrio.
+- Evitar bordes de colores intensos alrededor de paneles completos; usar color en indicadores pequeños.
 
-## Regla 9 — Variantes canónicas de Button
+## 6. Controles
 
-Solo: default, secondary, outline, ghost, destructive, link.
-Jerarquía por pantalla: máximo 1 default (CTA primario), resto secondary/outline/ghost.
+- Altura normal: 40 px.
+- Acciones pequeñas: 36 px.
+- Objetivos táctiles importantes: 44 px cuando el contexto lo permita.
+- Radio estándar: `rounded-lg`.
+- El foco visible es obligatorio.
+- Máximo un botón `default` por grupo de acciones.
+- Los botones deben describir el resultado: “Nueva oportunidad”, no “Nuevo deal”.
 
-## Regla 10 — Cards
+## 7. Estados obligatorios
 
-Default (borde): listas, contenido estático.
-Elevated (shadow-md, sin borde): elementos destacados.
-Accent (border-primary/20 bg-primary/5): KPIs, info de marca.
-Glass (.glass): superficies hero/sticky.
-No anidar Cards elevadas ni glass dentro de otra del mismo tipo.
+Todo componente con datos contempla:
 
-## Regla 11 — Theming (dark default)
+1. Cargando: skeleton parecido al contenido final.
+2. Error: explicación clara y acción de recuperación.
+3. Vacío: icono, explicación y siguiente paso cuando exista.
+4. Datos: contenido real.
 
-Dark es el tema por defecto (`defaultTheme="dark"`). El light existe vía toggle.
-Nunca uses `bg-white`, `text-black`, `bg-gray-*` — rompen el dark mode.
-Usa siempre los tokens semánticos (cambian solos con `.dark`).
+Nunca presentar fixtures como información real.
+
+## 8. Iconografía
+
+Solo Lucide React.
+
+- 16 px dentro de controles.
+- 18–20 px en navegación.
+- 20–24 px como icono independiente.
+- Los botones formados solo por un icono necesitan `aria-label`.
+
+Los emojis se reservan para textos de ayuda o estados donde aumenten la comprensión; no sustituyen la iconografía del sistema.
+
+## 9. Motion
+
+Usar `@/features/ui-kit/motion`.
+
+- 150 ms para hover y foco.
+- 200 ms para entradas y cambios de estado.
+- 350 ms para paneles y drawers.
+- Animar transform, opacity, color, background, border o shadow.
+- No animar width, height, padding, margin ni posición de layout.
+
+Respetar `prefers-reduced-motion`.
+
+## 10. Accesibilidad
+
+- Inputs unidos a su `Label` mediante `htmlFor` e `id`.
+- Contraste suficiente en ambos temas.
+- Navegación completa con teclado.
+- Estado activo mediante `aria-current="page"`.
+- Loading mediante `disabled` y `aria-busy`.
+- Ningún significado debe depender exclusivamente del color.
+
+## 11. Temas
+
+El tema claro es el predeterminado porque facilita la lectura de un SaaS de gestión. El modo oscuro sigue completamente soportado mediante el selector.
+
+No usar `bg-white`, `text-black` o grises arbitrarios en las superficies normales. La barra lateral es la única superficie de marca deliberadamente oscura en ambos temas.
+
+## 12. Lenguaje
+
+- “Empresa”, no “workspace”.
+- “Oportunidad”, no “deal”.
+- “Conversaciones”, no “inbox”, salvo cuando sea imprescindible por marca externa.
+- “Consumo de IA”, no “tokens LLM”, en vistas para clientes.
+- Explicar qué puede hacer la persona y qué ocurrirá después.
+
+Los detalles técnicos se muestran únicamente en una segunda capa para administradores.
+
+## 13. Antes de entregar
+
+Verificar como mínimo:
+
+- 1440 px de ancho.
+- 390 px de ancho.
+- Tema claro y oscuro.
+- Sin desplazamiento horizontal accidental.
+- Sección activa correcta.
+- TypeScript, ESLint, tests y build.
+- Ningún cambio de UI altera permisos, aislamiento, integraciones o lógica de negocio.

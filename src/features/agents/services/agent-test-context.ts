@@ -1,6 +1,9 @@
 import { createClient as svcClient } from "@supabase/supabase-js";
 import { getWorkspaceModel } from "@/features/inbox/services/openrouter";
-import { resolveSystemPrompt } from "@/features/inbox/services/prompt-resolver";
+import {
+  resolvePromptById,
+  resolveSystemPrompt,
+} from "@/features/inbox/services/prompt-resolver";
 import type { PromptGuardrails } from "@/features/inbox/services/prompt-builder";
 import type { AgentConfig, AgentType } from "@/features/agents/types";
 
@@ -21,6 +24,7 @@ export interface TestAgentRow {
   type: AgentType;
   name: string;
   model: string | null;
+  prompt_id: string | null;
   config: AgentConfig;
 }
 
@@ -31,7 +35,7 @@ export async function loadTestAgent(
   const db = svc();
   const { data: agent } = await db
     .from("agents")
-    .select("id, workspace_id, type, name, model, config")
+    .select("id, workspace_id, type, name, model, prompt_id, config")
     .eq("id", agentId)
     .maybeSingle();
   if (!agent || agent.workspace_id !== workspaceId) return null;
@@ -55,12 +59,14 @@ export interface ResolvedTestPrompt {
 
 export async function resolveTestPrompt(
   workspaceId: string,
-  agentType: AgentType,
+  agent: TestAgentRow,
   draftPromptBody?: string,
 ): Promise<ResolvedTestPrompt> {
   if (draftPromptBody) return { promptBody: draftPromptBody, guardrails: null };
 
-  const resolved = await resolveSystemPrompt(workspaceId, { mode: agentType });
+  const resolved = agent.prompt_id
+    ? await resolvePromptById(workspaceId, agent.prompt_id)
+    : await resolveSystemPrompt(workspaceId, { mode: agent.type });
   return {
     promptBody:
       resolved?.body ??

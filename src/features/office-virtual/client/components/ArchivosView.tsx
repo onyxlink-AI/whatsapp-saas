@@ -280,6 +280,7 @@ function FilePreviewPanel({
         <div className="px-5 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
           <div className="rounded-lg border border-white/[0.06] bg-black/20 flex items-center justify-center min-h-[150px] overflow-hidden">
             {previewable && kind === 'image' ? (
+              // eslint-disable-next-line @next/next/no-img-element -- previewUrl is a client-only blob: object URL (URL.createObjectURL, revoked on cleanup below) from a local file read; next/image cannot fetch or optimize blob: URLs at all, so a plain <img> is the only correct option here.
               <img src={previewUrl ?? undefined} alt={file.name} className="max-h-64 w-full object-contain" />
             ) : previewable && kind === 'pdf' ? (
               <iframe src={previewUrl ?? undefined} title={file.name} className="w-full h-64 border-0" />

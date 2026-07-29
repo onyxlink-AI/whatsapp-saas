@@ -23,7 +23,7 @@ export function ViewportToggle({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-only: restores the saved viewport from localStorage, which doesn't exist during SSR, so server and first client render both start at the "desktop" default and only diverge after mount (no hydration mismatch).
     setMounted(true);
     const saved = window.localStorage.getItem(
       "ui-kit-viewport",
@@ -64,7 +64,7 @@ export function ViewportToggle({ children }: { children: React.ReactNode }) {
       <div className="flex justify-center px-4 py-8">
         <div
           className={cn(
-            "w-full transition-all duration-[350ms] ease-out",
+            "w-full transition-all duration-350 ease-out",
             viewport !== "desktop" &&
               "rounded-2xl shadow-2xl shadow-black/30 ring-1 ring-border",
           )}

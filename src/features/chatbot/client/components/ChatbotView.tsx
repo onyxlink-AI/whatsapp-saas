@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/page-header";
 import { useChatbotFeed } from "../hooks/useChatbotFeed";
 import type { ChatbotProvider } from "../../types";
 
@@ -26,10 +27,10 @@ export default function ChatbotView({ workspaceId }: Props) {
   const [testQuestion, setTestQuestion] = useState("");
 
   if (feed.loading) {
-    return <div className="p-6 text-sm text-muted-foreground">Cargando Chatbot…</div>;
+    return <div className="page-shell text-sm text-muted-foreground">Preparando el Chatbot…</div>;
   }
   if (feed.loadError) {
-    return <div className="p-6 text-sm text-destructive">{feed.loadError}</div>;
+    return <div className="page-shell text-sm text-destructive">{feed.loadError}</div>;
   }
 
   const { draft, channels } = feed;
@@ -54,20 +55,18 @@ export default function ChatbotView({ workspaceId }: Props) {
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">💬</span>
-            <h1 className="font-display text-2xl font-semibold text-foreground">Chatbot</h1>
+    <div className="page-shell max-w-[88rem] space-y-7">
+      <PageHeader
+        eyebrow="Canales automáticos"
+        title="Chatbot"
+        description="Prepara respuestas fiables para WhatsApp o Telegram sin memoria ni acciones sobre tu empresa."
+        actions={
+          <>
             <Badge variant={feed.status === "published" ? "default" : "secondary"}>{STATUS_LABEL[feed.status]}</Badge>
             {feed.enabled && <Badge variant="outline">Activo</Badge>}
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Responde preguntas frecuentes por WhatsApp o Telegram. Sin memoria, sin acciones — solo respuestas.
-          </p>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-4">

@@ -223,7 +223,11 @@ export type RoutineFeed = {
 };
 
 export function useRoutineFeed(workspaceId: string, actor: RoutineActor): RoutineFeed {
-  const [state, setState] = useState<CentralRoutineState>(() => seedRoutineState(workspaceId, actor));
+  // Honestly empty — no real routines backend is wired yet, so this no
+  // longer seeds demo routines ("Recuperar lead frío", etc.) as if they were
+  // the workspace's real ones (see useTaskFeed.ts for the same pattern).
+  // seedRoutineState is kept, unused here, only for isolation.test.ts.
+  const [state, setState] = useState<CentralRoutineState>(() => createCentralRoutineState(workspaceId));
   const [filters, setFiltersState] = useState<RoutineFilters>(DEFAULT_FILTERS);
   const setFilters = (patch: Partial<RoutineFilters>) => setFiltersState((previous) => ({ ...previous, ...patch }));
   const resetFilters = () => setFiltersState(DEFAULT_FILTERS);

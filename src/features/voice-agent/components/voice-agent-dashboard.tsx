@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Phone, PhoneCall, Clock, DollarSign, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/page-header";
 import { listVoiceCalls } from "@/features/voice-agent/services/voice-calls";
 import type { VoiceCallRow, VoiceCallMetrics } from "@/features/voice-agent/services/voice-calls";
 
@@ -47,22 +48,17 @@ function KpiCard({
   return (
     <div
       className={cn(
-        "rounded-xl p-5 flex items-start gap-4 transition-colors",
-        accent ? "glass-accent" : "border border-border/50 bg-card",
+        "surface-card min-h-32 p-5 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md",
+        accent && "border-primary/20 bg-gradient-to-br from-primary/[0.12] via-card to-card",
       )}
     >
-      <div
-        className={cn(
-          "shrink-0 rounded-lg p-2",
-          accent ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground",
-        )}
-      >
-        {icon}
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-xs font-medium leading-5 text-muted-foreground">{label}</p>
+        <div className={cn("shrink-0 rounded-lg p-2", accent ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+          {icon}
+        </div>
       </div>
-      <div className="min-w-0">
-        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{label}</p>
-        <p className="font-display text-2xl font-semibold text-foreground mt-0.5 tabular-nums">{value}</p>
-      </div>
+      <p className="mt-5 font-display text-2xl font-semibold tracking-tight text-foreground tabular-nums">{value}</p>
     </div>
   );
 }
@@ -90,7 +86,7 @@ function formatDate(iso: string): string {
 function CallsByDayChart({ data }: { data: { date: string; count: number }[] }) {
   const max = Math.max(1, ...data.map((d) => d.count));
   return (
-    <div className="rounded-xl border border-border/50 bg-card p-5">
+    <div className="surface-card p-5">
       <h2 className="font-display text-sm font-semibold text-foreground mb-4">
         Llamadas por día (últimos 14 días)
       </h2>
@@ -120,7 +116,7 @@ function CallsByDayChart({ data }: { data: { date: string; count: number }[] }) 
 function OutcomeBreakdown({ data }: { data: { status: string; count: number }[] }) {
   const total = data.reduce((sum, d) => sum + d.count, 0) || 1;
   return (
-    <div className="rounded-xl border border-border/50 bg-card p-5">
+    <div className="surface-card p-5">
       <h2 className="font-display text-sm font-semibold text-foreground mb-4">Resultados de llamada</h2>
       {data.length === 0 ? (
         <p className="text-xs text-muted-foreground">Sin datos todavía</p>
@@ -235,13 +231,12 @@ export function VoiceAgentDashboard({ workspaceId, metrics, initialCalls, initia
   }
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
-      <div>
-        <h1 className="font-display text-xl font-semibold text-foreground">Asistente AI</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Coste, llamadas y transcripciones del agente de voz — últimos 90 días
-        </p>
-      </div>
+    <div className="page-shell space-y-7">
+      <PageHeader
+        eyebrow="Atención telefónica"
+        title="Agente de voz"
+        description="Consulta las llamadas, sus resultados y las conversaciones que necesitan seguimiento."
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
@@ -283,7 +278,7 @@ export function VoiceAgentDashboard({ workspaceId, metrics, initialCalls, initia
           </div>
         ) : (
           <>
-            <ul role="list" className="rounded-xl border border-border/50 bg-card overflow-hidden">
+            <ul role="list" className="surface-card overflow-hidden">
               {calls.map((call) => (
                 <CallRow key={call.id} call={call} />
               ))}

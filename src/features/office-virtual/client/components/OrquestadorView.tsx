@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MessageCircle, Mic, Plug, UsersRound } from 'lucide-react';
+import { CheckCircle2, MessageCircle, Mic, Plug, UsersRound } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type {
   HermesTelegramConfig,
@@ -48,8 +48,8 @@ type Props = { feed: OrchestratorFeed; agents: Agent[]; connectionFeed: OpenRout
 
 const MODES: OrchestratorMode[] = ['openrouter', 'hermes_telegram'];
 const TABS: { id: 'conexion' | 'modelos'; label: string }[] = [
-  { id: 'conexion', label: 'Conexión' },
-  { id: 'modelos', label: 'Modelos por puesto' },
+  { id: 'conexion', label: 'Conexión principal' },
+  { id: 'modelos', label: 'Modelos de especialistas' },
 ];
 
 function ModeCard({
@@ -195,15 +195,14 @@ export default function OrquestadorView({ feed, agents, connectionFeed }: Props)
       <ViewHeader
         icon={Plug}
         eyebrow="Oficina Virtual · Solo superadministración"
-        title="Conexión del Orquestador"
-        description="Elige cómo se orquesta este workspace: con un modelo propio vía OpenRouter o delegando en Hermes como Orquestador externo. Ningún secreto se gestiona desde aquí."
+        title="Orquestador de la oficina"
+        description="Decide qué motor coordina al equipo, comprueba su conexión y ajusta los modelos cuando sea necesario."
         guide={{
-          title: 'Antes de activar un modo',
+          title: 'Cómo configurarlo',
           items: [
-            'OpenRouter: el Coordinador de la oficina responde por sí mismo con un modelo real.',
-            'Hermes: Hermes es el Orquestador externo y puede recibir órdenes por chat directo, grupo de Telegram con el bot incluido o voz.',
-            'El canal de mando solo indica por dónde entra la orden. Nunca es el destino obligatorio del resultado: una propuesta puede terminar enviada por WhatsApp vía YCloud sin volver al canal de mando.',
-            'Identificador de bot y modelo se editan aquí. El bridge (endpoint) y la conexión autenticada los aprovisiona el backend — no son secretos, pero tampoco son editables desde esta pantalla. Tokens y API keys ni se editan ni se muestran nunca: solo se indica si ya existen.',
+            'Elige OpenRouter para usar el chat nativo o Hermes para coordinar desde canales externos.',
+            'Conecta y verifica el modo elegido antes de activar especialistas.',
+            'Los secretos nunca aparecen en pantalla; solo mostramos si están configurados.',
           ],
         }}
       />
@@ -233,6 +232,22 @@ export default function OrquestadorView({ feed, agents, connectionFeed }: Props)
           </div>
         )}
 
+        <section className="rounded-xl border border-violet-400/15 bg-violet-500/[0.045] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.13em] text-violet-300/60">Estado actual</div>
+              <div className="mt-1 flex items-center gap-2 text-sm font-semibold text-white/88">
+                <CheckCircle2 size={16} className="text-emerald-300" />
+                {ORCHESTRATOR_MODE_LABEL_ES[binding.activeMode]} seleccionado
+              </div>
+              <p className="mt-1 text-[11px] text-white/38">Conecta y comprueba este modo antes de ajustar los modelos de los especialistas.</p>
+            </div>
+            <span className={`text-[10px] font-medium px-2.5 py-1 rounded-full border ${binding.activeMode === 'openrouter' ? OPENROUTER_CONNECTION_STATUS_TW[connectionFeed.binding.status] : ORCHESTRATOR_STATUS_TW[binding.hermesTelegram.status]}`}>
+              {binding.activeMode === 'openrouter' ? OPENROUTER_CONNECTION_STATUS_LABEL_ES[connectionFeed.binding.status] : ORCHESTRATOR_STATUS_LABEL_ES[binding.hermesTelegram.status]}
+            </span>
+          </div>
+        </section>
+
         <div className="flex flex-col sm:flex-row gap-3">
           {MODES.map((mode) => (
             <ModeCard
@@ -252,9 +267,13 @@ export default function OrquestadorView({ feed, agents, connectionFeed }: Props)
 
         {binding.activeMode === 'openrouter' ? (
           <>
+        <OpenRouterConnectionPanel feed={connectionFeed} />
         <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4">
           <div className="flex items-center justify-between gap-2 mb-3">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">Modelo principal de OpenRouter</div>
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">Modelo principal</div>
+              <p className="mt-1 text-[10px] text-white/30">Se usa cuando un puesto no tiene un modelo específico.</p>
+            </div>
           </div>
           <label className="text-[10px] uppercase tracking-wide text-white/30">Modelo</label>
           <input
@@ -274,7 +293,6 @@ export default function OrquestadorView({ feed, agents, connectionFeed }: Props)
           </div>
         </div>
 
-        <OpenRouterConnectionPanel feed={connectionFeed} />
           </>
         ) : (
         <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4">
@@ -313,22 +331,14 @@ export default function OrquestadorView({ feed, agents, connectionFeed }: Props)
             ))}
           </div>
 
-          <div className="rounded-md border border-white/[0.05] bg-black/20 p-3 mt-3 space-y-2">
-            <div className="text-[9px] uppercase tracking-[0.14em] text-white/30">Gestionado por el backend — no editable aquí</div>
-            <BackendStatusRow
-              label="Bridge"
-              value={binding.hermesTelegram.endpoint}
-              readyLabel="aprovisionado por backend"
-              emptyHint="aún no aprovisionado"
-            />
-            <BackendStatusRow
-              label="Conexión autenticada"
-              value={binding.hermesTelegram.connectionId}
-              readyLabel="autenticada por backend"
-              emptyHint="sin conexión autenticada todavía"
-            />
-            <SecretIndicator has={binding.hermesTelegram.hasSecret} label="Token del bot" />
-          </div>
+          <details className="rounded-md border border-white/[0.05] bg-black/20 p-3 mt-3">
+            <summary className="cursor-pointer list-none text-[10px] font-medium text-white/45">Diagnóstico técnico del backend</summary>
+            <div className="mt-3 space-y-2 border-t border-white/[0.05] pt-3">
+              <BackendStatusRow label="Bridge" value={binding.hermesTelegram.endpoint} readyLabel="aprovisionado por backend" emptyHint="aún no aprovisionado" />
+              <BackendStatusRow label="Conexión autenticada" value={binding.hermesTelegram.connectionId} readyLabel="autenticada por backend" emptyHint="sin conexión autenticada todavía" />
+              <SecretIndicator has={binding.hermesTelegram.hasSecret} label="Token del bot" />
+            </div>
+          </details>
         </div>
         )}
           </>

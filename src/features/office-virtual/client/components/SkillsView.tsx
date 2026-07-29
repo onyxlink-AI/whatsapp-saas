@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { CheckCircle2, Plus, Sparkles } from 'lucide-react';
 import type {
   Skill,
   SkillApprovalPolicy,
@@ -36,7 +36,7 @@ import ViewHeader from './ui/ViewHeader';
 // Codex's structural exclusion of WhatsApp/Voice (SKILL_ELIGIBLE_AGENT_IDS),
 // we just render whatever it contains. See COORDINACION_CLAUDE_CODEX.md.
 
-type Props = { feed: SkillsFeed };
+type Props = { feed: SkillsFeed; isSuperAdmin: boolean };
 
 type WorkshopTab = 'editor' | 'simulator' | 'metrics' | 'history';
 type MobileZone = 'catalogo' | 'taller' | 'asignacion';
@@ -175,6 +175,8 @@ function CatalogZone({
 }) {
   const [query, setQuery] = useState('');
   const [originFilter, setOriginFilter] = useState<SkillOrigin | 'all'>('all');
+  const [creating, setCreating] = useState(false);
+  const [newSkillName, setNewSkillName] = useState('');
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -190,9 +192,45 @@ function CatalogZone({
       <div className="px-4 pt-4 pb-3 border-b border-white/[0.06] shrink-0">
         <div className="text-[9px] uppercase tracking-[0.18em] text-violet-300/60 mb-1">Taller de Skills</div>
         <div className="flex items-center gap-2">
-          <h2 className="text-white font-semibold text-sm">Catálogo</h2>
+          <h2 className="text-white font-semibold text-sm">Biblioteca</h2>
           <span className="text-[10px] text-white/30">{feed.skills.length} skill(s)</span>
+          <button
+            onClick={() => setCreating((value) => !value)}
+            className="ml-auto inline-flex items-center gap-1 rounded-md border border-violet-400/30 bg-violet-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-violet-100 hover:bg-violet-500/20"
+          >
+            <Plus size={13} /> Crear skill
+          </button>
         </div>
+        {creating && (
+          <div className="mt-2.5 rounded-lg border border-violet-400/20 bg-violet-500/[0.06] p-2.5">
+            <label className="text-[10px] text-white/50">Nombre de la nueva habilidad</label>
+            <div className="mt-1.5 flex gap-1.5">
+              <input
+                value={newSkillName}
+                onChange={(event) => setNewSkillName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter') return;
+                  const id = feed.createBlankSkill(newSkillName);
+                  if (id) { onSelectSkill(id); setNewSkillName(''); setCreating(false); }
+                }}
+                placeholder="Ej: Revisar un presupuesto"
+                className="onyx-input min-w-0 flex-1 rounded-md px-2.5 py-1.5 text-xs"
+                autoFocus
+              />
+              <button
+                onClick={() => {
+                  const id = feed.createBlankSkill(newSkillName);
+                  if (id) { onSelectSkill(id); setNewSkillName(''); setCreating(false); }
+                }}
+                disabled={!newSkillName.trim()}
+                className="rounded-md bg-violet-600 px-2.5 text-[11px] font-semibold text-white disabled:opacity-40"
+              >
+                Crear
+              </button>
+            </div>
+            <p className="mt-1.5 text-[10px] text-white/32">Crearemos una estructura segura para que solo tengas que completar el objetivo y ajustar sus pasos.</p>
+          </div>
+        )}
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -748,7 +786,7 @@ function WorkshopZone({ feed, skill }: { feed: SkillsFeed; skill: Skill | null }
         <div>
           <div className="text-[9px] uppercase tracking-[0.18em] text-violet-300/60 mb-2">Taller de Skills</div>
           <p className="text-sm text-white/30 max-w-xs">
-            Selecciona una skill del catálogo, o crea una desde una propuesta, para abrir el taller.
+            Selecciona una skill de la biblioteca o crea una nueva para abrir el taller.
           </p>
         </div>
       </div>
@@ -960,7 +998,60 @@ function AssignmentZone({ feed }: { feed: SkillsFeed }) {
 
 /* ---------------------------------- root ----------------------------------- */
 
-export default function SkillsView({ feed }: Props) {
+function ClientSkillsView({ feed }: { feed: SkillsFeed }) {
+  const available = feed.skills.filter((skill) => skill.status === 'published' || skill.status === 'approved');
+
+  return (
+    <div className="h-full flex flex-col min-h-0">
+      <ViewHeader
+        icon={Sparkles}
+        eyebrow="Tu equipo digital"
+        title="Habilidades disponibles"
+        description="Consulta qué trabajos adicionales puede realizar tu equipo. La parte técnica está gestionada por OnyxLink."
+        meta={<span className="text-[10px] text-white/35">{available.length} disponibles</span>}
+        guide={{
+          title: 'Qué significa una habilidad',
+          items: [
+            'Es una forma de trabajo preparada y revisada para repetir una tarea con calidad.',
+            'Solo aparecen aquí las habilidades aprobadas para tu empresa.',
+            'Tu equipo de OnyxLink se encarga de probarlas, actualizarlas y mantenerlas seguras.',
+          ],
+        }}
+      />
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
+        {available.length === 0 ? (
+          <div className="onyx-empty-team">
+            <div className="onyx-empty-team__icon"><Sparkles size={22} /></div>
+            <h2>Todavía no hay habilidades adicionales</h2>
+            <p>Tu equipo puede seguir trabajando con sus funciones habituales. Cuando OnyxLink prepare una nueva habilidad, aparecerá aquí.</p>
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 max-w-5xl">
+            {available.map((skill) => (
+              <article key={skill.id} className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-4">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-300">
+                    <CheckCircle2 size={17} />
+                  </span>
+                  <div className="min-w-0">
+                    <h2 className="text-sm font-semibold text-white/90">{skill.name}</h2>
+                    <p className="mt-1 text-[11px] leading-relaxed text-white/43">{skill.description || 'Habilidad preparada para tu equipo.'}</p>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-3 text-[10px] text-white/38">
+                  <span className="rounded-full border border-emerald-400/20 bg-emerald-400/[0.06] px-2 py-1 text-emerald-200/75">Lista para usar</span>
+                  <span>{skill.assignments.length > 0 ? `${skill.assignments.length} miembros pueden usarla` : 'Pendiente de asignar'}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AdminSkillsView({ feed }: { feed: SkillsFeed }) {
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
   const [mobileZone, setMobileZone] = useState<MobileZone>('catalogo');
 
@@ -1024,4 +1115,8 @@ export default function SkillsView({ feed }: Props) {
       </div>
     </div>
   );
+}
+
+export default function SkillsView({ feed, isSuperAdmin }: Props) {
+  return isSuperAdmin ? <AdminSkillsView feed={feed} /> : <ClientSkillsView feed={feed} />;
 }

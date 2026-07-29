@@ -1,19 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Bell, Box, ChevronDown, ListTodo, Map, Menu, Plus, Search, UsersRound, X } from 'lucide-react';
-import type { CameraMode } from '../three/OfficeCanvas';
+import { Bell, Box, Building2, Gauge, ListTodo, Map, Menu, Plus, Search, Sparkles, UsersRound, X } from 'lucide-react';
 import type { PendingApproval } from '../hooks/useAgentChat';
-import { STATUS_TW_BG as STATUS_DOT } from '../lib/statusStyles';
-import type { Agent } from '../types';
-
-// Ported from the Agencia IA prototype (src/components/TopBar.tsx), with a
-// mobile menu button added (md:hidden) that opens Sidebar's section sheet,
-// since this port has no fixed bottom nav of its own.
+import type { CameraMode } from '../three/OfficeCanvas';
+import type { ViewId } from './Sidebar';
 
 type Props = {
-  agents: Agent[];
   onSelectAgent: (id: string) => void;
   pendingApproval: PendingApproval | null;
   onNewTask: (text: string) => void;
+  activeView: ViewId;
+  onSelectView: (view: ViewId) => void;
+  activeSeatCount: number;
   viewTitle: string;
   isOfficeView: boolean;
   cameraMode: CameraMode;
@@ -22,16 +19,35 @@ type Props = {
   onOpenMobileMenu: () => void;
 };
 
+const PRIMARY_VIEWS = [
+  { id: 'oficina', label: 'Oficina', icon: Building2 },
+  { id: 'panel', label: 'Resumen', icon: Gauge },
+  { id: 'agentes', label: 'Equipo', icon: UsersRound },
+  { id: 'tareas', label: 'Tareas', icon: ListTodo },
+] as const;
+
 function Backdrop({ onClose }: { onClose: () => void }) {
   return <button className="fixed inset-0 z-30 cursor-default" onClick={onClose} aria-label="Cerrar desplegable" />;
 }
 
-export default function TopBar({ agents, onSelectAgent, pendingApproval, onNewTask, viewTitle, isOfficeView, cameraMode, onCameraModeChange, onOpenSearch, onOpenMobileMenu }: Props) {
-  const [agentsOpen, setAgentsOpen] = useState(false);
+export default function TopBar({
+  onSelectAgent,
+  pendingApproval,
+  onNewTask,
+  activeView,
+  onSelectView,
+  activeSeatCount,
+  viewTitle,
+  isOfficeView,
+  cameraMode,
+  onCameraModeChange,
+  onOpenSearch,
+  onOpenMobileMenu,
+}: Props) {
   const [bellOpen, setBellOpen] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
   const [taskDraft, setTaskDraft] = useState('');
-  const closeAll = () => { setAgentsOpen(false); setBellOpen(false); setTaskOpen(false); };
+  const closeAll = () => { setBellOpen(false); setTaskOpen(false); };
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') closeAll(); };
@@ -45,71 +61,60 @@ export default function TopBar({ agents, onSelectAgent, pendingApproval, onNewTa
     setTaskDraft('');
     setTaskOpen(false);
   };
-  const availableCount = agents.filter((agent) => agent.status === 'available').length;
 
   return (
     <header className="onyx-topbar flex items-center justify-between gap-3 px-3 sm:px-5 shrink-0 z-20">
       <div className="flex items-center gap-2 min-w-0">
         <button
           onClick={onOpenMobileMenu}
-          className="onyx-icon-button md:hidden w-8 h-8 flex items-center justify-center text-white/60 hover:text-white shrink-0"
-          aria-label="Abrir navegación de Oficina Virtual"
+          className="onyx-icon-button w-9 h-9 flex items-center justify-center text-white/60 hover:text-white shrink-0"
+          aria-label="Abrir todas las herramientas de Oficina Virtual"
         >
           <Menu className="w-4 h-4" strokeWidth={1.8} />
         </button>
 
         <div className="min-w-0">
-          <div className="text-[9px] uppercase tracking-[0.14em] text-white/28 hidden sm:block">Central operativa</div>
+          <div className="text-[9px] uppercase tracking-[0.14em] text-violet-300/55 hidden sm:block">Oficina Virtual</div>
           <h1 className="text-[13px] sm:text-sm font-semibold text-white/90 truncate">{viewTitle}</h1>
         </div>
 
+        <nav className="onyx-primary-nav hidden lg:flex items-center gap-1 ml-3" aria-label="Secciones principales de Oficina Virtual">
+          {PRIMARY_VIEWS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => onSelectView(id)}
+              aria-current={activeView === id ? 'page' : undefined}
+              className={`onyx-primary-nav__item ${activeView === id ? 'is-active' : ''}`}
+            >
+              <Icon className="w-3.5 h-3.5" strokeWidth={1.8} />
+              <span>{label}</span>
+            </button>
+          ))}
+        </nav>
+
         {isOfficeView && (
-          <div className="onyx-segment hidden sm:flex items-center p-0.5 text-[11px] ml-1" aria-label="Modo de cámara">
-            <button onClick={() => onCameraModeChange('iso')} aria-pressed={cameraMode === 'iso'} title="Vista isométrica" className={`w-8 h-7 flex items-center justify-center rounded-[5px] transition-colors ${cameraMode === 'iso' ? 'bg-violet-600/85 text-white' : 'text-white/38 hover:text-white/75'}`}>
+          <div className="onyx-segment hidden xl:flex items-center p-0.5 text-[11px] ml-1" aria-label="Estilo visual de la oficina">
+            <button onClick={() => onCameraModeChange('showcase')} aria-pressed={cameraMode === 'showcase'} title="Vista Presentación" className={`h-7 flex items-center gap-1.5 px-2 rounded-[5px] transition-colors ${cameraMode === 'showcase' ? 'bg-violet-600/85 text-white' : 'text-white/38 hover:text-white/75'}`}>
+              <Sparkles className="w-3.5 h-3.5" strokeWidth={1.8} />
+              <span>Presentación</span>
+            </button>
+            <button onClick={() => onCameraModeChange('iso')} aria-pressed={cameraMode === 'iso'} title="Volver a la vista operativa original" className={`h-7 flex items-center gap-1.5 px-2 rounded-[5px] transition-colors ${cameraMode === 'iso' ? 'bg-violet-600/85 text-white' : 'text-white/38 hover:text-white/75'}`}>
               <Box className="w-3.5 h-3.5" strokeWidth={1.8} />
+              <span>Operativa</span>
             </button>
             <button onClick={() => onCameraModeChange('2d')} aria-pressed={cameraMode === '2d'} title="Vista superior 2D" className={`w-8 h-7 flex items-center justify-center rounded-[5px] transition-colors ${cameraMode === '2d' ? 'bg-violet-600/85 text-white' : 'text-white/38 hover:text-white/75'}`}>
               <Map className="w-3.5 h-3.5" strokeWidth={1.8} />
             </button>
           </div>
         )}
-
-        <div className="relative hidden sm:block">
-          <button
-            onClick={() => { const next = !agentsOpen; closeAll(); setAgentsOpen(next); }}
-            aria-expanded={agentsOpen}
-            aria-haspopup="menu"
-            className="onyx-control h-8 flex items-center gap-2 px-2.5 text-[11px] font-medium text-white/65 hover:text-white transition-colors"
-          >
-            <UsersRound className="w-3.5 h-3.5" strokeWidth={1.8} />
-            <span>{availableCount}/{agents.length} disponibles</span>
-            <ChevronDown className={`w-3 h-3 transition-transform ${agentsOpen ? 'rotate-180' : ''}`} />
-          </button>
-          {agentsOpen && (
-            <>
-              <Backdrop onClose={() => setAgentsOpen(false)} />
-              <div className="onyx-popover onyx-agent-menu absolute left-0 top-full mt-2 w-72 z-40 py-1.5" role="menu" aria-label="Seleccionar agente">
-                <div className="px-3 py-2 flex items-center justify-between border-b border-white/[0.06]">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/35">Equipo</span>
-                  <span className="text-[10px] text-white/25">{agents.length} agentes</span>
-                </div>
-                {agents.map((agent) => (
-                  <button key={agent.id} onClick={() => { onSelectAgent(agent.id); setAgentsOpen(false); }} role="menuitem" className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-violet-500/[0.08] text-left transition-colors">
-                    <div className="w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-semibold shrink-0" style={{ background: `${agent.color}1f`, color: agent.color, border: `1px solid ${agent.color}40` }}>{agent.name.slice(0, 2).toUpperCase()}</div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-xs font-medium text-white/88 truncate">{agent.name}</div>
-                      <div className="text-[10px] text-white/35 truncate">{agent.department}</div>
-                    </div>
-                    <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[agent.status]}`} />
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
       </div>
 
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <div className="onyx-team-status hidden sm:flex items-center gap-2">
+          <span className={`w-1.5 h-1.5 rounded-full ${activeSeatCount > 0 ? 'bg-emerald-400' : 'bg-white/25'}`} />
+          <span>{activeSeatCount > 0 ? `${activeSeatCount} activos` : 'Equipo sin activar'}</span>
+        </div>
+
         <button onClick={onOpenSearch} className="onyx-icon-button w-8 h-8 flex items-center justify-center text-white/55 hover:text-white" aria-label="Buscar" title="Buscar">
           <Search className="w-4 h-4" strokeWidth={1.8} />
         </button>

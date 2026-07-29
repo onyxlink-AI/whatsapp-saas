@@ -291,6 +291,10 @@ export async function getProjectsForBoard(
     return [];
   }
 
+  // supabase-js doesn't infer the shape of nested-relation selects (PROJECT_SELECT
+  // joins contacts/companies) — the cast must be kept in sync by hand with
+  // PROJECT_SELECT's actual columns/joins; a drift between them fails silently
+  // at runtime (undefined fields), not at compile time.
   return data as unknown as ProjectWithContact[];
 }
 
@@ -315,6 +319,7 @@ export async function getProject(
     return null;
   }
 
+  // Same PROJECT_SELECT/type-sync caveat as getProjectsForBoard above.
   return data as unknown as ProjectWithContact;
 }
 
@@ -346,6 +351,7 @@ export async function listWorkspaceMembers(
     return [];
   }
 
+  // Same nested-select type-sync caveat: must match the "user_id, users(full_name)" select above.
   return (
     data as unknown as {
       user_id: string;

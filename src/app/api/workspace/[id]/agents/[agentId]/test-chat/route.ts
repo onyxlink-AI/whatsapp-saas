@@ -102,7 +102,7 @@ export async function POST(
   );
   const { promptBody, guardrails } = await resolveTestPrompt(
     workspaceId,
-    agent.type,
+    agent,
     parsed.data.draftPromptBody,
   );
 

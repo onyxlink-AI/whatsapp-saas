@@ -112,7 +112,11 @@ export function seedFilesState(workspaceId: string, actor: FileActor): CentralFi
 }
 
 export function useFilesFeed(workspaceId: string, actor: FileActor): FilesFeed {
-  const [state, setState] = useState<CentralFileState>(() => seedFilesState(workspaceId, actor));
+  // Honestly empty — no real files backend is wired yet, so this no longer
+  // seeds demo documents/folders (with fake checksums) as if they were the
+  // workspace's real uploads (see useTaskFeed.ts for the same pattern).
+  // seedFilesState is kept, unused here, only for isolation.test.ts.
+  const [state, setState] = useState<CentralFileState>(() => createCentralFileState(workspaceId));
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 

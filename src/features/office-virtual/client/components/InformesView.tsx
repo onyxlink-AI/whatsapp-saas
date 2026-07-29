@@ -29,6 +29,7 @@ import ViewHeader from './ui/ViewHeader';
 type Props = {
   feed: ReportsFeed;
   agents: Agent[];
+  isSuperAdmin: boolean;
 };
 
 const PERIODS: AnalyticsPeriod[] = ['today', '24h', '7d', '30d'];
@@ -238,11 +239,10 @@ function ReportPreviewPanel({
   );
 }
 
-export default function InformesView({ feed, agents }: Props) {
+export default function InformesView({ feed, agents, isSuperAdmin }: Props) {
   const { reports, loading, error, lastExportRequest, createReport, generateReport, regenerateReport, deleteReport, exportReport } = feed;
   const [period, setPeriod] = useState<AnalyticsPeriod>('7d');
   const [agentIds, setAgentIds] = useState<AgentId[]>([]);
-  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
 
   const selectedReport = reports.find((r) => r.id === selectedReportId) ?? null;
@@ -260,7 +260,6 @@ export default function InformesView({ feed, agents }: Props) {
       generateReport(id);
       setSelectedReportId(id);
     }
-    setShowCategoryPicker(false);
   };
 
   return (
@@ -268,76 +267,61 @@ export default function InformesView({ feed, agents }: Props) {
       <ViewHeader
         icon={FileText}
         title="Informes"
-        description="Genera fotografías consolidadas de actividad, agentes, canales, tareas, rutinas e incidencias."
+        description={isSuperAdmin ? 'Crea y revisa resúmenes de actividad con controles técnicos cuando los necesites.' : 'Obtén un resumen claro de lo que ha ocurrido en tu empresa, listo para revisar o descargar.'}
         meta={<span className="text-[10px] text-white/35">{reports.length} informes</span>}
         guide={{
-          title: 'Antes de generar un informe',
+          title: 'Cómo funciona',
           items: [
-            'Selecciona el periodo y los agentes que deben formar parte del documento.',
-            'Cada informe conserva una instantánea; los cambios posteriores no modifican el generado.',
-            'Revisa aprobaciones e incidencias antes de compartir resultados fuera del equipo.',
+            'Elige el tipo de resumen que necesitas y lo generaremos con el periodo seleccionado.',
+            'Cada informe conserva una fotografía del momento en que se creó.',
+            'Puedes abrirlo para revisarlo y descargarlo cuando esté listo.',
           ],
         }}
       />
 
-      <div className="px-6 pt-3 pb-1 border-b border-white/[0.06] shrink-0">
-        <div className="text-[10px] text-white/30 mb-1.5">Periodo y agentes para el próximo informe</div>
-        <div className="flex flex-wrap items-center gap-1.5 pb-2">
-          {PERIODS.map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={`text-[11px] px-2.5 py-1.5 rounded-md border transition-colors ${
-                period === p ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/45 hover:text-white/70'
-              }`}
-            >
-              {REPORT_PERIOD_LABEL_ES[p]}
-            </button>
-          ))}
-
-          <button
-            onClick={() => setAgentIds([])}
-            className={`text-[11px] px-2.5 py-1.5 rounded-md border transition-colors ${
-              agentIds.length === 0 ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/45 hover:text-white/70'
-            }`}
-          >
-            Todos los agentes
-          </button>
-          {agents.map((a) => (
-            <button
-              key={a.id}
-              onClick={() => toggleAgent(a.id)}
-              className={`text-[11px] px-2.5 py-1.5 rounded-md border transition-colors ${
-                agentIds.includes(a.id) ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/45 hover:text-white/70'
-              }`}
-            >
-              {a.name}
-            </button>
-          ))}
-
-          <button
-            onClick={() => setShowCategoryPicker((v) => !v)}
-            className="ml-auto bg-violet-600 hover:bg-violet-500 text-white rounded-md px-3 py-1.5 text-xs font-semibold transition-colors border border-violet-400/25 whitespace-nowrap"
-          >
-            + Generar informe
-          </button>
+      <section className="onyx-report-builder shrink-0">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.13em] text-violet-300/60">Crear en un clic</div>
+            <h2 className="mt-1 text-sm font-semibold text-white/90">¿Qué quieres revisar?</h2>
+            <p className="mt-0.5 text-[11px] text-white/35">Periodo actual: {REPORT_PERIOD_LABEL_ES[period]}</p>
+          </div>
+          <details className="relative">
+            <summary className="onyx-control cursor-pointer list-none px-3 py-2 text-[11px] font-medium text-white/65">Personalizar periodo{isSuperAdmin ? ' y equipo' : ''}</summary>
+            <div className="onyx-popover absolute right-0 top-full z-30 mt-2 w-[min(34rem,calc(100vw-2rem))] p-3">
+              <div className="mb-1.5 text-[10px] uppercase tracking-wide text-white/30">Periodo</div>
+              <div className="flex flex-wrap gap-1.5">
+                {PERIODS.map((p) => (
+                  <button key={p} onClick={() => setPeriod(p)} className={`rounded-md border px-2.5 py-1.5 text-[11px] ${period === p ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/45'}`}>{REPORT_PERIOD_LABEL_ES[p]}</button>
+                ))}
+              </div>
+              {isSuperAdmin && (
+                <div className="mt-3 border-t border-white/[0.06] pt-3">
+                  <div className="mb-1.5 text-[10px] uppercase tracking-wide text-white/30">Equipo incluido</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button onClick={() => setAgentIds([])} className={`rounded-md border px-2.5 py-1.5 text-[11px] ${agentIds.length === 0 ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/45'}`}>Todo el equipo</button>
+                    {agents.map((agent) => (
+                      <button key={agent.id} onClick={() => toggleAgent(agent.id)} className={`rounded-md border px-2.5 py-1.5 text-[11px] ${agentIds.includes(agent.id) ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/45'}`}>{agent.name}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </details>
         </div>
-      </div>
-
-      {showCategoryPicker && (
-        <div className="px-6 py-3 border-b border-white/[0.06] shrink-0 grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
           {REPORT_KIND_ORDER.map((kind) => (
-            <button
-              key={kind}
-              onClick={() => handleGenerateNew(kind)}
-              className="text-left rounded-lg border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.045] p-3 transition-colors"
-            >
-              <div className="text-sm text-white/85">{REPORT_KIND_LABEL_ES[kind]}</div>
-              <div className="text-[11px] text-white/35 mt-0.5">{REPORT_KIND_DESCRIPTION_ES[kind]}</div>
+            <button key={kind} onClick={() => handleGenerateNew(kind)} className="onyx-report-template">
+              <span className="onyx-report-template__icon"><FileText size={15} /></span>
+              <span className="min-w-0 text-left">
+                <span className="block text-[12px] font-semibold text-white/82">{REPORT_KIND_LABEL_ES[kind]}</span>
+                <span className="mt-0.5 block text-[10px] leading-relaxed text-white/35">{REPORT_KIND_DESCRIPTION_ES[kind]}</span>
+              </span>
+              <span className="text-violet-300/55">→</span>
             </button>
           ))}
         </div>
-      )}
+      </section>
 
       {lastExportRequest && (
         <div className="px-6 py-2 border-b border-white/[0.06] shrink-0 text-[11px] text-emerald-300/70">

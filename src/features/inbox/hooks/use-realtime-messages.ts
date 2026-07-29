@@ -14,7 +14,13 @@ export function useRealtimeMessages(
 
   useEffect(() => {
     seenIds.current = new Set(initial.map((m) => m.id));
-    // Sync messages when server re-fetches initial data
+    // ChatThread is keyed by conversation.id (see inbox/[id]/page.tsx), so
+    // switching conversations always remounts this hook fresh — this effect
+    // only fires when the SAME conversation's `initial` array changes (e.g.
+    // a server revalidation re-fetches newer messages for the thread
+    // already open). Safe: it's a straight resync from the latest prop, not
+    // a derived computation, and never fires across two different
+    // conversations' data.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMessages(initial);
   }, [initial]);

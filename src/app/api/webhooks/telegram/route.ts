@@ -13,6 +13,7 @@
 // untestable part locally is Telegram's own delivery infrastructure.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'node:crypto';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { getChatbotRuntimeConfig, type ChatbotServicePorts, type ChatbotStore } from '@/features/chatbot/server/chatbot-service';
 import { handleChatbotTelegramInbound } from '@/features/chatbot/server/telegram-channel';
@@ -60,6 +61,14 @@ function ports(): ChatbotServicePorts {
   return { store: chatbotStore(), resolveChannelReadiness };
 }
 
+/** Constant-time string compare; mismatched lengths fail without leaking timing. */
+function safeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
+
 type TelegramUpdate = {
   message?: {
     text?: string;
@@ -88,7 +97,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const creds = await decryptCredentials(integration.credentials as Record<string, unknown> | null);
     const expectedSecret = creds.telegram_webhook_secret;
     const providedSecret = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
-    if (!expectedSecret || providedSecret !== expectedSecret) {
+    if (!expectedSecret || !providedSecret || !safeEqual(providedSecret, expectedSecret)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

@@ -4,6 +4,7 @@ import { getActiveWorkspace } from "@/features/workspace/services/active-workspa
 import { getDealsForBoard, listWorkspaceMembers } from "@/features/pipeline/services/deal-actions";
 import { getContactSummary } from "@/features/pipeline/services/contact-lookup";
 import { PipelineBoard } from "@/features/pipeline/components/pipeline-board";
+import { PageHeader } from "@/components/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -70,14 +71,21 @@ export default async function PipelinePage({
   ]);
 
   return (
-    <div className="p-4 sm:p-6 h-full flex flex-col">
-      <PipelineBoard
-        workspaceId={membership.workspace_id}
-        initialDeals={deals}
-        members={members}
-        initialContact={initialContact}
-        initialSelectedDealId={open ?? null}
+    <div className="page-shell flex min-h-[calc(100vh-4rem)] max-w-none flex-col gap-6">
+      <PageHeader
+        eyebrow="Ventas"
+        title="Oportunidades"
+        description="Visualiza cada oportunidad, su siguiente paso y quién se encarga de avanzarla."
       />
+      <div className="min-h-0 flex-1">
+        <PipelineBoard
+          workspaceId={membership.workspace_id}
+          initialDeals={deals}
+          members={members}
+          initialContact={initialContact}
+          initialSelectedDealId={open ?? null}
+        />
+      </div>
     </div>
   );
 }

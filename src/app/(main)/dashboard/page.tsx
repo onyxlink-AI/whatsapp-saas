@@ -8,6 +8,7 @@ import {
   getConversationStateBreakdown,
 } from "@/features/dashboard/services/metrics";
 import { DashboardMetrics } from "@/features/dashboard/components/dashboard-metrics";
+import { isOfficeVirtualEnabled } from "@/features/office-virtual/access";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,7 @@ export default async function DashboardPage() {
 
   const { data: workspaceFlagsRow } = await supabase
     .from("workspaces")
-    .select("whatsapp_agent_enabled")
+    .select("whatsapp_agent_enabled, office_virtual_enabled")
     .eq("id", membership.workspace_id)
     .maybeSingle();
 
@@ -69,6 +70,7 @@ export default async function DashboardPage() {
       recentConversations={recentConversations}
       messageVolume={messageVolume}
       conversationStates={conversationStates}
+      hasOfficeVirtual={isOfficeVirtualEnabled(workspaceFlagsRow)}
     />
   );
 }

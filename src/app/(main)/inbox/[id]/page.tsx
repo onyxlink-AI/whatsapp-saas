@@ -162,6 +162,7 @@ export default async function InboxDetailPage({ params }: PageProps) {
       workspaceId={membership?.workspace_id ?? null}
     >
       <ChatThread
+        key={conversation.id}
         conversation={conversation}
         initialMessages={messages}
         currentUserId={user.id}

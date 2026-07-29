@@ -46,6 +46,7 @@ export function useOpenRouterConnectionFeed(
   role: OrchestratorActorRole,
   workspaceId: string,
   adapter: OpenRouterConnectionAdapter = UNCONFIGURED_OPENROUTER_CONNECTION_ADAPTER,
+  enabled = true,
 ): OpenRouterConnectionFeed {
   const [connection, setConnection] = useState<OpenRouterConnectionState>(() => createOpenRouterConnectionState(workspaceId));
   const connectionRef = useRef(connection);
@@ -53,7 +54,7 @@ export function useOpenRouterConnectionFeed(
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [adapterError, setAdapterError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(Boolean(adapter.load));
+  const [loading, setLoading] = useState(enabled && Boolean(adapter.load));
   const actor = { actorId: actorEmail, role, workspaceId };
   const systemActor = { actorId: 'openrouter-connection-adapter', role: 'system' as const, workspaceId };
 
@@ -66,7 +67,9 @@ export function useOpenRouterConnectionFeed(
   // remounts this hook via key={workspaceId} on workspace switch, so a plain
   // mount-only effect never needs to react to workspaceId changing mid-life.
   useEffect(() => {
-    if (!adapter.load) return;
+    // Same server-side superadmin-only gate as the configurator API — skip
+    // the fetch for everyone else instead of an expected-but-noisy 403.
+    if (!enabled || !adapter.load) return;
     let cancelled = false;
     adapter.load(workspaceId).then((result) => {
       if (cancelled) return;
@@ -83,7 +86,7 @@ export function useOpenRouterConnectionFeed(
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspaceId]);
+  }, [workspaceId, enabled]);
 
   const deliver = (delivery: PendingDelivery) => {
     setSending(true);

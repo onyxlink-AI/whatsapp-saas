@@ -93,6 +93,9 @@ async function findColdCandidates(
 
   if (!conversations) return [];
 
+  // supabase-js doesn't infer the nested contact:contacts(...) relation
+  // select above — this shape must stay in sync by hand with it; a drift
+  // fails silently at runtime, not at compile time.
   const candidates: ColdContactCandidate[] = [];
   for (const conv of conversations as unknown as {
     id: string;

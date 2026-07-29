@@ -11,6 +11,7 @@ type Props = {
   patrolAmplitude: number;
   phase: number;
   seated?: boolean;
+  presentation?: boolean;
   isSelected: boolean;
   onSelect: (id: string) => void;
   onHover: (id: string | null) => void;
@@ -113,6 +114,7 @@ export default function OfficeCharacter({
   patrolAmplitude,
   phase,
   seated = false,
+  presentation = false,
   isSelected,
   onSelect,
   onHover,
@@ -253,21 +255,23 @@ export default function OfficeCharacter({
           />
         </mesh>
 
-        <Html position={[0, 2.55, 0]} center distanceFactor={9} occlude={false} zIndexRange={[10, 0]}>
-          <div className="flex flex-col items-center pointer-events-none select-none">
-            <div
-              className="px-2 py-0.5 rounded-full text-[11px] font-medium text-slate-100 bg-slate-900/85 border whitespace-nowrap shadow-lg"
-              style={{ borderColor: isSelected ? '#ffffff' : agent.color }}
-            >
-              {agent.name}
-            </div>
-            {(hovered || isSelected) && (
-              <div className="mt-0.5 text-[9px] text-slate-300 bg-slate-900/70 px-1.5 rounded-full whitespace-nowrap">
-                {STATUS_LABEL[agent.status]}
+        {(!presentation || hovered || isSelected) && (
+          <Html position={[0, 2.55, 0]} center distanceFactor={9} occlude={false} zIndexRange={[10, 0]}>
+            <div className="flex flex-col items-center pointer-events-none select-none">
+              <div
+                className="px-2 py-0.5 rounded-full text-[11px] font-medium text-slate-100 bg-slate-900/85 border whitespace-nowrap shadow-lg"
+                style={{ borderColor: isSelected ? '#ffffff' : agent.color }}
+              >
+                {agent.name}
               </div>
-            )}
-          </div>
-        </Html>
+              {(hovered || isSelected) && (
+                <div className="mt-0.5 text-[9px] text-slate-300 bg-slate-900/70 px-1.5 rounded-full whitespace-nowrap">
+                  {STATUS_LABEL[agent.status]}
+                </div>
+              )}
+            </div>
+          </Html>
+        )}
       </group>
 
       {(isSelected || hovered) && (

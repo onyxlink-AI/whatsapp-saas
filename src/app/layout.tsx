@@ -14,8 +14,8 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Agente Onyxlink",
-  description: "Plataforma de inbox conversacional para WhatsApp con IA",
+  title: "OnyxLink · Tu empresa conectada",
+  description: "Agentes, conversaciones y gestión empresarial en un solo lugar.",
 };
 
 export const viewport: Viewport = {
@@ -35,7 +35,7 @@ export default function RootLayout({
       >
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
+          defaultTheme="light"
           enableSystem
           disableTransitionOnChange
         >

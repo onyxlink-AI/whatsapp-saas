@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getActiveWorkspace } from "@/features/workspace/services/active-workspace";
 import { listClients } from "@/features/clients/services/client-actions";
 import { ClientsTable } from "@/features/clients/components/clients-table";
+import { PageHeader } from "@/components/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -58,12 +59,19 @@ export default async function ClientesPage({
   const clients = await listClients(membership.workspace_id);
 
   return (
-    <div className="p-4 sm:p-6 h-full flex flex-col">
-      <ClientsTable
-        workspaceId={membership.workspace_id}
-        initialClients={clients}
-        initialOpenClientId={open ?? null}
+    <div className="page-shell flex min-h-[calc(100vh-4rem)] max-w-none flex-col gap-6">
+      <PageHeader
+        eyebrow="Gestión comercial"
+        title="Clientes"
+        description="Toda la información y el historial de tus clientes, ordenados en un solo lugar."
       />
+      <div className="surface-card min-h-0 flex-1 p-4 sm:p-5">
+        <ClientsTable
+          workspaceId={membership.workspace_id}
+          initialClients={clients}
+          initialOpenClientId={open ?? null}
+        />
+      </div>
     </div>
   );
 }

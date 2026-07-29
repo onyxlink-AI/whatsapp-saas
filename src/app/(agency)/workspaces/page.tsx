@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import {
   getActiveWorkspace,
@@ -10,6 +9,7 @@ import { WorkspacesTable } from "@/features/agency/components/workspaces-table";
 import { formatTokens, ESTIMATED_USD_PER_MILLION_TOKENS } from "@/features/agency/lib/cost-format";
 import { Building2, Users, MessageCircle, Wifi, Zap, DollarSign } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -60,78 +60,64 @@ export default async function AgencyWorkspacesPage() {
     accent?: boolean;
   }[] = [
     {
-      label: "Workspaces",
+      label: "Empresas",
       value: String(workspaces.length),
       icon: Building2,
       accent: true,
     },
     {
-      label: "Miembros totales",
+      label: "Personas con acceso",
       value: String(totalMembers),
       icon: Users,
     },
     {
-      label: "Conversaciones",
+      label: "Conversaciones totales",
       value: String(totalConversations),
       icon: MessageCircle,
     },
     {
-      label: "YCloud conectado",
+      label: "WhatsApp conectado",
       value: String(connectedCount),
       icon: Wifi,
     },
     {
-      label: "Tokens IA — hoy",
+      label: "Consumo de IA hoy",
       value: formatTokens(totalTokensToday),
       icon: Zap,
-      caption: "Todos los workspaces, suma del día",
+      caption: "Suma de todas las empresas",
     },
     {
-      label: "Costo estimado (30 días)",
+      label: "Coste estimado · 30 días",
       value: `$${estimatedCost30d.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: DollarSign,
-      caption: `Estimado a ~$${ESTIMATED_USD_PER_MILLION_TOKENS}/millón de tokens, no es la factura real`,
+      caption: `Estimación orientativa a ~$${ESTIMATED_USD_PER_MILLION_TOKENS}/millón de tokens`,
       accent: true,
     },
   ];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      {/* Brand banner */}
-      <Image
-        src="/brand/onyxlink-banner.jpg"
-        alt="Onyxlink"
-        width={580}
-        height={580}
-        className="w-full max-w-lg mx-auto rounded-2xl object-cover glass"
-        priority
+    <div className="mx-auto max-w-7xl space-y-7">
+      <PageHeader
+        eyebrow="Administración OnyxLink"
+        title="Empresas"
+        description="Controla los productos activos, las conexiones y el consumo de cada cliente desde un único lugar."
       />
 
-      {/* Page header */}
-      <div>
-        <h1 className="font-display text-2xl font-semibold text-foreground tracking-tight">
-          Workspaces
-        </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Gestiona todos los workspaces de clientes desde aquí.
-        </p>
-      </div>
-
       {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {kpis.map(({ label, value, icon: Icon, caption, accent }) => (
           <div
             key={label}
             className={cn(
-              "rounded-xl p-4 space-y-2",
-              accent ? "glass-accent" : "border border-border bg-card",
+              "surface-card min-h-32 p-5",
+              accent && "border-primary/20 bg-gradient-to-br from-primary/[0.12] via-card to-card",
             )}
           >
             <div className="flex items-center gap-2 text-muted-foreground">
               <Icon className="h-4 w-4" aria-hidden="true" />
               <span className="text-xs font-medium">{label}</span>
             </div>
-            <p className="font-mono text-2xl font-bold text-foreground">
+            <p className="font-display text-2xl font-semibold tracking-tight text-foreground tabular-nums">
               {value}
             </p>
             {caption && (
@@ -147,7 +133,7 @@ export default async function AgencyWorkspacesPage() {
       {result.error && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3">
           <p className="text-sm text-destructive">
-            Error al cargar workspaces: {result.error}
+            No hemos podido cargar las empresas: {result.error}
           </p>
         </div>
       )}

@@ -85,7 +85,6 @@ export function ClientsTable({
         setFormOpen(true);
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialOpenClientId]);
 
   useEffect(() => {
@@ -183,7 +182,7 @@ export function ClientsTable({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar por nombre o empresa..."
-          className="h-8 w-56 text-xs"
+          className="h-9 w-64 text-xs"
         />
 
         <Tabs value={status} onValueChange={(v) => setStatus(v as ClientStatus | "all")}>
@@ -200,7 +199,7 @@ export function ClientsTable({
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 text-xs gap-1.5 text-destructive"
+              className="h-9 gap-1.5 text-xs text-destructive"
               onClick={handleBulkDelete}
               disabled={isPending}
             >
@@ -212,7 +211,7 @@ export function ClientsTable({
           <Button
             size="sm"
             variant="outline"
-            className="h-8 text-xs gap-1.5"
+            className="h-9 gap-1.5 text-xs"
             onClick={handleExport}
             disabled={isExporting || rows.length === 0}
           >
@@ -224,14 +223,14 @@ export function ClientsTable({
                 : "Exportar"}
           </Button>
 
-          <Button size="sm" className="h-8 text-xs gap-1.5" onClick={handleCreate}>
+          <Button size="sm" className="h-9 gap-1.5 text-xs" onClick={handleCreate}>
             <Plus className="h-3.5 w-3.5" />
             Nuevo cliente
           </Button>
         </div>
       </div>
 
-      <div className="rounded-md border border-border/40 flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto rounded-xl border border-border/70">
         <Table>
           <TableHeader>
             <TableRow>
