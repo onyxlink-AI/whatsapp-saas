@@ -3,7 +3,7 @@ import type { AgentId } from '../../schemas';
 import { agents } from '../agents';
 import type { CentralTaskState } from '../central-tasks';
 import {
-  applySkillCommand, createCentralSkillState, detectSkillCandidates,
+  applySkillCommand, createCentralSkillState, createSkillFixtures, detectSkillCandidates,
   selectSkillAudit, selectSkills, selectSkillTestRuns, selectSkillVersions,
   SKILL_ELIGIBLE_AGENT_IDS,
 } from '../central-skills';
@@ -34,6 +34,13 @@ export type SkillProposal = { id: string; suggestedName: string; reason: string;
 export type SkillSimulationStepResult = { stepId: string; status: SkillSimulationStatus; output: string | null; durationMs: number | null };
 export type SkillSimulationRun = { id: string; skillId: string; startedAt: string; finishedAt: string | null; status: SkillSimulationStatus; steps: SkillSimulationStepResult[] };
 export type EligibleSkillAssignee = { agentId: AgentId; name: string; role: string; isOrchestrator: boolean };
+
+function seedDemoSkillState(workspaceId: string): CentralSkillState {
+  return createSkillFixtures(workspaceId).reduce((state, command) => {
+    const result = applySkillCommand(state, command);
+    return result.success ? result.state : state;
+  }, createCentralSkillState(workspaceId));
+}
 
 function cloneDefinition(definition: CentralSkillDefinition): SkillDefinition {
   return JSON.parse(JSON.stringify(definition)) as SkillDefinition;
@@ -108,11 +115,11 @@ export type SkillsFeed = {
   restoreVersion: (skillId: string, versionId: string) => void;
 };
 
-export function useSkillsFeed(taskState: CentralTaskState | undefined, workspaceId: string, actor: SkillActor): SkillsFeed {
+export function useSkillsFeed(taskState: CentralTaskState | undefined, workspaceId: string, actor: SkillActor, demoMode = false): SkillsFeed {
   // Honestly empty — no real skills backend is wired yet, so this no longer
   // seeds curated demo skills as if they were the workspace's real trained
   // skills (see useTaskFeed.ts for the same pattern already applied there).
-  const [state, setState] = useState(() => createCentralSkillState(workspaceId));
+  const [state, setState] = useState(() => demoMode ? seedDemoSkillState(workspaceId) : createCentralSkillState(workspaceId));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dismissedProposalIds, setDismissedProposalIds] = useState<string[]>([]);

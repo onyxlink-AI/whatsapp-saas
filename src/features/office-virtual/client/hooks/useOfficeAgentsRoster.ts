@@ -9,12 +9,16 @@ export type OfficeAgentsRoster = {
 };
 
 /** Real, sanitized, published-only specialist roster for the 3D scene — never fixtures, never draft content. */
-export function useOfficeAgentsRoster(workspaceId: string): OfficeAgentsRoster {
+export function useOfficeAgentsRoster(
+  workspaceId: string,
+  demoSeats: OfficeAgentSeatProjection[] | null = null,
+): OfficeAgentsRoster {
   const [seats, setSeats] = useState<OfficeAgentSeatProjection[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(demoSeats === null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (demoSeats !== null) return;
     let cancelled = false;
     fetchOfficeAgentsRoster(workspaceId).then((result) => {
       if (cancelled) return;
@@ -29,7 +33,9 @@ export function useOfficeAgentsRoster(workspaceId: string): OfficeAgentsRoster {
     return () => {
       cancelled = true;
     };
-  }, [workspaceId]);
+  }, [workspaceId, demoSeats]);
 
-  return { seats, loading, error };
+  return demoSeats !== null
+    ? { seats: demoSeats, loading: false, error: null }
+    : { seats, loading, error };
 }

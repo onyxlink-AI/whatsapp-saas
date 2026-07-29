@@ -37,6 +37,30 @@ function applyOrKeep(state: CentralOrchestratorState, command: OrchestratorComma
   return result.success ? result.state : state;
 }
 
+function createDemoOrchestratorState(workspaceId: string, actorEmail: string): CentralOrchestratorState {
+  const occurredAt = new Date().toISOString();
+  const actor = { actorId: actorEmail, role: 'workspace_admin' as const, workspaceId };
+  let state = createCentralOrchestratorState(workspaceId, actorEmail);
+  state = applyOrKeep(state, {
+    type: 'orchestrator.openrouter_model_policy_updated', commandId: 'demo-model-policy', workspaceId, actor,
+    occurredAt, expectedRevision: state.binding.revision, model: 'openai/gpt-4.1-mini',
+    fallbackModel: 'anthropic/claude-3.5-haiku', costProfile: 'balanced', dailyRequestLimit: 500,
+    monthlyRequestLimit: 12_000, allowPremiumModels: true,
+  });
+  state = applyOrKeep(state, {
+    type: 'orchestrator.backend_status_reported', commandId: 'demo-backend-connected', workspaceId,
+    actor: { actorId: 'demo-system', role: 'system', workspaceId }, occurredAt,
+    expectedRevision: state.binding.revision, mode: 'openrouter', status: 'connected',
+    statusDetail: 'Entorno de demostración preparado.', hasSecret: true,
+  });
+  state = applyOrKeep(state, {
+    type: 'orchestrator.openrouter_agent_override_updated', commandId: 'demo-agent-override', workspaceId, actor,
+    occurredAt, expectedRevision: state.binding.revision, agentId: 'review-qa',
+    override: { model: 'anthropic/claude-3.7-sonnet', costProfile: 'premium', allowPremiumModels: true },
+  });
+  return state;
+}
+
 export type OrchestratorFeed = {
   binding: WorkspaceOrchestratorBinding;
   activeConfig: OpenRouterConfig | HermesTelegramConfig;
@@ -56,13 +80,15 @@ export type OrchestratorFeed = {
   resolveExecutionForAgent: (agentId: AgentId) => ResolvedOpenRouterExecution;
 };
 
-export function useOrchestratorFeed(actorEmail: string, role: OrchestratorActorRole, workspaceId: string): OrchestratorFeed {
+export function useOrchestratorFeed(actorEmail: string, role: OrchestratorActorRole, workspaceId: string, demoMode = false): OrchestratorFeed {
   // Honestly empty — no real orchestrator backend is wired yet, so this no
   // longer seeds a fake "already configured" model policy (see
   // useTaskFeed.ts for the same pattern). createCentralOrchestratorState's
   // own default (activeMode 'openrouter', blank configs) IS the correct
   // "not configured yet" state, not a placeholder needing a fixture on top.
-  const [state, setState] = useState<CentralOrchestratorState>(() => createCentralOrchestratorState(workspaceId));
+  const [state, setState] = useState<CentralOrchestratorState>(() => demoMode
+    ? createDemoOrchestratorState(workspaceId, actorEmail)
+    : createCentralOrchestratorState(workspaceId));
   const [error, setError] = useState<string | null>(null);
   const actor = { actorId: actorEmail, role, workspaceId };
 

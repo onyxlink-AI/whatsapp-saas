@@ -5,6 +5,7 @@ import {
   getDefaultRouteForWorkspace,
 } from "@/features/workspace/services/active-workspace";
 import { isOfficeVirtualEnabled } from "@/features/office-virtual/access";
+import { isOfficeDemoAccount } from "@/features/office-virtual/demo-access";
 import OfficeVirtualApp from "@/features/office-virtual/client/OfficeVirtualApp";
 
 export const dynamic = "force-dynamic";
@@ -49,6 +50,7 @@ export default async function OficinaVirtualPage() {
         key={membership.workspace_id}
         userEmail={user.email ?? "desconocido"}
         isSuperAdmin={isSuperAdmin}
+        isDemoPresentation={isOfficeDemoAccount(user.email)}
         workspaceId={membership.workspace_id}
       />
     </div>

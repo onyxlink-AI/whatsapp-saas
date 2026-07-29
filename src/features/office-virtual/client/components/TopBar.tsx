@@ -16,6 +16,7 @@ type Props = {
   cameraMode: CameraMode;
   onCameraModeChange: (mode: CameraMode) => void;
   canUsePresentation: boolean;
+  isDemoMode: boolean;
   onOpenSearch: () => void;
   onOpenMobileMenu: () => void;
 };
@@ -43,6 +44,7 @@ export default function TopBar({
   cameraMode,
   onCameraModeChange,
   canUsePresentation,
+  isDemoMode,
   onOpenSearch,
   onOpenMobileMenu,
 }: Props) {
@@ -79,6 +81,12 @@ export default function TopBar({
           <div className="text-[9px] uppercase tracking-[0.14em] text-violet-300/55 hidden sm:block">Oficina Virtual</div>
           <h1 className="text-[13px] sm:text-sm font-semibold text-white/90 truncate">{viewTitle}</h1>
         </div>
+
+        {isDemoMode && (
+          <span className="hidden sm:inline-flex items-center rounded-full border border-violet-400/25 bg-violet-500/[0.08] px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.09em] text-violet-200/80">
+            Demo · datos de muestra
+          </span>
+        )}
 
         <nav className="onyx-primary-nav hidden lg:flex items-center gap-1 ml-3" aria-label="Secciones principales de Oficina Virtual">
           {PRIMARY_VIEWS.map(({ id, label, icon: Icon }) => (

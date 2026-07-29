@@ -167,6 +167,30 @@ export function seedRoutineState(workspaceId: string, actor: RoutineActor): Cent
     },
   ];
   for (const command of commands) state = applyOrKeep(state, command);
+
+  for (let index = 0; index < 6; index += 1) {
+    const routineId = 'routine-daily-follow-up';
+    const runId = `routine-demo-run-${index + 1}`;
+    const scheduledFor = new Date(now.getTime() - index * 22 * 60 * 60_000).toISOString();
+    state = applyOrKeep(state, {
+      type: 'routine.run_queued', commandId: `routine-demo-queue-${index + 1}`, routineId, runId, workspaceId,
+      expectedRevision: state.routines[routineId].revision, actor, occurredAt: scheduledFor,
+      scheduledFor, nextRunAt: new Date(Date.parse(scheduledFor) + 24 * 60 * 60_000).toISOString(),
+    });
+    state = applyOrKeep(state, {
+      type: 'routine.run_started', commandId: `routine-demo-start-${index + 1}`, routineId, runId, workspaceId,
+      expectedRunRevision: state.runs[runId].revision, actor, occurredAt: scheduledFor,
+    });
+    state = applyOrKeep(state, index === 4 ? {
+      type: 'routine.run_failed', commandId: `routine-demo-fail-${index + 1}`, routineId, runId, workspaceId,
+      expectedRunRevision: state.runs[runId].revision, actor,
+      occurredAt: new Date(Date.parse(scheduledFor) + 70_000).toISOString(), error: 'Revisión humana solicitada.',
+    } : {
+      type: 'routine.run_completed', commandId: `routine-demo-complete-${index + 1}`, routineId, runId, workspaceId,
+      expectedRunRevision: state.runs[runId].revision, actor,
+      occurredAt: new Date(Date.parse(scheduledFor) + 70_000).toISOString(), taskId: `task-demo-completed-${index + 1}`,
+    });
+  }
   return state;
 }
 
@@ -222,12 +246,14 @@ export type RoutineFeed = {
   deleteRoutine: (id: string) => void;
 };
 
-export function useRoutineFeed(workspaceId: string, actor: RoutineActor): RoutineFeed {
+export function useRoutineFeed(workspaceId: string, actor: RoutineActor, demoMode = false): RoutineFeed {
   // Honestly empty — no real routines backend is wired yet, so this no
   // longer seeds demo routines ("Recuperar lead frío", etc.) as if they were
   // the workspace's real ones (see useTaskFeed.ts for the same pattern).
   // seedRoutineState is kept, unused here, only for isolation.test.ts.
-  const [state, setState] = useState<CentralRoutineState>(() => createCentralRoutineState(workspaceId));
+  const [state, setState] = useState<CentralRoutineState>(() =>
+    demoMode ? seedRoutineState(workspaceId, actor) : createCentralRoutineState(workspaceId),
+  );
   const [filters, setFiltersState] = useState<RoutineFilters>(DEFAULT_FILTERS);
   const setFilters = (patch: Partial<RoutineFilters>) => setFiltersState((previous) => ({ ...previous, ...patch }));
   const resetFilters = () => setFiltersState(DEFAULT_FILTERS);

@@ -65,8 +65,8 @@ export function seedInboxThreads(workspaceId: string): InboxThread[] {
   return result.success ? [result.thread] : [];
 }
 
-export function useInboxFeed(_workspaceId: string): InboxFeed {
-  const [threads] = useState<InboxThread[]>([]);
+export function useInboxFeed(workspaceId: string, demoMode = false): InboxFeed {
+  const [threads] = useState<InboxThread[]>(() => demoMode ? seedInboxThreads(workspaceId) : []);
   const [filters, setFiltersState] = useState<InboxFilters>(DEFAULT_FILTERS);
   const [draftsByContact, setDraftsByContact] = useState<Record<string, string[]>>({});
 

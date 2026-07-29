@@ -42,14 +42,42 @@ function applyOrKeep(state: CentralReportState, command: Parameters<typeof apply
   return result.success ? result.state : state;
 }
 
-export function useReportsFeed(workspaceId: string, actor: ReportActor, analytics: WorkspaceAnalytics | null): ReportsFeed {
+function seedDemoReportsState(workspaceId: string, actor: ReportActor, analytics: WorkspaceAnalytics | null): CentralReportState {
+  let state = createCentralReportState(workspaceId);
+  if (!analytics) return state;
+  const occurredAt = new Date().toISOString();
+  const seeds: Array<{ id: string; title: string; kind: ReportKind; period: AnalyticsPeriod; agentIds: AgentId[] }> = [
+    { id: 'demo-report-executive', title: 'Resumen ejecutivo semanal', kind: 'overview', period: '7d', agentIds: [] },
+    { id: 'demo-report-channels', title: 'Rendimiento por canales y equipo', kind: 'channels', period: '30d', agentIds: ['lead-intake', 'proposal', 'operations'] },
+  ];
+  for (const seed of seeds) {
+    state = applyOrKeep(state, {
+      type: 'report.created', commandId: `create-${seed.id}`, reportId: seed.id, workspaceId,
+      actor, occurredAt, title: seed.title, kind: seed.kind, period: seed.period, agentIds: seed.agentIds,
+    });
+    state = applyOrKeep(state, {
+      type: 'report.generation_started', commandId: `start-${seed.id}`, reportId: seed.id, workspaceId,
+      expectedRevision: state.reports[seed.id].revision, actor, occurredAt,
+    });
+    state = applyOrKeep(state, {
+      type: 'report.generated', commandId: `finish-${seed.id}`, reportId: seed.id, workspaceId,
+      expectedRevision: state.reports[seed.id].revision, actor, occurredAt,
+      content: buildReportContent({ kind: seed.kind, analytics, agentIds: seed.agentIds }),
+    });
+  }
+  return state;
+}
+
+export function useReportsFeed(workspaceId: string, actor: ReportActor, analytics: WorkspaceAnalytics | null, demoMode = false): ReportsFeed {
   // Honestly empty — no reports exist until someone actually asks for one
   // (createReport + generateReport, both already real user actions below).
   // This used to auto-seed two reports and mark one as already "generated"
   // with content derived from fixture-tainted analytics the moment this
   // hook mounted — indistinguishable from a real report to an admin who
   // never asked for it (see useTaskFeed.ts for the same honesty pattern).
-  const [state, setState] = useState(() => createCentralReportState(workspaceId));
+  const [state, setState] = useState(() => demoMode
+    ? seedDemoReportsState(workspaceId, actor, analytics)
+    : createCentralReportState(workspaceId));
   const [error, setError] = useState<string | null>(null);
   const [lastExportRequest, setLastExportRequest] = useState<ReportExportRequest | null>(null);
 

@@ -46,6 +46,12 @@ describe('Sidebar navigation visibility', () => {
     expect(allItemIds).not.toContain('orquestador');
   });
 
+  it('shows the local-only Administration tools to the explicit demo account', () => {
+    const groups = visibleNavGroups(false, true);
+    const adminGroup = groups.find((group) => group.label === 'Administración');
+    expect(adminGroup?.items.map((item) => item.id)).toEqual(['activacion', 'configurador', 'orquestador']);
+  });
+
   it('shows Administración for a superadmin', () => {
     const groups = visibleNavGroups(true);
     const adminGroup = groups.find((g) => g.label === 'Administración');

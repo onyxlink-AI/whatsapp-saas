@@ -9,6 +9,7 @@ import type {
 } from '../central-integrations/types';
 import type { WorkspaceWhatsAppBinding } from '../central-integrations/whatsapp-binding';
 import { fetchWorkspaceCapabilitySnapshot, setOfficeVirtualEnabled, setOfficeWhatsAppEnabled } from '../lib/saasWorkspaceCapabilityAdapter';
+import { createDemoCapabilitySnapshot, createDemoWhatsAppBinding } from '../demo/demoPresentationData';
 
 // Real per-workspace data via src/app/api/workspace/[id]/office-virtual/capability-snapshot
 // (GET) and the pre-existing office_virtual_enabled toggle route (PATCH) — no
@@ -62,16 +63,18 @@ export function useOfficeActivation(
   actorId: string,
   actorRole: OfficeActorRole,
   workspaceId: string,
+  demoMode = false,
 ): OfficeActivation {
-  const [snapshot, setSnapshot] = useState<WorkspaceCapabilitySnapshot>(() => emptySnapshot(workspaceId));
-  const [whatsappBinding, setWhatsappBinding] = useState<WorkspaceWhatsAppBinding>(() => emptyBinding(workspaceId));
-  const [loading, setLoading] = useState(true);
+  const [snapshot, setSnapshot] = useState<WorkspaceCapabilitySnapshot>(() => demoMode ? createDemoCapabilitySnapshot(workspaceId) : emptySnapshot(workspaceId));
+  const [whatsappBinding, setWhatsappBinding] = useState<WorkspaceWhatsAppBinding>(() => demoMode ? createDemoWhatsAppBinding(workspaceId) : emptyBinding(workspaceId));
+  const [loading, setLoading] = useState(!demoMode);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [lastDecision, setLastDecision] = useState<OfficeActivationDecision | null>(null);
   const [whatsappBusy, setWhatsappBusy] = useState(false);
   const busyRef = useRef(false);
 
   useEffect(() => {
+    if (demoMode) return;
     let cancelled = false;
     fetchWorkspaceCapabilitySnapshot(workspaceId).then((result) => {
       if (cancelled) return;
@@ -87,7 +90,7 @@ export function useOfficeActivation(
     return () => {
       cancelled = true;
     };
-  }, [workspaceId]);
+  }, [workspaceId, demoMode]);
 
   const readiness = useMemo(() => selectOfficeProvisioningReadiness(snapshot), [snapshot]);
   const whatsappConfigured = useMemo(() => isWhatsAppChannelConfigured(snapshot), [snapshot]);
@@ -104,6 +107,10 @@ export function useOfficeActivation(
     });
     setLastDecision(decision);
     if (!decision.allowed) return;
+    if (demoMode) {
+      setSnapshot((previous) => ({ ...previous, virtualOfficeEnabled: decision.nextEnabled }));
+      return;
+    }
 
     busyRef.current = true;
     setOfficeVirtualEnabled(workspaceId, decision.nextEnabled).then((result) => {
@@ -122,6 +129,14 @@ export function useOfficeActivation(
 
   const setWhatsAppActivation = (enabled: boolean) => {
     if (loading || busyRef.current || whatsappBusy || (enabled && !whatsappConfigured)) return;
+    if (demoMode) {
+      setSnapshot((previous) => ({
+        ...previous,
+        whatsappAgent: { ...previous.whatsappAgent, officeEnabled: enabled },
+      }));
+      setWhatsappBinding(enabled ? createDemoWhatsAppBinding(workspaceId) : emptyBinding(workspaceId));
+      return;
+    }
     busyRef.current = true;
     setWhatsappBusy(true);
     setOfficeWhatsAppEnabled(workspaceId, enabled).then(async (result) => {

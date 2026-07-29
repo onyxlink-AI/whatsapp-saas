@@ -146,6 +146,28 @@ export function seedTaskState(workspaceId: string, actor: TaskActor): CentralTas
   ];
 
   for (const command of commands) state = applyOrKeep(state, command);
+
+  const demoAgents: AgentId[] = ['proposal', 'operations', 'review-qa', 'content'];
+  const demoSources: Array<'manual' | 'whatsapp' | 'automation'> = ['manual', 'whatsapp', 'automation'];
+  for (let index = 0; index < 7; index += 1) {
+    const taskId = `task-demo-completed-${index + 1}`;
+    const occurredAt = new Date(Date.now() - index * 20 * 60 * 60_000).toISOString();
+    state = applyOrKeep(state, {
+      type: 'task.created', commandId: `task-demo-create-${index + 1}`, taskId, workspaceId,
+      actor, occurredAt, title: ['Preparar propuesta', 'Revisar nuevos contactos', 'Actualizar informe', 'Organizar seguimiento'][index % 4],
+      description: 'Actividad de muestra completada por el equipo digital.', priority: index === 0 ? 'high' : 'normal',
+      source: demoSources[index % demoSources.length], assignedAgentId: demoAgents[index % demoAgents.length],
+    });
+    state = applyOrKeep(state, {
+      type: 'task.started', commandId: `task-demo-start-${index + 1}`, taskId, workspaceId,
+      expectedRevision: state.tasks[taskId].revision, actor, occurredAt,
+    });
+    state = applyOrKeep(state, {
+      type: 'task.completed', commandId: `task-demo-complete-${index + 1}`, taskId, workspaceId,
+      expectedRevision: state.tasks[taskId].revision, actor,
+      occurredAt: new Date(Date.parse(occurredAt) + 18 * 60_000).toISOString(),
+    });
+  }
   return state;
 }
 
@@ -198,13 +220,15 @@ export type TaskFeed = {
   cancelTask: (id: string, note?: string) => void;
 };
 
-export function useTaskFeed(workspaceId: string, actor: TaskActor): TaskFeed {
+export function useTaskFeed(workspaceId: string, actor: TaskActor, demoMode = false): TaskFeed {
   const [loading, setLoading] = useState(true);
   // Honestly empty — no real task backend is wired yet, so this no longer
   // seeds the fixture tasks (fake contacts, fake agent assignments) as if
   // they were the workspace's real work. seedTaskState is kept, unused here,
   // only for isolation.test.ts to verify workspace-scoping still holds.
-  const [state, setState] = useState<CentralTaskState>(() => createCentralTaskState(workspaceId));
+  const [state, setState] = useState<CentralTaskState>(() =>
+    demoMode ? seedTaskState(workspaceId, actor) : createCentralTaskState(workspaceId),
+  );
   const [filters, setFiltersState] = useState<TaskFilters>(DEFAULT_FILTERS);
 
   useEffect(() => {

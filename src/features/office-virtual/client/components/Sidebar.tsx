@@ -76,13 +76,14 @@ type Props = {
   onSelect: (id: ViewId) => void;
   userEmail: string | null;
   isSuperAdmin: boolean;
+  isDemoMode: boolean;
   mobileMenuOpen: boolean;
   onCloseMobileMenu: () => void;
 };
 
-export function visibleNavGroups(isSuperAdmin: boolean): NavGroup[] {
+export function visibleNavGroups(isSuperAdmin: boolean, isDemoMode = false): NavGroup[] {
   return NAV_GROUPS
-    .filter((group) => !group.adminOnly || isSuperAdmin)
+    .filter((group) => !group.adminOnly || isSuperAdmin || isDemoMode)
     .map((group) => ({
       ...group,
       items: group.items.map((item) => ({
@@ -108,8 +109,8 @@ function NavButton({ item, active, onSelect, compact = false }: { item: NavItem;
   );
 }
 
-export default function Sidebar({ active, onSelect, userEmail, isSuperAdmin, mobileMenuOpen, onCloseMobileMenu }: Props) {
-  const visibleGroups = visibleNavGroups(isSuperAdmin);
+export default function Sidebar({ active, onSelect, userEmail, isSuperAdmin, isDemoMode, mobileMenuOpen, onCloseMobileMenu }: Props) {
+  const visibleGroups = visibleNavGroups(isSuperAdmin, isDemoMode);
   const visibleItems = visibleGroups.flatMap((group) => group.items);
   const activeItem = visibleItems.find((item) => item.id === active);
   const choose = (id: ViewId) => { onSelect(id); onCloseMobileMenu(); };

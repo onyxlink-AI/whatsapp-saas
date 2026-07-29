@@ -37,6 +37,8 @@ import { useOfficeActivation } from './hooks/useOfficeActivation';
 import { useOfficeActivityFeed } from './hooks/useOfficeActivityFeed';
 import { useOfficeAgentsRoster } from './hooks/useOfficeAgentsRoster';
 import { useOfficeConfigurator } from './hooks/useOfficeConfigurator';
+import { useDemoOfficeConfigurator } from './hooks/useDemoOfficeConfigurator';
+import { useDemoOpenRouterConnectionFeed } from './hooks/useDemoOpenRouterConnectionFeed';
 import { useOpenRouterConnectionFeed } from './hooks/useOpenRouterConnectionFeed';
 import { useOrchestratorFeed } from './hooks/useOrchestratorFeed';
 import { useRoutineFeed } from './hooks/useRoutineFeed';
@@ -45,6 +47,8 @@ import { useSkillsFeed } from './hooks/useSkillsFeed';
 import { useTaskFeed } from './hooks/useTaskFeed';
 import { createSaasOpenRouterConnectionAdapter } from './lib/saasOpenRouterConnectionAdapter';
 import { isChatbotChannelReady, isVoiceChannelReady, isWhatsAppChannelReady } from './central-integrations';
+import { CONFIGURABLE_AGENT_IDS } from './central-integrations/specialist-seats';
+import type { OfficeAgentSeatProjection } from './central-integrations/office-agent-projection';
 import { buildOfficeRoomSlots } from './three/officeRoster';
 import type { GlobalSearchResult, GlobalSearchSources, GlobalSearchView } from './central-search';
 import './office-virtual.css';
@@ -79,6 +83,7 @@ import './office-virtual.css';
 type Props = {
   userEmail: string;
   isSuperAdmin: boolean;
+  isDemoPresentation: boolean;
   workspaceId: string;
 };
 
@@ -102,7 +107,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   orquestador: 'Orquestador',
 };
 
-export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId }: Props) {
+export default function OfficeVirtualApp({ userEmail, isSuperAdmin, isDemoPresentation, workspaceId }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<ViewId>('oficina');
   const [cameraMode, setCameraMode] = useState<CameraMode>(() => resolveCameraModeForViewer(isSuperAdmin, null));
@@ -126,6 +131,7 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
   // every hook below that dispatches commands or seeds per-workspace state —
   // no hook in this tree falls back to a 'workspace-demo'/'demo-actor'
   // constant anymore.
+  const canManageOffice = isSuperAdmin || isDemoPresentation;
   const workspaceRole = isSuperAdmin ? ('super_admin' as const) : ('workspace_admin' as const);
   const taskActor = { actorId: userEmail, role: workspaceRole };
   const routineActor = { actorId: userEmail, role: workspaceRole };
@@ -136,15 +142,15 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
   const reportActor = { actorId: userEmail, role: workspaceRole, workspaceId };
 
   const { messagesByAgent, sendMessage, decideApproval, typingAgentId, pendingApproval } = useAgentChat();
-  const { snapshots: activitySnapshots, recentEvents, state: activityState } = useOfficeActivityFeed(workspaceId);
-  const { state: memoryState, forgetItem } = useContactMemoryFeed(workspaceId);
-  const { contacts: contact360List, getContact } = useContact360Feed(workspaceId);
+  const { snapshots: activitySnapshots, recentEvents, state: activityState } = useOfficeActivityFeed(workspaceId, isDemoPresentation);
+  const { state: memoryState, forgetItem } = useContactMemoryFeed(workspaceId, isDemoPresentation);
+  const { contacts: contact360List, getContact } = useContact360Feed(workspaceId, isDemoPresentation);
   const [contact360Id, setContact360Id] = useState<string | null>(null);
-  const inboxFeed = useInboxFeed(workspaceId);
-  const taskFeed = useTaskFeed(workspaceId, taskActor);
-  const routineFeed = useRoutineFeed(workspaceId, routineActor);
-  const skillsFeed = useSkillsFeed(taskFeed.state, workspaceId, skillActor);
-  const filesFeed = useFilesFeed(workspaceId, fileActor);
+  const inboxFeed = useInboxFeed(workspaceId, isDemoPresentation);
+  const taskFeed = useTaskFeed(workspaceId, taskActor, isDemoPresentation);
+  const routineFeed = useRoutineFeed(workspaceId, routineActor, isDemoPresentation);
+  const skillsFeed = useSkillsFeed(taskFeed.state, workspaceId, skillActor, isDemoPresentation);
+  const filesFeed = useFilesFeed(workspaceId, fileActor, isDemoPresentation);
   const searchSources = useMemo<GlobalSearchSources>(() => ({
     contacts: contact360List,
     conversations: inboxFeed.threads,
@@ -166,20 +172,24 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
     taskState: taskFeed.state,
     routineState: routineFeed.state,
   });
-  const reportsFeed = useReportsFeed(workspaceId, reportActor, analyticsFeed.analytics);
-  const officeActorRole = isSuperAdmin ? 'onyxlink_super_admin' : 'workspace_admin';
-  const officeActivation = useOfficeActivation(userEmail, officeActorRole, workspaceId);
+  const reportsFeed = useReportsFeed(workspaceId, reportActor, analyticsFeed.analytics, isDemoPresentation);
+  const officeActorRole = canManageOffice ? 'onyxlink_super_admin' : 'workspace_admin';
+  const officeActivation = useOfficeActivation(userEmail, officeActorRole, workspaceId, isDemoPresentation);
   const whatsappAgentName = agents.find((a) => a.id === 'lead-intake')?.name ?? 'Agente WhatsApp';
-  const officeConfigurator = useOfficeConfigurator(workspaceId, isSuperAdmin);
-  const orchestratorFeed = useOrchestratorFeed(userEmail, workspaceRole, workspaceId);
+  const realOfficeConfigurator = useOfficeConfigurator(workspaceId, isSuperAdmin);
+  const demoOfficeConfigurator = useDemoOfficeConfigurator(workspaceId, isDemoPresentation);
+  const officeConfigurator = isDemoPresentation ? demoOfficeConfigurator : realOfficeConfigurator;
+  const orchestratorFeed = useOrchestratorFeed(userEmail, workspaceRole, workspaceId, isDemoPresentation);
   const openRouterAdapter = useMemo(() => createSaasOpenRouterConnectionAdapter(), []);
-  const openRouterConnectionFeed = useOpenRouterConnectionFeed(
+  const realOpenRouterConnectionFeed = useOpenRouterConnectionFeed(
     userEmail,
     workspaceRole,
     workspaceId,
     openRouterAdapter,
     isSuperAdmin,
   );
+  const demoOpenRouterConnectionFeed = useDemoOpenRouterConnectionFeed(workspaceId, isDemoPresentation);
+  const openRouterConnectionFeed = isDemoPresentation ? demoOpenRouterConnectionFeed : realOpenRouterConnectionFeed;
 
   // Visual posture comes from real (simulated, for now) operational events —
   // never from chat "typing" state. See COORDINACION_CLAUDE_CODEX.md.
@@ -195,7 +205,20 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
   // 3D scene only: 12 room slots built from the real published specialist
   // roster + real WhatsApp/voice readiness — never the static/legacy 7-agent
   // list above, which the chat/other panels still use unchanged.
-  const officeAgentsRoster = useOfficeAgentsRoster(workspaceId);
+  const demoSpecialistSeats = useMemo<OfficeAgentSeatProjection[] | null>(() => {
+    if (!isDemoPresentation) return null;
+    return CONFIGURABLE_AGENT_IDS
+      .map((agentId) => ({ agentId, ...officeConfigurator.specialistDrafts[agentId] }))
+      .filter((specialist) => specialist.enabled)
+      .map((specialist) => ({
+        agentId: specialist.agentId,
+        name: specialist.name,
+        function: specialist.function,
+        objective: specialist.objective,
+        color: specialist.color,
+      }));
+  }, [isDemoPresentation, officeConfigurator.specialistDrafts]);
+  const officeAgentsRoster = useOfficeAgentsRoster(workspaceId, demoSpecialistSeats);
   const officeRoomSlots = useMemo(
     () =>
       buildOfficeRoomSlots(officeAgentsRoster.seats, {
@@ -250,6 +273,7 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
         onSelect={setActiveView}
         userEmail={userEmail}
         isSuperAdmin={isSuperAdmin}
+        isDemoMode={isDemoPresentation}
         mobileMenuOpen={mobileMenuOpen}
         onCloseMobileMenu={() => setMobileMenuOpen(false)}
       />
@@ -267,6 +291,7 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
           cameraMode={cameraMode}
           onCameraModeChange={changeCameraMode}
           canUsePresentation={isSuperAdmin}
+          isDemoMode={isDemoPresentation}
           onOpenSearch={() => setActiveView('buscar')}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
         />
@@ -372,7 +397,7 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
           ) : activeView === 'archivos' ? (
             <ArchivosView feed={filesFeed} agents={officeAgents} />
           ) : activeView === 'skills' ? (
-            <SkillsView feed={skillsFeed} isSuperAdmin={isSuperAdmin} />
+            <SkillsView feed={skillsFeed} isSuperAdmin={canManageOffice} />
           ) : activeView === 'buscar' ? (
             <BuscarView feed={globalSearch} onOpenResult={openSearchResult} />
           ) : activeView === 'analiticas' ? (
@@ -384,7 +409,7 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
               agents={officeAgents}
             />
           ) : activeView === 'informes' ? (
-            <InformesView feed={reportsFeed} agents={officeAgents.filter((agent) => officeRoomSlots.some((slot) => slot.occupant?.id === agent.id))} isSuperAdmin={isSuperAdmin} />
+            <InformesView feed={reportsFeed} agents={officeAgents.filter((agent) => officeRoomSlots.some((slot) => slot.occupant?.id === agent.id))} isSuperAdmin={canManageOffice} />
           ) : activeView === 'memoria' ? (
             <MemoriaView
               state={memoryState}
@@ -392,7 +417,7 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
               openContactId={searchOpenTarget?.view === 'memoria' ? searchOpenTarget.entityId : null}
               openRequestId={searchOpenTarget?.requestId}
             />
-          ) : activeView === 'activacion' && isSuperAdmin ? (
+          ) : activeView === 'activacion' && canManageOffice ? (
             <ActivacionView
               loading={officeActivation.loading}
               loadError={officeActivation.loadError}
@@ -408,9 +433,9 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
               onDeactivateWhatsApp={officeActivation.deactivateWhatsApp}
               whatsappAgentName={whatsappAgentName}
             />
-          ) : activeView === 'configurador' && isSuperAdmin ? (
+          ) : activeView === 'configurador' && canManageOffice ? (
             <ConfiguradorView {...officeConfigurator} />
-          ) : activeView === 'orquestador' && isSuperAdmin ? (
+          ) : activeView === 'orquestador' && canManageOffice ? (
             <OrquestadorView feed={orchestratorFeed} agents={officeAgents} connectionFeed={openRouterConnectionFeed} />
           ) : (
             <PanelView state={activityState} agents={officeAgents} activeSeatCount={activeSeatCount} onSelectAgent={selectAgent} />

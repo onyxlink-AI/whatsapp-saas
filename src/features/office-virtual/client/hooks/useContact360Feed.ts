@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Contact360 } from '../central-contacts/types';
 import type { OfficeActivityEvent } from '../central-events/types';
+import { seedScopedContact } from './workspaceContactFixture';
 
 // Adapter hook for src/central-contacts (Codex's real cross-channel model:
 // contacts + conversations + voice_calls + contact_memories + deals, joined
@@ -11,8 +12,10 @@ import type { OfficeActivityEvent } from '../central-events/types';
 // contact. Swapping this for live Supabase rows later won't change what
 // ContactosView/Contact360Panel read.
 
-function seedContacts(_workspaceId: string): Contact360[] {
-  return [];
+function seedContacts(workspaceId: string, demoMode: boolean): Contact360[] {
+  if (!demoMode) return [];
+  const contact = seedScopedContact(workspaceId);
+  return contact ? [contact] : [];
 }
 
 // The mock office feed (src/central-events/mock-feed.ts) narrates a single
@@ -37,8 +40,8 @@ export type Contact360Feed = {
   getContact: (contactId: string) => Contact360 | null;
 };
 
-export function useContact360Feed(workspaceId: string): Contact360Feed {
-  const [contacts] = useState<Contact360[]>(() => seedContacts(workspaceId));
+export function useContact360Feed(workspaceId: string, demoMode = false): Contact360Feed {
+  const [contacts] = useState<Contact360[]>(() => seedContacts(workspaceId, demoMode));
   const getContact = (contactId: string) => contacts.find((c) => c.contactId === contactId) ?? null;
   return { contacts, getContact };
 }

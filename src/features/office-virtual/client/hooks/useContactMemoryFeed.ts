@@ -28,8 +28,10 @@ export function seedMemoryState(workspaceId: string): CentralMemoryState {
   return reduceMemoryMutations(events, createCentralMemoryState());
 }
 
-export function useContactMemoryFeed(workspaceId: string): ContactMemoryFeed {
-  const [state, setState] = useState<CentralMemoryState>(() => seedMemoryState(workspaceId));
+export function useContactMemoryFeed(workspaceId: string, demoMode = false): ContactMemoryFeed {
+  const [state, setState] = useState<CentralMemoryState>(() =>
+    demoMode ? seedMemoryState(workspaceId) : createCentralMemoryState(),
+  );
 
   const forgetItem = useCallback((contactId: string, itemId: string) => {
     const event: MemoryMutationEvent = {
