@@ -1,8 +1,8 @@
 # Runbook: Recuperar OnyxLink en otro ordenador
 
-**Propietario:** NexorLabs / OnyxLink  
-**Frecuencia:** Cuando se sustituya, pierda o averíe el ordenador de desarrollo  
-**Última actualización:** 29 de julio de 2026  
+**Propietario:** NexorLabs / OnyxLink
+**Frecuencia:** Cuando se sustituya, pierda o averíe el ordenador de desarrollo
+**Última actualización:** 29 de julio de 2026
 **Versión de producción verificada al redactarlo:** `7c6d4878c313c5bcfc6045265a116c7ff55f8fa1`
 
 ## 1. Objetivo
@@ -506,4 +506,3 @@ Restaurar desde la copia previa o crear una migración correctiva revisada.
 | Fecha | Responsable | Nota |
 |---|---|---|
 | 29/07/2026 | Codex / OnyxLink | Primera versión basada en el candidato de producción `7c6d487`. |
-
