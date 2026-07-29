@@ -1,4 +1,5 @@
 import { Html } from '@react-three/drei';
+import { useThree } from '@react-three/fiber';
 import type { CSSProperties } from 'react';
 import type { OfficeSceneAgent } from '../types';
 import { ROOM_D, ROOM_W, WALL_H, WALL_T } from './layout';
@@ -475,6 +476,8 @@ function NeutralWallArt({ depth }: { depth: number }) {
 }
 
 export default function OfficeRoom({ agent, center, occupied, presentation = false, width = ROOM_W, depth = ROOM_D }: Props) {
+  const { size } = useThree();
+  const compactSign = size.width < 768 || (size.height <= 600 && size.width < 1024);
   const executive = agent.id === 'coordinator';
   const deskZ = -depth / 2 + 1.25;
   const accent = presentation && !occupied ? '#6d28d9' : agent.color;
@@ -597,12 +600,21 @@ export default function OfficeRoom({ agent, center, occupied, presentation = fal
       {(() => {
         const sign = officeSignContent(agent, occupied);
         return sign.visible ? (
-          <Html position={[0, WALL_H + 0.65, 0]} center zIndexRange={[12, 8]}>
-            <div className="office-sign" style={{ '--agent-color': agent.color } as CSSProperties}>
-              <span className="office-sign__dot" />
-              {sign.visibleText}
-            </div>
-          </Html>
+          compactSign ? (
+            <Html position={[0, WALL_H + 0.65, 0]} center transform sprite distanceFactor={14} zIndexRange={[12, 8]}>
+              <div className="office-sign" style={{ '--agent-color': agent.color } as CSSProperties}>
+                <span className="office-sign__dot" />
+                {sign.visibleText}
+              </div>
+            </Html>
+          ) : (
+            <Html position={[0, WALL_H + 0.65, 0]} center zIndexRange={[12, 8]}>
+              <div className="office-sign" style={{ '--agent-color': agent.color } as CSSProperties}>
+                <span className="office-sign__dot" />
+                {sign.visibleText}
+              </div>
+            </Html>
+          )
         ) : (
           // Inactive/unavailable seat: no visible sign at all — not even a
           // generic "vacant" label. A screen-reader-only description is the

@@ -19,23 +19,21 @@ function ResponsiveCamera({ cameraMode }: { cameraMode: CameraMode }) {
   const { camera, gl, size } = useThree();
 
   useEffect(() => {
-    const narrow = size.width < 640;
+    const portrait = size.width < 640 && size.height > size.width;
     const target: [number, number, number] =
-      cameraMode === 'showcase' ? [0, 0.8, 0] : [0, 1.35, 3.2];
+      cameraMode === 'showcase' ? [0, 0.8, 0] : [0, 1.35, portrait ? 2.4 : 3.2];
 
     if (cameraMode === '2d') {
-      camera.position.set(0, narrow ? 118 : 54, narrow ? 16 : 12);
+      camera.position.set(0, portrait ? 68 : 54, portrait ? 8 : 12);
     } else if (cameraMode === 'showcase') {
       // Locked cinematic framing inspired by a premium operations dashboard.
       // The original interactive isometric and top-down cameras stay intact.
-      camera.position.set(0, narrow ? 86 : 32, narrow ? 84 : 42);
+      camera.position.set(0, portrait ? 48 : 32, portrait ? 55 : 42);
     } else {
-      // Portrait screens need a steeper angle. The previous low angle kept
-      // the full width visible but compressed the office depth into a thin
-      // strip, making rooms and characters difficult to read on mobile.
-      // Distances bumped ~25% over the 7-room building to keep the wider
-      // 12-room (4x3) building fully framed.
-      camera.position.set(0, narrow ? 76 : 20, narrow ? 96 : 32);
+      // Portrait screens need a closer and more vertical profile. The old
+      // long-distance framing kept every edge visible but made rooms, desks
+      // and people too small to understand on a phone.
+      camera.position.set(0, portrait ? 46 : 20, portrait ? 58 : 32);
     }
     camera.lookAt(...target);
 
@@ -45,7 +43,7 @@ function ResponsiveCamera({ cameraMode }: { cameraMode: CameraMode }) {
       // is the standard r3f pattern, same as the position.set/lookAt calls above.
       // eslint-disable-next-line react-hooks/immutability
       camera.fov =
-        cameraMode === 'showcase' ? (narrow ? 44 : 38) : narrow ? 43 : 40;
+        cameraMode === 'showcase' ? (portrait ? 46 : 38) : portrait ? 46 : 40;
       camera.updateProjectionMatrix();
     }
 
@@ -54,7 +52,7 @@ function ResponsiveCamera({ cameraMode }: { cameraMode: CameraMode }) {
     // eslint-disable-next-line react-hooks/immutability
     gl.toneMapping = THREE.ACESFilmicToneMapping;
     gl.toneMappingExposure = cameraMode === 'showcase' ? 1.32 : 1;
-  }, [camera, gl, size.width, cameraMode]);
+  }, [camera, gl, size.width, size.height, cameraMode]);
 
   return null;
 }
@@ -69,8 +67,10 @@ export default function OfficeCanvas({ rooms, selectedId, onSelect, onHover, cam
 
   return (
     <Canvas
+      dpr={[1, 1.5]}
       shadows
       camera={{ position: [0, 20, 32], fov: 40 }}
+      style={{ touchAction: 'none' }}
       onPointerMissed={() => onSelect(null)}
     >
       <color attach="background" args={[background]} />

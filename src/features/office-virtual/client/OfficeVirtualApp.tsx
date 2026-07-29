@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Building2, UsersRound } from 'lucide-react';
+import { Box, Building2, Map, Sparkles, UsersRound } from 'lucide-react';
 import { agents } from './agents';
 import ActivacionView from './components/ActivacionView';
 import ActividadView from './components/ActividadView';
@@ -282,10 +282,26 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, workspaceId 
                 cameraMode={cameraMode}
               />
               {cameraMode === 'showcase' && (
-                <div className="onyx-camera-hint" aria-hidden="true">
+                <div className="onyx-camera-hint hidden md:block" aria-hidden="true">
                   Arrastra para girar · rueda para acercar
                 </div>
               )}
+              <div className="onyx-mobile-gesture-hint" aria-hidden="true">
+                Arrastra · pellizca para acercar
+              </div>
+              <div className="onyx-mobile-camera-controls" role="group" aria-label="Vista de la oficina">
+                {isSuperAdmin && (
+                  <button onClick={() => changeCameraMode('showcase')} aria-pressed={cameraMode === 'showcase'} aria-label="Vista Presentación" className={cameraMode === 'showcase' ? 'is-active' : ''}>
+                    <Sparkles aria-hidden="true" />
+                  </button>
+                )}
+                <button onClick={() => changeCameraMode('iso')} aria-pressed={cameraMode === 'iso'} aria-label="Vista operativa" className={cameraMode === 'iso' ? 'is-active' : ''}>
+                  <Box aria-hidden="true" />
+                </button>
+                <button onClick={() => changeCameraMode('2d')} aria-pressed={cameraMode === '2d'} aria-label="Vista superior" className={cameraMode === '2d' ? 'is-active' : ''}>
+                  <Map aria-hidden="true" />
+                </button>
+              </div>
               <section className="onyx-office-hud" aria-label="Estado del equipo digital">
                 <div className="onyx-office-hud__icon"><Building2 size={18} /></div>
                 <div className="min-w-0">
