@@ -434,7 +434,7 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, isDemoPresen
               whatsappAgentName={whatsappAgentName}
             />
           ) : activeView === 'configurador' && canManageOffice ? (
-            <ConfiguradorView {...officeConfigurator} />
+            <ConfiguradorView {...officeConfigurator} demoMode={isDemoPresentation} />
           ) : activeView === 'orquestador' && canManageOffice ? (
             <OrquestadorView feed={orchestratorFeed} agents={officeAgents} connectionFeed={openRouterConnectionFeed} />
           ) : (

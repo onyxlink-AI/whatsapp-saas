@@ -83,8 +83,9 @@ export default function TopBar({
         </div>
 
         {isDemoMode && (
-          <span className="hidden sm:inline-flex items-center rounded-full border border-violet-400/25 bg-violet-500/[0.08] px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.09em] text-violet-200/80">
-            Demo · datos de muestra
+          <span className="inline-flex items-center rounded-full border border-violet-400/25 bg-violet-500/[0.08] px-1.5 sm:px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.09em] text-violet-200/80">
+            <span className="sm:hidden">Demo</span>
+            <span className="hidden sm:inline">Demo · datos de muestra</span>
           </span>
         )}
 

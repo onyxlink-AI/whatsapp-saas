@@ -30,7 +30,7 @@ import {
 } from '../lib/officeConfiguratorStyles';
 import ViewHeader from './ui/ViewHeader';
 
-type Props = OfficeConfigurator;
+type Props = OfficeConfigurator & { demoMode?: boolean };
 
 const ALL_ACTIONS = Object.keys(SPECIALIST_ACTION_LABEL_ES) as OfficeSpecialistAction[];
 const ALL_APPROVAL_POLICIES = Object.keys(APPROVAL_POLICY_LABEL_ES) as OfficeApprovalPolicy[];
@@ -458,6 +458,7 @@ function SectorPicker({ sectorId, preview, onPreview, onApply, onClear }: {
 
 export default function ConfiguradorView(props: Props) {
   const {
+    demoMode = false,
     loading,
     loadError,
     saving,
@@ -505,9 +506,11 @@ export default function ConfiguradorView(props: Props) {
     <div className="h-full min-h-0 flex flex-col overflow-hidden">
       <ViewHeader
         icon={SlidersHorizontal}
-        eyebrow="Oficina Virtual · Solo superadministración"
+        eyebrow={demoMode ? 'Oficina Virtual · Demostración interactiva' : 'Oficina Virtual · Solo superadministración'}
         title="Configurador"
-        description="Personalización real para esta empresa. Se guarda en el servidor y persiste al recargar."
+        description={demoMode
+          ? 'Prueba plantillas, especialistas y publicaciones sin conectar servicios reales. Los cambios se reinician al recargar.'
+          : 'Personalización real para esta empresa. Se guarda en el servidor y persiste al recargar.'}
         meta={
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border text-violet-300/70 border-violet-400/25 bg-violet-500/[0.05]">
@@ -517,7 +520,14 @@ export default function ConfiguradorView(props: Props) {
             <span className="text-[10px] text-white/28">Revisión {revision} · {relativeTime(updatedAt, now)}</span>
           </div>
         }
-        guide={{
+        guide={demoMode ? {
+          title: 'Entorno de demostración',
+          items: [
+            'Puedes editar, activar y publicar para recorrer el flujo completo.',
+            'Nada se guarda en la empresa ni se envía a integraciones externas.',
+            'Al recargar, la configuración de muestra vuelve a su estado inicial.',
+          ],
+        } : {
           title: 'Configuración protegida',
           items: [
             'Los cambios afectan únicamente a la empresa indicada en esta cabecera.',
