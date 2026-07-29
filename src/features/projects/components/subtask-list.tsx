@@ -28,6 +28,7 @@ export function SubtaskList({ taskId }: SubtaskListProps) {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- refetches subtasks whenever the parent task changes.
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId]);

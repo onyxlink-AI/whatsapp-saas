@@ -181,7 +181,7 @@ export function HowToPanel({
 
   React.useEffect(() => {
     const saved = window.localStorage.getItem("ui-kit-howto");
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-only: localStorage doesn't exist during SSR, so both server and first client render start "open" (the useState default) and only close after mount if the user had previously dismissed it — no hydration mismatch.
     if (saved === "closed") setOpen(false);
   }, []);
 

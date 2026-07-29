@@ -49,6 +49,7 @@ export function AgendaTaskFormDialog({
 
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets the form to the target task's values each time the dialog opens.
     setTitle(task?.title ?? "");
     setNotes(task?.notes ?? "");
     if (task) {

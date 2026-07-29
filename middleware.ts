@@ -74,5 +74,13 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/).*)"],
+  // brand/ and avatars/ are public/ assets served at the root (logos, default
+  // avatars); icon.png is the App Router favicon convention. All three need to
+  // stay reachable without a session — otherwise Next's built-in image
+  // optimizer (which fetches them via its own cookie-less internal request)
+  // gets redirected to /login instead of image bytes and fails with
+  // "isn't a valid image" (400), breaking every next/image using them.
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|api/|brand/|avatars/|icon.png).*)",
+  ],
 };

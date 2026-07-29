@@ -27,6 +27,7 @@ export function DayView({ workspaceId, date, onDateChange }: DayViewProps) {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- refetches this day's tasks whenever workspace/date changes.
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId, date]);

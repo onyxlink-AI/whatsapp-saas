@@ -91,6 +91,7 @@ export function ProjectDetailDialog({
       setDescription(data.description ?? "");
       setNotes(data.notes ?? "");
     });
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- refetches the project's subtasks whenever the open project changes.
     void refreshTasks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);

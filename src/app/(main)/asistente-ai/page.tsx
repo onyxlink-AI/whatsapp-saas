@@ -18,6 +18,13 @@ export default async function AsistenteAiPage() {
   const membership = await getActiveWorkspace(supabase, user.id);
 
   if (!membership) {
+    // Super admins without a personal workspace belong in the agency panel, not a dead end.
+    const { data: userRow } = await supabase
+      .from("users")
+      .select("is_super_admin")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (userRow?.is_super_admin) redirect("/workspaces");
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <p className="text-muted-foreground text-sm">No encontramos tu negocio. Pídele acceso a quien te invitó.</p>

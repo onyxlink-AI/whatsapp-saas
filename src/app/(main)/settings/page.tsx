@@ -4,6 +4,7 @@ import { createClient as createSbClient } from "@supabase/supabase-js";
 import { getActiveWorkspace } from "@/features/workspace/services/active-workspace";
 import { listAgents } from "@/features/agents/services/agent-queries";
 import { SettingsShell } from "@/features/settings/components/settings-shell";
+import { getVapiConnectionStatus } from "@/features/voice-agent/services/vapi-verification";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -28,7 +29,7 @@ export default async function SettingsPage() {
     }
     return (
       <div className="p-8 text-sm text-muted-foreground">
-        Sin workspace asignado. Contacta al administrador.
+        No tienes una empresa asignada. Contacta al administrador.
       </div>
     );
   }
@@ -64,7 +65,7 @@ export default async function SettingsPage() {
       .eq("workspace_id", workspaceId),
     svc
       .from("workspaces")
-      .select("advanced_memory_enabled, pipeline_ai_enabled, cold_lead_recovery_enabled, vapi_assistant_id, cross_channel_memory_enabled, whatsapp_agent_enabled, gestion_enabled")
+      .select("advanced_memory_enabled, pipeline_ai_enabled, cold_lead_recovery_enabled, vapi_assistant_id, cross_channel_memory_enabled, whatsapp_agent_enabled, gestion_enabled, office_virtual_enabled, chatbot_enabled")
       .eq("id", workspaceId)
       .single(),
     svc.from("users").select("is_super_admin").eq("id", user.id).maybeSingle(),
@@ -127,6 +128,11 @@ export default async function SettingsPage() {
     }),
   );
 
+  const vapiAssistantId = (workspaceData?.vapi_assistant_id as string | null) ?? null;
+  // Server-only: the VAPI_API_KEY used inside this call never reaches the
+  // client — only the resulting status label does.
+  const vapiStatus = await getVapiConnectionStatus(vapiAssistantId);
+
   return (
     <SettingsShell
       workspaceId={workspaceId}
@@ -139,11 +145,14 @@ export default async function SettingsPage() {
       initialAdvancedMemoryEnabled={workspaceData?.advanced_memory_enabled === true}
       initialPipelineAiEnabled={workspaceData?.pipeline_ai_enabled === true}
       initialColdLeadRecoveryEnabled={workspaceData?.cold_lead_recovery_enabled === true}
-      initialVapiAssistantId={(workspaceData?.vapi_assistant_id as string | null) ?? null}
+      initialVapiAssistantId={vapiAssistantId}
+      initialVapiStatus={vapiStatus.status}
       initialCrossChannelMemoryEnabled={workspaceData?.cross_channel_memory_enabled === true}
       isSuperAdmin={isSuperAdmin}
       hasWhatsappAgent={workspaceData?.whatsapp_agent_enabled !== false}
       initialGestionEnabled={workspaceData?.gestion_enabled === true}
+      initialOfficeVirtualEnabled={workspaceData?.office_virtual_enabled === true}
+      initialChatbotEnabled={workspaceData?.chatbot_enabled === true}
     />
   );
 }

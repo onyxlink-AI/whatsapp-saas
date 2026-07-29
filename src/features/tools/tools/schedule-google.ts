@@ -118,6 +118,8 @@ export const scheduleGoogleTool: Tool<Args> = {
   description:
     "Reserva una cita directamente en el Google Calendar del negocio. Úsalo cuando el cliente confirme una fecha y hora específicas. Llama primero a check_availability_google para ofrecer horarios reales. Incluye siempre 'notes' con un resumen de la conversación para que quien atienda la cita sepa qué preparar.",
   sensitivity: "write",
+  simulationMessage:
+    "Esta acción requiere conectar Google Calendar. Crearía una cita con estos datos.",
   schema,
   enabledFor: () => true,
   run,

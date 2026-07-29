@@ -175,6 +175,8 @@ export const scheduleHighLevelTool: Tool<Args> = {
   description:
     "Reserva una cita directamente en el calendario de HighLevel. Úsalo cuando el cliente confirme una fecha y hora específicas. Llama primero a check_availability para ofrecer horarios reales.",
   sensitivity: "write",
+  simulationMessage:
+    "Prepararía este contacto para el CRM y crearía una cita con estos datos.",
   schema,
   enabledFor: () => true,
   run,

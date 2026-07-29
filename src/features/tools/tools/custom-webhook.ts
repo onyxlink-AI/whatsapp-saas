@@ -149,6 +149,7 @@ export const customWebhookTool: Tool<Args> = {
   description:
     "Envía los datos del contacto a un webhook externo configurado por el negocio. Úsalo cuando debas notificar o registrar al contacto en un sistema externo.",
   sensitivity: "sensitive",
+  simulationMessage: "Solicitaría aprobación antes de enviar esta acción.",
   schema,
   enabledFor: () => true,
   run,

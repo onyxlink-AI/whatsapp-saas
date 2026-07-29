@@ -54,6 +54,7 @@ export function GlobalSearchDialog({
 
   useEffect(() => {
     if (!open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clears the search when the dialog closes.
       setQuery("");
       setResults([]);
     }
@@ -61,6 +62,7 @@ export function GlobalSearchDialog({
 
   useEffect(() => {
     if (!query.trim()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clears stale results when the query is emptied.
       setResults([]);
       return;
     }

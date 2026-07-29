@@ -20,7 +20,7 @@ import { PROVIDER_LOGOS } from "./provider-logos";
 export function ModelPicker({
   value,
   onChange,
-  emptyHint = "Si no eliges modelo, se usa el del workspace.",
+  emptyHint = "Si no eliges modelo, se usa el de la empresa.",
 }: {
   value: string | null;
   onChange: (id: string) => void;

@@ -1,0 +1,773 @@
+/* Oficina Virtual — scoped visual layer ported from the Agencia IA
+   prototype. Everything here is scoped under .onyx-app so it can't leak
+   into the rest of the whatsapp-saas panel (which already ships its own
+   Tailwind v3 + shadcn theme). No @tailwind/@theme directives here —
+   Tailwind utility classes used inside .onyx-app (bg-white/[0.03], etc.)
+   are picked up automatically by the panel's existing Tailwind config. */
+
+.onyx-app {
+  --onyx-black: #050407;
+  --onyx-panel: #09080c;
+  --onyx-line: rgba(255, 255, 255, 0.075);
+  --onyx-violet: #7c3aed;
+  --onyx-surface: rgba(255, 255, 255, 0.028);
+  --onyx-surface-hover: rgba(255, 255, 255, 0.05);
+  --onyx-focus: rgba(167, 139, 250, 0.72);
+  color-scheme: dark;
+  background:
+    linear-gradient(rgba(124, 58, 237, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 58, 237, 0.018) 1px, transparent 1px),
+    var(--onyx-black);
+  background-size: 36px 36px;
+}
+
+.onyx-app * {
+  box-sizing: border-box;
+}
+
+.onyx-app button,
+.onyx-app input,
+.onyx-app textarea {
+  font: inherit;
+}
+
+.onyx-app button {
+  cursor: pointer;
+}
+
+.onyx-app button:disabled {
+  cursor: not-allowed;
+}
+
+.onyx-app :where(button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--onyx-focus);
+  outline-offset: 2px;
+}
+
+.onyx-app main {
+  min-height: 0;
+}
+
+.onyx-sidebar {
+  background: linear-gradient(180deg, #09080b 0%, #070608 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.065);
+  box-shadow: 12px 0 36px rgba(0, 0, 0, 0.2);
+}
+
+.onyx-brand {
+  border-bottom: 1px solid var(--onyx-line);
+  background: rgba(255, 255, 255, 0.012);
+}
+
+.onyx-nav-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 25%;
+  width: 2px;
+  height: 50%;
+  border-radius: 2px;
+  background: transparent;
+}
+
+.onyx-nav-item.is-active {
+  background: linear-gradient(90deg, rgba(124, 58, 237, 0.16), rgba(124, 58, 237, 0.045));
+  box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.09);
+}
+
+.onyx-nav-item.is-active::before {
+  background: #a78bfa;
+  box-shadow: 0 0 9px #7c3aed;
+}
+
+.onyx-identity {
+  border: 1px solid var(--onyx-line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.onyx-topbar {
+  min-height: 64px;
+  background: rgba(8, 7, 10, 0.94);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.065);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(18px);
+}
+
+.onyx-primary-nav {
+  padding: 4px;
+  border: 1px solid var(--onyx-line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.onyx-primary-nav__item {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 11px;
+  border-radius: 7px;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 11px;
+  font-weight: 600;
+  transition: color 160ms, background-color 160ms, box-shadow 160ms;
+}
+
+.onyx-primary-nav__item:hover {
+  color: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.onyx-primary-nav__item.is-active {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(123, 0, 255, 0.88), rgba(108, 43, 217, 0.76));
+  box-shadow: 0 6px 18px rgba(123, 0, 255, 0.22);
+}
+
+.onyx-team-status {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--onyx-line);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.52);
+  background: rgba(255, 255, 255, 0.018);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.onyx-segment,
+.onyx-control,
+.onyx-icon-button {
+  border: 1px solid var(--onyx-line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.onyx-control:hover,
+.onyx-icon-button:hover {
+  border-color: rgba(167, 139, 250, 0.32);
+  background: rgba(124, 58, 237, 0.07);
+}
+
+.onyx-sidebar-nav {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 92, 246, 0.22) transparent;
+}
+
+.onyx-popover {
+  overflow: hidden;
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  border-radius: 7px;
+  background: rgba(12, 10, 15, 0.98);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 28px rgba(124, 58, 237, 0.08);
+  backdrop-filter: blur(20px);
+}
+
+.onyx-mobile-sheet {
+  overflow: hidden;
+  border: 1px solid rgba(167, 139, 250, 0.18);
+  border-radius: 8px;
+  background: rgba(12, 10, 15, 0.985);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(24px);
+  animation: onyx-sheet-in 180ms ease-out;
+}
+
+.onyx-office-hud {
+  position: absolute;
+  left: 20px;
+  bottom: 20px;
+  z-index: 10;
+  width: min(520px, calc(100% - 40px));
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  padding: 14px;
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(11, 9, 15, 0.92), rgba(15, 11, 21, 0.82));
+  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.38), inset 0 1px rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(18px);
+}
+
+.onyx-camera-hint {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  z-index: 9;
+  transform: translateX(-50%);
+  padding: 7px 12px;
+  border: 1px solid rgba(196, 181, 253, 0.2);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.58);
+  background: rgba(8, 5, 13, 0.72);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(12px);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.onyx-office-hud__icon {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(167, 139, 250, 0.24);
+  border-radius: 11px;
+  color: #c4b5fd;
+  background: rgba(123, 0, 255, 0.12);
+}
+
+.onyx-office-hud__eyebrow {
+  color: rgba(196, 181, 253, 0.62);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.onyx-office-hud__title {
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.onyx-office-hud p {
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.onyx-office-hud__action {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 13px;
+  border: 1px solid rgba(167, 139, 250, 0.24);
+  border-radius: 9px;
+  color: rgba(255, 255, 255, 0.88);
+  background: rgba(123, 0, 255, 0.12);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.onyx-office-hud__action:hover {
+  border-color: rgba(167, 139, 250, 0.42);
+  background: rgba(123, 0, 255, 0.2);
+}
+
+.onyx-empty-team {
+  max-width: 620px;
+  margin: 7vh auto 0;
+  padding: 36px 28px;
+  border: 1px solid rgba(167, 139, 250, 0.16);
+  border-radius: 14px;
+  background: radial-gradient(circle at top, rgba(123, 0, 255, 0.1), transparent 62%), rgba(255, 255, 255, 0.018);
+  text-align: center;
+}
+
+.onyx-empty-team__icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+  border: 1px solid rgba(167, 139, 250, 0.22);
+  border-radius: 13px;
+  color: #c4b5fd;
+  background: rgba(123, 0, 255, 0.11);
+}
+
+.onyx-empty-team h2 {
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.onyx-empty-team p {
+  max-width: 470px;
+  margin: 7px auto 0;
+  color: rgba(255, 255, 255, 0.43);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.onyx-config-launchpad {
+  padding: 18px;
+  border: 1px solid rgba(167, 139, 250, 0.18);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(123, 0, 255, 0.13), transparent 34%),
+    rgba(255, 255, 255, 0.022);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.025);
+}
+
+.onyx-report-builder {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--onyx-line);
+  background: linear-gradient(100deg, rgba(123, 0, 255, 0.055), rgba(255, 255, 255, 0.012) 58%);
+}
+
+.onyx-report-template {
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.022);
+  transition: border-color 160ms, background-color 160ms, transform 160ms;
+}
+
+.onyx-report-template:hover {
+  border-color: rgba(167, 139, 250, 0.27);
+  background: rgba(123, 0, 255, 0.07);
+  transform: translateY(-1px);
+}
+
+.onyx-report-template__icon {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  border-radius: 9px;
+  color: #c4b5fd;
+  background: rgba(123, 0, 255, 0.09);
+}
+
+@keyframes onyx-sheet-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.onyx-popover.onyx-agent-menu {
+  max-height: min(20rem, calc(100dvh - 4.5rem));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.onyx-input {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(0, 0, 0, 0.36);
+  color: rgba(255, 255, 255, 0.9);
+  outline: none;
+  transition: border-color 160ms, box-shadow 160ms;
+}
+
+.onyx-input::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.onyx-input:focus {
+  border-color: rgba(167, 139, 250, 0.58);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+.onyx-input:is(textarea) {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.onyx-chat {
+  border-left: 1px solid rgba(167, 139, 250, 0.22);
+  background: linear-gradient(180deg, rgba(10, 8, 13, 0.985), rgba(6, 5, 8, 0.985));
+  box-shadow: -24px 0 70px rgba(0, 0, 0, 0.58), -2px 0 24px rgba(124, 58, 237, 0.08);
+  backdrop-filter: blur(22px);
+}
+
+.onyx-view-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--onyx-line);
+  background: linear-gradient(90deg, rgba(124, 58, 237, 0.035), transparent 48%);
+}
+
+.onyx-view-header__main {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  max-width: 1400px;
+}
+
+.onyx-view-header__icon {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(167, 139, 250, 0.22);
+  border-radius: 7px;
+  color: rgba(216, 200, 255, 0.9);
+  background: rgba(124, 58, 237, 0.085);
+}
+
+.onyx-view-header__eyebrow {
+  margin-bottom: 3px;
+  color: rgba(196, 181, 253, 0.58);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.onyx-view-header__title {
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.onyx-view-header__description {
+  max-width: 760px;
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.43);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.onyx-view-header__tools {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.onyx-header-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.onyx-header-stat > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+}
+
+.onyx-guide {
+  position: relative;
+}
+
+.onyx-guide > summary {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid var(--onyx-line);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.52);
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 11px;
+  cursor: pointer;
+  list-style: none;
+  white-space: nowrap;
+}
+
+.onyx-guide > summary::-webkit-details-marker {
+  display: none;
+}
+
+.onyx-guide[open] > summary,
+.onyx-guide > summary:hover {
+  border-color: rgba(167, 139, 250, 0.3);
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(124, 58, 237, 0.07);
+}
+
+.onyx-guide__content {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(330px, calc(100vw - 32px));
+  padding: 14px;
+  border: 1px solid rgba(167, 139, 250, 0.18);
+  border-radius: 7px;
+  background: rgba(13, 11, 16, 0.99);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.48);
+}
+
+.onyx-guide__title {
+  margin-bottom: 8px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.onyx-guide__content ul {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.onyx-guide__content li {
+  position: relative;
+  padding-left: 13px;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.onyx-guide__content li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #8b5cf6;
+}
+
+.onyx-agent-card {
+  min-height: 330px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.022);
+  transition: border-color 160ms, background-color 160ms, transform 160ms;
+}
+
+.onyx-agent-card:hover {
+  border-color: rgba(167, 139, 250, 0.18);
+  background: rgba(255, 255, 255, 0.032);
+  transform: translateY(-1px);
+}
+
+.onyx-agent-card__department {
+  max-width: 130px;
+  overflow: hidden;
+  padding: 4px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 5px;
+  color: rgba(255, 255, 255, 0.38);
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.onyx-agent-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 5px;
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 10px;
+  font-weight: 550;
+}
+
+.onyx-agent-activity,
+.onyx-agent-load {
+  min-height: 67px;
+  padding: 10px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.onyx-agent-load {
+  text-align: center;
+}
+
+.onyx-contact-row {
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.onyx-contact-row:hover {
+  border-color: rgba(167, 139, 250, 0.18);
+  background: rgba(124, 58, 237, 0.045);
+}
+
+.onyx-placeholder {
+  background:
+    radial-gradient(circle at center, rgba(124, 58, 237, 0.065), transparent 33%),
+    linear-gradient(rgba(124, 58, 237, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 58, 237, 0.025) 1px, transparent 1px);
+  background-size: auto, 40px 40px, 40px 40px;
+}
+
+.onyx-app ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.onyx-app ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.onyx-app ::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.32);
+  border-radius: 2px;
+}
+.onyx-app ::-webkit-scrollbar-thumb:hover {
+  background: rgba(167, 139, 250, 0.62);
+}
+
+@media (max-width: 767px) {
+  .onyx-topbar {
+    min-height: 58px;
+  }
+
+  .onyx-office-hud {
+    left: 12px;
+    bottom: 12px;
+    width: calc(100% - 24px);
+    grid-template-columns: 38px minmax(0, 1fr);
+    padding: 12px;
+  }
+
+  .onyx-office-hud__icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .onyx-office-hud__action {
+    grid-column: 1 / -1;
+    min-height: 44px;
+  }
+
+  .onyx-camera-hint {
+    top: 10px;
+    font-size: 9px;
+  }
+
+  .onyx-config-launchpad {
+    padding: 14px;
+  }
+
+  .onyx-report-builder {
+    padding: 14px 16px;
+  }
+
+  .onyx-view-header {
+    padding: 17px 16px 14px;
+  }
+
+  .onyx-view-header__main {
+    gap: 11px;
+  }
+
+  .onyx-view-header__icon {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+  }
+
+  .onyx-view-header__tools {
+    position: static;
+  }
+
+  .onyx-guide > summary span {
+    display: none;
+  }
+
+  .onyx-guide > summary {
+    width: 34px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .onyx-guide__content {
+    right: 16px;
+    top: 58px;
+  }
+}
+
+/* Floating 3D room sign (OfficeRoom.tsx's <Html> label) — was previously
+   completely unstyled (no matching rule existed anywhere), so it rendered
+   as unreadable default black-on-transparent browser text and, lacking
+   `pointer-events: none`, could intercept drag gestures meant for
+   OrbitControls when the cursor passed over a sign. Font size and contrast
+   are deliberately generous since this sits inside a 3D perspective view,
+   where text reads smaller than its nominal size suggests. */
+.office-sign {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 13px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(8, 8, 12, 0.86);
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.32);
+  pointer-events: none;
+  user-select: none;
+}
+
+.office-sign__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--agent-color, #7c3aed);
+  box-shadow: 0 0 7px var(--agent-color, #7c3aed);
+}
+
+.showcase-screen-brand {
+  width: 190px;
+  padding: 20px 16px;
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-align: center;
+  text-shadow: 0 0 18px rgba(139, 92, 246, 0.75);
+  pointer-events: none;
+  user-select: none;
+}
+
+.showcase-screen-brand span {
+  color: #c4b5fd;
+  font-weight: 400;
+}
+
+.showcase-screen-brand small {
+  display: block;
+  margin-top: 6px;
+  color: rgba(196, 181, 253, 0.62);
+  font-size: 7px;
+  font-weight: 600;
+  letter-spacing: 0.32em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onyx-app *, .onyx-app *::before, .onyx-app *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

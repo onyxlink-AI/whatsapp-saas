@@ -64,17 +64,17 @@ export function InboxLayout({
   }, [conversations, search, activeTab]);
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden">
+    <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-card">
       {/* Left panel — conversation list */}
       <aside
         className={cn(
-          "w-full md:w-80 shrink-0 border-r border-border/50 flex-col overflow-hidden",
+          "w-full md:w-80 xl:w-96 shrink-0 border-r border-border/70 bg-card flex-col overflow-hidden",
           isThreadView ? "hidden md:flex" : "flex",
         )}
         aria-label="Conversaciones"
       >
         {/* Header */}
-        <div className="shrink-0 px-4 pt-3 pb-2 border-b border-border/50 space-y-2">
+        <div className="shrink-0 space-y-3 border-b border-border/70 px-4 pb-3 pt-4">
           <div className="flex items-baseline justify-between">
             <h1 className="font-display text-sm font-semibold text-foreground">
               💬 Conversaciones
@@ -115,7 +115,7 @@ export function InboxLayout({
                 size="sm"
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "h-6 px-2 text-[11px] rounded-md transition-colors",
+                  "h-7 rounded-lg px-2.5 text-[11px] transition-colors",
                   activeTab === tab.id
                     ? "bg-primary/10 text-primary font-medium"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/40",

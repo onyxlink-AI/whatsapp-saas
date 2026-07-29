@@ -1,0 +1,82 @@
+-- ============================================================================
+-- Least-privilege fix: auth_workspace_ids() / auth_has_role() / is_super_admin()
+-- are callable by anon, which should never be able to invoke them.
+--
+-- Diagnosis
+-- ---------
+-- Both functions are SECURITY DEFINER — necessary, because `memberships`
+-- itself has an RLS policy that calls auth_workspace_ids(); the helper must
+-- run with the owner's privileges to read memberships directly, or every
+-- policy using it would need to evaluate itself to evaluate itself.
+--
+-- 20260608000008_sec02_function_hardening.sql already tried to lock this
+-- down with `REVOKE EXECUTE ON FUNCTION public.auth_workspace_ids() FROM
+-- anon;`, but that REVOKE was a no-op. PostgreSQL grants EXECUTE on every
+-- new function to the PUBLIC pseudo-role by default, and every role
+-- (including anon) is implicitly a member of PUBLIC. Revoking a privilege
+-- from one specific role never touches an equivalent privilege still held
+-- via PUBLIC membership. Confirmed on the current database before this
+-- migration:
+--   SELECT proacl FROM pg_proc WHERE proname = 'auth_workspace_ids';
+--   -- {=X/postgres,postgres=X/postgres}   ("=X" with no rolename = PUBLIC)
+--   SELECT has_function_privilege('anon', 'auth_workspace_ids()', 'execute');
+--   -- true
+--
+-- A real HTTP request against the local stack confirms it end-to-end:
+--   POST /rest/v1/rpc/auth_workspace_ids  (apikey: anon key only)
+--   -> HTTP 200, body: []
+-- HTTP 200 is the exposure — an internal RLS helper should return 42501
+-- permission denied to an anonymous caller, not a 200. The body is an empty
+-- array because auth.uid() is NULL for an anon-authenticated request, so
+-- the function's own WHERE clause matches no rows in `memberships` — so
+-- this has not leaked membership data in practice, but the privilege itself
+-- is real: its safety today depends entirely on auth.uid() being NULL for
+-- anon, not on any actual permission boundary, and it needlessly exposes an
+-- internal helper as a callable RPC endpoint to unauthenticated callers.
+--
+-- 58 RLS policies across 30 tables (workspaces, memberships, contacts,
+-- conversations, messages, prompts, agents, office_virtual_configurations,
+-- ...) call auth_workspace_ids() in their USING/WITH CHECK clauses, and 41
+-- policies call auth_has_role() — every one of them runs as the
+-- `authenticated` Postgres role when a logged-in user queries through
+-- PostgREST with RLS enforced. authenticated MUST keep EXECUTE or every
+-- one of those policies breaks immediately (RLS evaluates as the querying
+-- role — losing EXECUTE here is not "less access", it's "every tenant
+-- table returns permission-denied for every logged-in user"). service_role
+-- does not call either function anywhere in the app (`grep -rn
+-- auth_workspace_ids\|auth_has_role src/` returns nothing outside tests)
+-- and has BYPASSRLS, so it never needs EXECUTE here.
+--
+-- Same bug, same fix, one more function
+-- --------------------------------------
+-- 20260609000001_super_admin.sql defines public.is_super_admin() with the
+-- identical anti-pattern (`REVOKE EXECUTE ... FROM anon` right after
+-- creating it — same no-op, same PUBLIC grant left standing; confirmed:
+-- has_function_privilege('anon', 'is_super_admin()', 'execute') = true
+-- before this migration). It is SECURITY DEFINER for the same reason
+-- (reads `users.is_super_admin`, and is itself called from the
+-- `workspaces_select_members` / `memberships_select_members` policies'
+-- `OR public.is_super_admin()` clause, which — unlike auth_workspace_ids —
+-- deliberately lets a platform super admin see every workspace/membership
+-- row, not just ones they hold a membership in; that is intended
+-- application behavior, not a leak). The app itself never calls this
+-- function via RPC either (`grep -rn is_super_admin src/` shows every
+-- call site reads the `users.is_super_admin` column directly through
+-- requireSuperAdmin()/workspace-access.ts, never `.rpc('is_super_admin')`),
+-- so the same authenticated-only fix applies.
+--
+-- Fix
+-- ---
+-- Revoke the PUBLIC default grant (the actual hole) and grant EXECUTE back
+-- to authenticated explicitly — revoking from PUBLIC also removes what
+-- authenticated was getting through it, so both statements are required
+-- together, in this order.
+-- ============================================================================
+
+REVOKE EXECUTE ON FUNCTION public.auth_workspace_ids() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.auth_has_role(uuid, public.workspace_role[]) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.is_super_admin() FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.auth_workspace_ids() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.auth_has_role(uuid, public.workspace_role[]) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_super_admin() TO authenticated;

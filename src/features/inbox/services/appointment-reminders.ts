@@ -44,6 +44,9 @@ async function formatApptTime(workspaceId: string, scheduledAt: string): Promise
       hour12: false,
     }).format(new Date(scheduledAt));
   } catch {
+    // Intl.DateTimeFormat throws for an invalid IANA timezone string — a raw
+    // UTC HH:MM is a safe, never-crashing fallback for a template variable,
+    // not a silently swallowed real error.
     return new Date(scheduledAt).toISOString().slice(11, 16);
   }
 }

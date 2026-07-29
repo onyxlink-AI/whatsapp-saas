@@ -8,6 +8,7 @@ import {
   getConversationStateBreakdown,
 } from "@/features/dashboard/services/metrics";
 import { DashboardMetrics } from "@/features/dashboard/components/dashboard-metrics";
+import { isOfficeVirtualEnabled } from "@/features/office-virtual/access";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,13 @@ export default async function DashboardPage() {
   const membership = await getActiveWorkspace(supabase, user.id);
 
   if (!membership) {
+    // Super admins without a personal workspace belong in the agency panel, not a dead end.
+    const { data: userRow } = await supabase
+      .from("users")
+      .select("is_super_admin")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (userRow?.is_super_admin) redirect("/workspaces");
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <p className="text-muted-foreground text-sm">
@@ -34,7 +42,7 @@ export default async function DashboardPage() {
 
   const { data: workspaceFlagsRow } = await supabase
     .from("workspaces")
-    .select("whatsapp_agent_enabled")
+    .select("whatsapp_agent_enabled, office_virtual_enabled")
     .eq("id", membership.workspace_id)
     .maybeSingle();
 
@@ -62,6 +70,7 @@ export default async function DashboardPage() {
       recentConversations={recentConversations}
       messageVolume={messageVolume}
       conversationStates={conversationStates}
+      hasOfficeVirtual={isOfficeVirtualEnabled(workspaceFlagsRow)}
     />
   );
 }

@@ -4,7 +4,7 @@ import { recordLlmUsage } from "./cost-tracker";
 import { dispatchText, dispatchTemplate } from "./dispatch";
 import { decide, applyTransition } from "./decision-engine";
 import type { ToolContext } from "@/features/tools/core/tool";
-import { resolveSystemPrompt } from "./prompt-resolver";
+import { resolvePromptById, resolveSystemPrompt } from "./prompt-resolver";
 import { buildSystemPrompt } from "./prompt-builder";
 import { getActiveAgent } from "@/features/agents/services/active-agent";
 import { maybeAutoProcess } from "@/features/agents/services/auto-tagging";
@@ -363,10 +363,12 @@ export async function processNextBatch(): Promise<ProcessBatchResult> {
       contactMemory,
       memoryItems,
     ] = await Promise.all([
-      resolveSystemPrompt(
-        batch.workspace_id,
-        activeAgent ? { mode: activeAgent.type } : {},
-      ),
+      activeAgent?.promptId
+        ? resolvePromptById(batch.workspace_id, activeAgent.promptId)
+        : resolveSystemPrompt(
+            batch.workspace_id,
+            activeAgent ? { mode: activeAgent.type } : {},
+          ),
       getBusinessInfo(batch.workspace_id),
       searchKb(batch.workspace_id, mergedText, 3),
       listKbSourceLinks(batch.workspace_id),

@@ -35,6 +35,7 @@ export function GoogleCalendarPanel({ workspaceId, viewMode, date }: GoogleCalen
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- shows the loading state before refetching whenever the date/view range changes.
     setState((s) => ({ ...s, loading: true }));
 
     const anchor = parseISO(date);

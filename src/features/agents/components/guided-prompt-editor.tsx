@@ -44,9 +44,9 @@ export function GuidedPromptEditor({ workspaceId, agent, onPublished }: Props) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        promptName: `Agente ${agent.type}`,
+        promptName: `Agente ${agent.name}`,
         scope: "mode",
-        scopeRef: agent.type,
+        scopeRef: `agent:${agent.id}`,
         body,
         guardrails: {
           rules: linesToArray(rules),
@@ -108,11 +108,18 @@ export function GuidedPromptEditor({ workspaceId, agent, onPublished }: Props) {
       // Point the agent at the just-published prompt so it's the one read back
       // (listAgents reads promptBody via agent.prompt_id). Without this the
       // editor reverts to the seeded prompt when re-mounted.
-      await fetch(`/api/workspace/${workspaceId}/agents`, {
+      const linkRes = await fetch(`/api/workspace/${workspaceId}/agents`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ agentId: agent.id, promptId: draft.promptId }),
       });
+      const linkJson = (await linkRes.json()) as { error?: string };
+      if (!linkRes.ok) {
+        toast.error(
+          linkJson.error ?? "El prompt se publicó, pero no pudo asignarse al agente",
+        );
+        return;
+      }
       toast.success("Prompt publicado");
       onPublished(body);
       router.refresh();

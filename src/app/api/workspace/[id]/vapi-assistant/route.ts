@@ -12,6 +12,7 @@ import {
 } from "@/lib/auth/workspace-access";
 import { createClient as createSbClient } from "@supabase/supabase-js";
 import { logAudit } from "@/features/audit/services/audit-log";
+import { getVapiConnectionStatus } from "@/features/voice-agent/services/vapi-verification";
 
 function svc() {
   return createSbClient(
@@ -43,7 +44,12 @@ export async function GET(
     );
   }
 
-  return NextResponse.json({ assistantId: data.vapi_assistant_id as string | null });
+  const assistantId = data.vapi_assistant_id as string | null;
+  // The verification call (when a platform VAPI_API_KEY exists) happens
+  // server-side only — the key itself never reaches this response or the browser.
+  const { status, detail } = await getVapiConnectionStatus(assistantId);
+
+  return NextResponse.json({ assistantId, status, detail });
 }
 
 // ── PATCH /api/workspace/[id]/vapi-assistant ────────────────────────────────

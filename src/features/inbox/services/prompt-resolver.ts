@@ -38,6 +38,57 @@ export interface PromptContext {
 }
 
 /**
+ * Resolves one explicitly selected prompt. Agent profiles use this path so two
+ * agents with the same role never share instructions by accident.
+ */
+export async function resolvePromptById(
+  workspaceId: string,
+  promptId: string,
+): Promise<ResolvedPrompt | null> {
+  const supabase = svc();
+  const { data, error } = await supabase
+    .from("prompts")
+    .select(
+      `
+      id,
+      scope,
+      active_version_id,
+      prompt_versions!active_version_id (
+        id,
+        body,
+        state,
+        guardrails
+      )
+    `,
+    )
+    .eq("workspace_id", workspaceId)
+    .eq("id", promptId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  type VersionRow = {
+    id: string;
+    body: string;
+    state: string;
+    guardrails: PromptGuardrails | null;
+  };
+  const rawVersion = data.prompt_versions as unknown;
+  const version: VersionRow | null = Array.isArray(rawVersion)
+    ? ((rawVersion[0] as VersionRow) ?? null)
+    : (rawVersion as VersionRow | null);
+  if (!version || version.state !== "published") return null;
+
+  return {
+    body: version.body,
+    promptId: data.id as string,
+    versionId: version.id,
+    scope: data.scope as string,
+    guardrails: version.guardrails ?? null,
+  };
+}
+
+/**
  * Resolves the most specific active+published system prompt for a workspace.
  * Tries each scope in priority order (mode > segment > campaign > number > global).
  * Returns null when no published prompt exists — caller should use a default.
@@ -119,55 +170,26 @@ export async function resolveSystemPrompt(
 /**
  * Publishes a specific prompt version.
  * Sets the version to published, updates active_version_id on the prompt,
- * and marks all other versions of that prompt as draft.
+ * and marks all other versions of that prompt as draft — atomically, and
+ * scoped to `workspaceId` (see publish_prompt_version() migration:
+ * without that scope, a caller who merely knew a prompt/version id from a
+ * DIFFERENT workspace could publish it there).
  */
 export async function publishPromptVersion(
+  workspaceId: string,
   promptId: string,
   versionId: string,
 ): Promise<void> {
   const supabase = svc();
 
-  // Mark the target version as published
-  const { error: versionError } = await supabase
-    .from("prompt_versions")
-    .update({
-      state: "published",
-      published_at: new Date().toISOString(),
-    })
-    .eq("id", versionId)
-    .eq("prompt_id", promptId);
+  const { error } = await supabase.rpc("publish_prompt_version", {
+    p_workspace: workspaceId,
+    p_prompt: promptId,
+    p_version: versionId,
+  });
 
-  if (versionError) {
-    throw new Error(
-      `[prompt-resolver] failed to publish version: ${versionError.message}`,
-    );
-  }
-
-  // Set active_version_id on the parent prompt
-  const { error: promptError } = await supabase
-    .from("prompts")
-    .update({ active_version_id: versionId })
-    .eq("id", promptId);
-
-  if (promptError) {
-    throw new Error(
-      `[prompt-resolver] failed to set active_version_id: ${promptError.message}`,
-    );
-  }
-
-  // Demote all other versions of this prompt back to draft
-  const { error: demoteError } = await supabase
-    .from("prompt_versions")
-    .update({ state: "draft" })
-    .eq("prompt_id", promptId)
-    .neq("id", versionId);
-
-  if (demoteError) {
-    // Non-fatal — log but don't throw; the published version is already set
-    console.error(
-      "[prompt-resolver] failed to demote old versions:",
-      demoteError,
-    );
+  if (error) {
+    throw new Error(`[prompt-resolver] failed to publish version: ${error.message}`);
   }
 }
 

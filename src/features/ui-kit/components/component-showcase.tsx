@@ -115,7 +115,7 @@ const HAS_AGENTATION = process.env.NEXT_PUBLIC_HAS_AGENTATION === "true";
 function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-only flag to defer theme-dependent icon rendering past hydration (same pattern as src/components/theme-toggle.tsx); server and first client render always agree.
   React.useEffect(() => setMounted(true), []);
   const isDark = resolvedTheme === "dark";
   return (

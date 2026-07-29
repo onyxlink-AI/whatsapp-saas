@@ -160,7 +160,7 @@ export function PipelineBoard({
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Busca un negocio o contacto..."
+          placeholder="Busca una oportunidad o contacto..."
           className="h-8 w-56 text-xs"
         />
         <label className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -169,11 +169,11 @@ export function PipelineBoard({
         </label>
         <Button
           size="sm"
-          className="h-8 text-xs gap-1.5 ml-auto"
+          className="ml-auto h-9 gap-1.5 text-xs"
           onClick={() => setCreateOpen(true)}
         >
           <Plus className="h-3.5 w-3.5" />
-          Nuevo negocio
+          Nueva oportunidad
         </Button>
       </div>
 

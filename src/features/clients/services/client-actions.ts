@@ -116,6 +116,9 @@ export async function listClients(
     return [];
   }
 
+  // supabase-js doesn't infer nested-relation selects (CONTACT_SELECT's company
+  // join) — this cast must stay in sync by hand with CONTACT_SELECT's actual
+  // columns/joins; a drift fails silently at runtime, not at compile time.
   return data as unknown as ClientRow[];
 }
 
@@ -141,6 +144,7 @@ export async function getClient(clientId: string): Promise<ClientRow | null> {
     return null;
   }
 
+  // Same CONTACT_SELECT/type-sync caveat as listClients above.
   return data as unknown as ClientRow;
 }
 

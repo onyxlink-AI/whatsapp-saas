@@ -81,7 +81,7 @@ const HANDOFF_PHRASES = [
   "soporte humano",
 ];
 
-function normalizeText(text: string): string {
+export function normalizeText(text: string): string {
   return text
     .toLowerCase()
     .normalize("NFD")
@@ -98,4 +98,22 @@ export function detectsHandoffTrigger(text: string): boolean {
   return HANDOFF_PHRASES.some((phrase) =>
     normalized.includes(normalizeText(phrase)),
   );
+}
+
+/**
+ * Returns the first configured keyword found in `text` (e.g. a business's
+ * own list of concerning aftercare signals — "dolor intenso", "pus",
+ * "fiebre"...), or null when none match. Used by the reminders/follow-up
+ * engine to force a human handoff instead of letting the AI improvise a
+ * medical judgment — see reminders/services/sensitive-guard.ts. Same
+ * accent/case-insensitive matching as detectsHandoffTrigger, kept separate
+ * because this keyword list is business-configured, not a fixed phrase set.
+ */
+export function detectsSensitiveSignal(
+  text: string,
+  keywords: string[],
+): string | null {
+  if (keywords.length === 0) return null;
+  const normalized = normalizeText(text);
+  return keywords.find((k) => normalized.includes(normalizeText(k))) ?? null;
 }

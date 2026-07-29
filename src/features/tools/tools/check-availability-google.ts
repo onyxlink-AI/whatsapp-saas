@@ -51,6 +51,8 @@ export const checkAvailabilityGoogleTool: Tool<Args> = {
   description:
     "Consulta los horarios libres reales del Google Calendar del negocio en un rango de fechas. Úsalo ANTES de agendar para ofrecer al cliente horarios que sí existen.",
   sensitivity: "read",
+  simulationMessage:
+    "Esta acción requiere conectar Google Calendar para consultar la disponibilidad real.",
   schema,
   enabledFor: () => true,
   run,

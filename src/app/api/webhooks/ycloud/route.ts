@@ -20,6 +20,14 @@ import {
 } from "@/features/inbox/services/media-understanding";
 import { syncContactToAirtable } from "@/features/inbox/services/airtable-client";
 import { decryptCredentials } from "@/shared/lib/crypto";
+import {
+  getChatbotRuntimeConfig,
+  type ChatbotServicePorts,
+  type ChatbotStore,
+} from "@/features/chatbot/server/chatbot-service";
+import { handleChatbotWhatsAppInbound } from "@/features/chatbot/server/whatsapp-channel";
+import { resolveChannelReadiness } from "@/features/chatbot/server/channel-readiness";
+import type { ChatbotHead } from "@/features/chatbot/server/chatbot-service";
 
 // Keep the function alive long enough for the best-effort fast path below
 // (sleep through the buffer window + AI generation). The cron is the fallback.
@@ -30,6 +38,40 @@ function svc() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
+}
+
+// 💬 Chatbot ports for this webhook's read-only needs (see the additive
+// branch inside POST below). Never writes — saveHead/appendRevision are
+// only reachable from the Chatbot's own configurator route.
+function chatbotPorts(): ChatbotServicePorts {
+  const client = svc();
+  const store: ChatbotStore = {
+    async loadHead(workspaceId) {
+      const { data, error } = await client
+        .from("chatbots")
+        .select("revision, status, enabled, document, updated_at, updated_by_email")
+        .eq("workspace_id", workspaceId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      return {
+        revision: data.revision,
+        status: data.status,
+        enabled: data.enabled,
+        document: data.document as ChatbotHead["document"],
+        updatedAt: data.updated_at,
+        updatedBy: data.updated_by_email,
+      };
+    },
+    async saveHead() {
+      throw new Error("not supported from the ycloud webhook path");
+    },
+    async appendRevision() {
+      throw new Error("not supported from the ycloud webhook path");
+    },
+  };
+
+  return { store, resolveChannelReadiness };
 }
 
 // WH-02: monotonic status order — never go backwards
@@ -188,6 +230,28 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const workspaceId = ws.workspace_id as string;
+
+    // 💬 Chatbot additive branch — only takes effect when this workspace's
+    // number is Chatbot-owned right now (published+enabled+bound to
+    // 'whatsapp', AND no active Agente WhatsApp — see
+    // getChatbotRuntimeConfig/resolveChannelReadiness). Placed BEFORE
+    // processInbound so a Chatbot-handled message never creates a
+    // contacts/conversations/messages row — "no memoria" by construction,
+    // not just policy. When null (the common case), execution falls
+    // through unchanged to the existing pipeline below.
+    const chatbotRuntime = await getChatbotRuntimeConfig(workspaceId, 'whatsapp', chatbotPorts());
+    if (chatbotRuntime) {
+      await handleChatbotWhatsAppInbound({
+        workspaceId,
+        config: chatbotRuntime,
+        apiKey: creds.ycloud_api_key ?? '',
+        from: normalized.from,
+        to: normalized.workspacePhone,
+        text: normalized.type === 'text' ? normalized.text : null,
+      });
+      return NextResponse.json({ received: true, chatbot: true });
+    }
+
     const { contact, conversation, message } = await processInbound(
       workspaceId,
       normalized,

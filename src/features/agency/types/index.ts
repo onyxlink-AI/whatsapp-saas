@@ -12,6 +12,14 @@ export interface WorkspaceWithStats {
   tokens_30d: number;
   /** true when a cost_alert event fired for this workspace in the last 30 days */
   has_recent_cost_alert: boolean;
+  /** Which of the 5 products this workspace has contracted, straight from the same `workspaces` flags every other surface reads — so the agency table can never disagree with what the client actually sees. */
+  products: {
+    whatsappAgent: boolean;
+    gestion: boolean;
+    voice: boolean;
+    officeVirtual: boolean;
+    chatbot: boolean;
+  };
 }
 
 export type UseCase = "setter" | "soporte" | "agendamiento" | "general";

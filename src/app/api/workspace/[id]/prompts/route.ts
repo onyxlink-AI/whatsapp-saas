@@ -53,6 +53,7 @@ async function resolveWorkspaceMember(
     .select("role")
     .eq("workspace_id", workspaceId)
     .eq("user_id", userId)
+    .eq("is_active", true)
     .maybeSingle();
   return data;
 }
@@ -248,7 +249,7 @@ export async function PATCH(
   }
 
   try {
-    await publishPromptVersion(parsed.data.promptId, parsed.data.versionId);
+    await publishPromptVersion(workspaceId, parsed.data.promptId, parsed.data.versionId);
 
     // Audit — best-effort, never blocks the publish itself.
     const svc = createSbClient(

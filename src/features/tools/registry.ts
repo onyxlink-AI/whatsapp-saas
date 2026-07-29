@@ -103,6 +103,17 @@ class ToolRegistry {
       return { ok: false, output: null, error: parsed.error.message };
     }
 
+    // Test playground: never call the real tool. No calendar booking, no
+    // webhook call, no external API read — just describe what would happen.
+    // Deliberately NOT logged to `events` — a simulated call is not real
+    // telemetry and must not look like one.
+    if (opts?.simulate) {
+      return {
+        ok: true,
+        output: { simulated: true, message: tool.simulationMessage },
+      };
+    }
+
     // SEC-01: sensitive tools require human confirmation — skip execution
     if (tool.sensitivity === "sensitive") {
       const pendingResult: ToolResult = {

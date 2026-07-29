@@ -152,7 +152,7 @@ export function ProjectsBoard({
         />
         <Button
           size="sm"
-          className="h-8 text-xs gap-1.5 ml-auto"
+          className="ml-auto h-9 gap-1.5 text-xs"
           onClick={() => setCreateOpen(true)}
         >
           <Plus className="h-3.5 w-3.5" />

@@ -15,6 +15,7 @@ import {
   Send,
   BookOpen,
   ArrowRight,
+  type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,7 @@ type StatusKey = TemplateRow["status"];
 
 const STATUS_CONFIG: Record<
   StatusKey,
-  { label: string; className: string; Icon: React.ElementType }
+  { label: string; className: string; Icon: LucideIcon }
 > = {
   approved: {
     label: "Aprobado",

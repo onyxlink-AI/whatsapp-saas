@@ -22,7 +22,8 @@ type Provider =
   | "openrouter"
   | "highlevel"
   | "google_calendar"
-  | "airtable";
+  | "airtable"
+  | "telegram";
 
 type IntegrationData = {
   provider: Provider;
@@ -430,7 +431,7 @@ function OpenRouterSection({
         </div>
 
         <div className="space-y-2">
-          <Label>Modelo por defecto (fallback del workspace)</Label>
+          <Label>Modelo por defecto (se usa si un agente no elige otro)</Label>
           <ModelPicker
             value={model}
             onChange={setModel}
@@ -461,6 +462,96 @@ function OpenRouterSection({
             El agente se detendrá cuando alcance este límite diario de tokens.
           </p>
         </div>
+
+        <div className="pt-2">
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleSave}
+            disabled={saving}
+            aria-busy={saving}
+          >
+            {saving && (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
+            )}
+            Guardar
+          </Button>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+// ─── Telegram section (💬 Chatbot channel) ────────────────────────────────────
+
+function TelegramSection({
+  workspaceId,
+  initial,
+  onSaved,
+}: {
+  workspaceId: string;
+  initial: IntegrationData | undefined;
+  onSaved: () => void;
+}) {
+  const [botToken, setBotToken] = useState(
+    initial?.credentials?.telegram_bot_token ?? "",
+  );
+  const [saving, setSaving] = useState(false);
+  const webhookStatus = initial?.config?.telegram_webhook_status as string | undefined;
+  const webhookDetail = initial?.config?.telegram_webhook_detail as string | undefined;
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/workspace/${workspaceId}/integrations`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "telegram",
+          credentials: { telegram_bot_token: botToken },
+        }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (json.ok) {
+        toast.success("Bot de Telegram guardado");
+        onSaved();
+      } else {
+        toast.error(json.error ?? "Error al guardar");
+      }
+    } catch {
+      toast.error("Error de red al guardar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Section
+      title="Telegram"
+      description="Bot de Telegram para el canal del Chatbot. No afecta al Agente de WhatsApp."
+    >
+      <div className="grid gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="tg-bot-token">Token del bot</Label>
+          <Input
+            id="tg-bot-token"
+            type="password"
+            placeholder="123456:ABC-DEF..."
+            value={botToken}
+            onChange={(e) => setBotToken(e.target.value)}
+            autoComplete="off"
+          />
+          <p className="text-xs text-muted-foreground">
+            Créalo con @BotFather en Telegram. El Chatbot se conecta a este
+            bot desde su propia pantalla en el menú principal.
+          </p>
+        </div>
+
+        {webhookStatus && (
+          <p className="text-xs text-muted-foreground">
+            Webhook: {webhookStatus === "registered" ? "registrado" : `error (${webhookDetail ?? "desconocido"})`}
+          </p>
+        )}
 
         <div className="pt-2">
           <Button
@@ -1198,6 +1289,7 @@ export function IntegrationsTab({
   const highlevel = findIntegration(integrations, "highlevel");
   const googleCalendar = findIntegration(integrations, "google_calendar");
   const airtable = findIntegration(integrations, "airtable");
+  const telegram = findIntegration(integrations, "telegram");
 
   return (
     <div className="space-y-6">
@@ -1229,6 +1321,12 @@ export function IntegrationsTab({
       <AirtableSection
         workspaceId={workspaceId}
         initial={airtable}
+        onSaved={refresh}
+      />
+      <Separator />
+      <TelegramSection
+        workspaceId={workspaceId}
+        initial={telegram}
         onSaved={refresh}
       />
     </div>

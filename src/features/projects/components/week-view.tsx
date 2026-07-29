@@ -30,6 +30,7 @@ export function WeekView({ workspaceId, date, onDateChange }: WeekViewProps) {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- refetches this week's tasks whenever workspace/week changes.
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId, weekStart]);

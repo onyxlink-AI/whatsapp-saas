@@ -55,6 +55,8 @@ export const scheduleLinkTool: Tool<Args> = {
   description:
     "Returns a scheduling link so the contact can book an appointment. Use when the user asks to schedule a meeting, appointment, or call.",
   sensitivity: "read",
+  simulationMessage:
+    "Compartiría el link de agendamiento configurado con el cliente.",
   schema,
   enabledFor: () => true,
   run,

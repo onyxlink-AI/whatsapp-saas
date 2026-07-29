@@ -57,8 +57,8 @@ export function ProjectColumn({ status, projects, onSelectProject }: ProjectColu
   const colors = STATUS_COLORS[status];
 
   return (
-    <div className={cn("flex flex-col w-72 shrink-0 rounded-lg border", colors.border)}>
-      <div className={cn("px-3 py-2.5 border-b rounded-t-lg", colors.border, colors.header)}>
+    <div className="surface-subtle flex w-72 shrink-0 flex-col overflow-hidden">
+      <div className="border-b border-border/70 bg-card px-3 py-3">
         <div className="flex items-center justify-between">
           <span className={cn("flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider", colors.text)}>
             <span className={cn("h-1.5 w-1.5 rounded-full", colors.dot)} aria-hidden="true" />
@@ -73,7 +73,7 @@ export function ProjectColumn({ status, projects, onSelectProject }: ProjectColu
       <div
         ref={setNodeRef}
         className={cn(
-          "flex-1 p-2 space-y-2 min-h-[120px] overflow-y-auto transition-colors rounded-b-lg",
+          "min-h-[120px] flex-1 space-y-2 overflow-y-auto p-2 transition-colors",
           isOver && colors.header,
         )}
       >

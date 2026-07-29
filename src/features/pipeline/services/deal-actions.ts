@@ -290,6 +290,9 @@ export async function getDealsForBoard(
     openTaskCounts.set(dealId, (openTaskCounts.get(dealId) ?? 0) + 1);
   }
 
+  // supabase-js doesn't infer nested-relation selects (the deal's contact:contacts(...)
+  // join) — this cast must stay in sync by hand with the actual select() above it;
+  // a drift fails silently at runtime (undefined fields), not at compile time.
   return (deals as unknown as DealWithContact[]).map((deal) => ({
     ...deal,
     open_task_count: openTaskCounts.get(deal.id) ?? 0,
@@ -317,6 +320,7 @@ export async function getDeal(
     return null;
   }
 
+  // Same nested-select type-sync caveat as getDealsForBoard above.
   return { ...(data as unknown as DealWithContact), open_task_count: 0 };
 }
 
@@ -348,6 +352,7 @@ export async function listWorkspaceMembers(
     return [];
   }
 
+  // Same nested-select type-sync caveat: must match the "user_id, users(full_name)" select above.
   return (data as unknown as { user_id: string; users: { full_name: string | null } | null }[]).map(
     (row) => ({
       user_id: row.user_id,

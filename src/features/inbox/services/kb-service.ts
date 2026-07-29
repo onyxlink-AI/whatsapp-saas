@@ -171,11 +171,22 @@ export async function searchKb(
 
   const supabase = svc();
 
-  // Embed the query
-  const { embedding: queryEmbedding } = await embed({
-    model: getEmbeddingModel(apiKey),
-    value: query,
-  });
+  // Embed the query. A bad/expired key or a transient OpenRouter outage must
+  // degrade to "no KB context" instead of throwing — this runs inline in the
+  // reply path (production buffer + the test playground), so an unhandled
+  // rejection here would take down message generation entirely over what is
+  // just an optional context lookup.
+  let queryEmbedding: number[];
+  try {
+    const embedded = await embed({
+      model: getEmbeddingModel(apiKey),
+      value: query,
+    });
+    queryEmbedding = embedded.embedding;
+  } catch (err) {
+    console.error("[kb-service] embed() failed:", err);
+    return [];
+  }
 
   // pgvector cosine distance search via RPC
   // The function `match_kb_chunks` must exist in the DB (see migration notes).

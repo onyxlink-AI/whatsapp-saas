@@ -11,6 +11,11 @@ import {
   Settings,
   Trash2,
   AlertTriangle,
+  MessageCircle,
+  Users,
+  Phone,
+  Network,
+  Bot,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -27,6 +32,40 @@ import type { WorkspaceWithStats } from "../types";
 interface Props {
   workspaces: WorkspaceWithStats[];
   googleServiceAccountEmail?: string;
+}
+
+const PRODUCT_META = [
+  { key: "whatsappAgent", label: "Agente de WhatsApp", Icon: MessageCircle } as const,
+  { key: "gestion", label: "Onyxlink Gestión", Icon: Users } as const,
+  { key: "voice", label: "Asistente de Voz", Icon: Phone } as const,
+  { key: "officeVirtual", label: "Oficina Virtual", Icon: Network } as const,
+  { key: "chatbot", label: "Chatbot", Icon: Bot } as const,
+];
+
+/** Compact "what's contracted" row — same 5 product flags every other surface reads, never a separate computation. */
+function ProductBadges({ products }: { products: WorkspaceWithStats["products"] }) {
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-1">
+      {PRODUCT_META.map(({ key, label, Icon }) => {
+        const active = products[key];
+        return (
+          <span
+            key={key}
+            title={active ? `${label}: contratado` : `${label}: no contratado`}
+            className={cn(
+              "inline-flex h-5 w-5 items-center justify-center rounded-full border",
+              active
+                ? "border-success/30 bg-success/10 text-success"
+                : "border-border/60 text-muted-foreground/40",
+            )}
+          >
+            <Icon className="h-3 w-3" aria-hidden="true" />
+            <span className="sr-only">{label}: {active ? "contratado" : "no contratado"}</span>
+          </span>
+        );
+      })}
+    </div>
+  );
 }
 
 function formatDate(iso: string): string {
@@ -94,11 +133,11 @@ export function WorkspacesTable({
       {/* Toolbar */}
       <div className="mb-4 flex items-center justify-between gap-3">
         <Input
-          placeholder="Buscar workspace..."
+          placeholder="Buscar empresa..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-xs"
-          aria-label="Buscar workspace por nombre o slug"
+          aria-label="Buscar empresa por nombre"
         />
         <Button
           size="sm"
@@ -121,7 +160,7 @@ export function WorkspacesTable({
           )}
         >
           {[
-            "Workspace",
+            "Empresa",
             "Miembros",
             "Conversaciones",
             "YCloud",
@@ -144,7 +183,7 @@ export function WorkspacesTable({
             <Building2 className="h-8 w-8 opacity-40" strokeWidth={1.5} />
             <div className="text-center">
               <p className="text-sm font-medium text-foreground">
-                {search ? "Sin resultados" : "Sin workspaces aún"}
+                {search ? "Sin resultados" : "Sin empresas aún"}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {search
@@ -184,6 +223,7 @@ export function WorkspacesTable({
               <p className="font-mono text-xs text-muted-foreground mt-0.5">
                 {workspace.slug}
               </p>
+              <ProductBadges products={workspace.products} />
             </div>
 
             {/* Miembros */}
@@ -240,7 +280,7 @@ export function WorkspacesTable({
                   {formatTokens(workspace.tokens_30d)}
                 </p>
                 {workspace.has_recent_cost_alert && (
-                  <span title="Este workspace cruzó el umbral de alerta de costo en los últimos 30 días">
+                  <span title="Esta empresa cruzó el umbral de alerta de costo en los últimos 30 días">
                     <AlertTriangle
                       className="h-3.5 w-3.5 text-warning"
                       aria-label="Alerta de costo reciente"

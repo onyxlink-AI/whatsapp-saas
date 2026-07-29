@@ -124,6 +124,8 @@ export interface GenerateReplyResult {
   text: string;
   promptTokens: number;
   completionTokens: number;
+  /** Populated by generateChatReply when the model attempted a tool call under simulateTools. */
+  simulatedToolCalls?: Array<{ name: string; message: string }>;
 }
 
 interface GenerateReplyParams {
@@ -201,6 +203,12 @@ export async function generateChatReply(params: {
   /** Optional tool-calling: when provided, the model can invoke these tools. */
   tools?: ForgeTool[];
   toolContext?: ToolContext;
+  /**
+   * Test playground safety gate: when true, tool calls are never executed
+   * for real — the registry returns each tool's simulationMessage instead.
+   * MUST be true for every caller that isn't a live customer conversation.
+   */
+  simulateTools?: boolean;
 }): Promise<GenerateReplyResult> {
   const modelId =
     params.model ??
@@ -219,14 +227,30 @@ export async function generateChatReply(params: {
 
   // Bridge Forge tools → AI SDK ToolSet (same shape as generateWithTools).
   const aiTools: ToolSet = {};
+  const simulatedToolCalls: Array<{ name: string; message: string }> = [];
   if (params.tools && params.toolContext) {
     const ctx = params.toolContext;
     for (const forgeTool of params.tools) {
       aiTools[forgeTool.name] = tool({
         description: forgeTool.description,
         inputSchema: zodSchema(forgeTool.schema),
-        execute: async (args: unknown): Promise<unknown> =>
-          registry.run(forgeTool.name, args, ctx),
+        execute: async (args: unknown): Promise<unknown> => {
+          const result = await registry.run(forgeTool.name, args, ctx, {
+            simulate: params.simulateTools,
+          });
+          if (
+            params.simulateTools &&
+            result.output &&
+            typeof result.output === "object" &&
+            "simulated" in result.output
+          ) {
+            simulatedToolCalls.push({
+              name: forgeTool.name,
+              message: forgeTool.simulationMessage,
+            });
+          }
+          return result;
+        },
       });
     }
   }
@@ -249,6 +273,8 @@ export async function generateChatReply(params: {
     text: result.text,
     promptTokens: result.usage?.inputTokens ?? 0,
     completionTokens: result.usage?.outputTokens ?? 0,
+    simulatedToolCalls:
+      simulatedToolCalls.length > 0 ? simulatedToolCalls : undefined,
   };
 }
 
