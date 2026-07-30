@@ -18,6 +18,7 @@ import {
   OPENROUTER_CONNECTION_STATUS_TW,
 } from '../lib/orchestratorStyles';
 import type { Agent } from '../types';
+import { ModelPicker } from '@/features/agents/components/model-picker';
 import OpenRouterConnectionPanel from './OpenRouterConnectionPanel';
 import OrquestadorModelosView from './OrquestadorModelosView';
 import ViewHeader from './ui/ViewHeader';
@@ -276,13 +277,8 @@ export default function OrquestadorView({ feed, agents, connectionFeed }: Props)
               <p className="mt-1 text-[10px] text-white/30">Se usa cuando un puesto no tiene un modelo específico.</p>
             </div>
           </div>
-          <label className="text-[10px] uppercase tracking-wide text-white/30">Modelo</label>
-          <input
-            value={modelDraft}
-            onChange={(e) => setModelDraft(e.target.value)}
-            placeholder="p. ej. anthropic/claude-sonnet-4.5"
-            className="onyx-input w-full rounded-md px-3 py-2 text-xs mt-1"
-          />
+          <label className="text-[10px] uppercase tracking-wide text-white/30 mb-1 block">Modelo</label>
+          <ModelPicker value={modelDraft || null} onChange={(id) => setModelDraft(id)} emptyHint="Elige el modelo principal del workspace." />
           <div className="flex justify-end mt-3">
             <button
               onClick={() => feed.updateOpenRouterConfig(modelDraft.trim() || null)}

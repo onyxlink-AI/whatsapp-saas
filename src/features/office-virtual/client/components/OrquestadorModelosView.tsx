@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { AgentId } from '../../schemas';
 import type { OpenRouterCostProfile } from '../central-orchestrator';
 import type { AgentOverridePatch, ModelPolicyPatch, OrchestratorFeed } from '../hooks/useOrchestratorFeed';
+import { ModelPicker } from '@/features/agents/components/model-picker';
 import {
   MODEL_BLOCKER_LABEL_ES,
   OPENROUTER_COST_PROFILE_LABEL_ES,
@@ -95,22 +96,12 @@ function WorkspacePolicyPanel({ feed }: { feed: OrchestratorFeed }) {
 
       <div className="grid sm:grid-cols-2 gap-3">
         <div>
-          <label className="text-[10px] uppercase tracking-wide text-white/30">Modelo principal</label>
-          <input
-            value={draft.model ?? ''}
-            onChange={(e) => setDraft({ ...draft, model: e.target.value.trim() || null })}
-            placeholder="p. ej. anthropic/claude-sonnet-4.5"
-            className="onyx-input w-full rounded-md px-3 py-2 text-xs mt-1"
-          />
+          <label className="text-[10px] uppercase tracking-wide text-white/30 mb-1 block">Modelo principal</label>
+          <ModelPicker value={draft.model} onChange={(id) => setDraft({ ...draft, model: id })} emptyHint="Elige el modelo por defecto del workspace." />
         </div>
         <div>
-          <label className="text-[10px] uppercase tracking-wide text-white/30">Modelo alternativo (si el principal falla)</label>
-          <input
-            value={draft.fallbackModel ?? ''}
-            onChange={(e) => setDraft({ ...draft, fallbackModel: e.target.value.trim() || null })}
-            placeholder="p. ej. openai/gpt-4.1-mini"
-            className="onyx-input w-full rounded-md px-3 py-2 text-xs mt-1"
-          />
+          <label className="text-[10px] uppercase tracking-wide text-white/30 mb-1 block">Modelo alternativo (si el principal falla)</label>
+          <ModelPicker value={draft.fallbackModel} onChange={(id) => setDraft({ ...draft, fallbackModel: id })} emptyHint="Opcional. Se usa si el modelo principal falla." />
         </div>
       </div>
 
@@ -312,21 +303,19 @@ function SeatOverrideRow({ agent, feed }: { agent: Agent; feed: OrchestratorFeed
         <div className="mt-3 pt-3 border-t border-white/[0.05] space-y-3">
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] uppercase tracking-wide text-white/30">Modelo propio de {agent.name}</label>
-              <input
-                value={draft.model ?? ''}
-                onChange={(e) => setDraft({ ...draft, model: e.target.value.trim() || null })}
-                placeholder={feed.binding.openrouter.model ?? 'Modelo principal'}
-                className="onyx-input w-full rounded-md px-3 py-2 text-xs mt-1"
+              <label className="text-[10px] uppercase tracking-wide text-white/30 mb-1 block">Modelo propio de {agent.name}</label>
+              <ModelPicker
+                value={draft.model}
+                onChange={(id) => setDraft({ ...draft, model: id })}
+                emptyHint={`Usa el modelo principal (${feed.binding.openrouter.model ?? 'sin asignar'}) si no eliges uno propio.`}
               />
             </div>
             <div>
-              <label className="text-[10px] uppercase tracking-wide text-white/30">Alternativo propio</label>
-              <input
-                value={draft.fallbackModel ?? ''}
-                onChange={(e) => setDraft({ ...draft, fallbackModel: e.target.value.trim() || null })}
-                placeholder={feed.binding.openrouter.fallbackModel ?? 'Alternativo principal'}
-                className="onyx-input w-full rounded-md px-3 py-2 text-xs mt-1"
+              <label className="text-[10px] uppercase tracking-wide text-white/30 mb-1 block">Alternativo propio</label>
+              <ModelPicker
+                value={draft.fallbackModel}
+                onChange={(id) => setDraft({ ...draft, fallbackModel: id })}
+                emptyHint={`Usa el alternativo principal (${feed.binding.openrouter.fallbackModel ?? 'sin asignar'}) si no eliges uno propio.`}
               />
             </div>
           </div>
