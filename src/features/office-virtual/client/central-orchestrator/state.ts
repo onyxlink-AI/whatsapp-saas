@@ -45,6 +45,7 @@ export function createCentralOrchestratorState(workspaceId: string, seedActorId 
       activeMode: 'openrouter',
       openrouter: emptyOpenRouterConfig(now, seedActorId),
       hermesTelegram: emptyHermesConfig(now, seedActorId),
+      customInstructions: '',
       revision: 1,
     },
     audit: [],
@@ -183,6 +184,9 @@ export function applyOrchestratorCommand(state: CentralOrchestratorState, comman
       },
       revision: current.revision + 1,
     };
+  } else if (command.type === 'orchestrator.custom_instructions_updated') {
+    if (command.instructions.length > 4000) return { success: false, code: 'invalid_custom_instructions' };
+    binding = { ...current, customInstructions: command.instructions.trim(), revision: current.revision + 1 };
   } else if (command.type === 'orchestrator.hermes_bot_updated') {
     // Identifies which bot belongs to this workspace only — never touches
     // `endpoint`, which is exclusively backend-provisioned (see the

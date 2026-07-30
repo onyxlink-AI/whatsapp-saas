@@ -20,9 +20,22 @@ import type { Agent, ChatMessage } from '../types';
 
 export type PendingApproval = { agentId: AgentId; description: string };
 
+/** Plain string split, never `new Date(...)` — parsing "YYYY-MM-DD" through Date shifts a day depending on the browser's local timezone. */
+function formatScheduledDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-');
+  return `${day}/${month}/${year}`;
+}
+
 type CoordinatorChatResponse = {
   coordinatorText: string;
-  delegation: { agentId: string; specialistName: string; text: string } | null;
+  delegation:
+    | {
+        agentId: string;
+        specialistName: string;
+        text: string;
+        agendaTask: { title: string; scheduledDate: string } | null;
+      }
+    | null;
 };
 
 /**
@@ -82,6 +95,14 @@ export function useAgentChat(workspaceId: string, realChat: boolean) {
           text: `🔧 ${body.delegation.specialistName} responde:\n\n${body.delegation.text}`,
           timestamp: Date.now(),
         });
+        if (body.delegation.agendaTask) {
+          replies.push({
+            id: crypto.randomUUID(),
+            role: 'agent',
+            text: `📅 Guardado en tu Agenda: "${body.delegation.agendaTask.title}" — ${formatScheduledDate(body.delegation.agendaTask.scheduledDate)}`,
+            timestamp: Date.now(),
+          });
+        }
       }
       setMessagesByAgent((prev) => ({ ...prev, [agent.id]: [...(prev[agent.id] ?? []), ...replies] }));
     } catch {

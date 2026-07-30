@@ -70,6 +70,7 @@ function fakeBinding(overrides: Partial<WorkspaceOrchestratorBinding['openrouter
       updatedAt: '2026-07-30T00:00:00.000Z',
       updatedBy: 'system',
     },
+    customInstructions: '',
     revision: 1,
   };
 }

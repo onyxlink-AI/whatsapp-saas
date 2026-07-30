@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { requireOfficeVirtualReader } from '@/features/office-virtual/server/office-virtual-access';
 import {
   handleCoordinatorMessage,
+  type AgendaPorts,
   type RealChatServicePorts,
 } from '@/features/office-virtual/server/real-chat-service';
 import type { OfficeConfigurationHead, OfficeConfigurationStore } from '@/features/office-virtual/server/office-configuration-service';
@@ -12,6 +13,7 @@ import { resolveRealIntegrationStatuses } from '@/features/office-virtual/server
 import { OPENROUTER_STATUS_ACTIVATES } from '@/features/office-virtual/client/central-integrations/real-integrations';
 import type { WorkspaceOrchestratorBinding } from '@/features/office-virtual/client/central-orchestrator';
 import { generateChatReply } from '@/features/inbox/services/openrouter';
+import { getBusinessInfo, buildNowContext } from '@/features/inbox/services/business-info';
 import { readJsonBody } from '@/lib/auth/workspace-access';
 
 function serviceClient() {
@@ -95,7 +97,7 @@ function orchestratorStore(): OrchestratorStore {
     async loadBinding(workspaceId) {
       const { data, error } = await client
         .from('office_virtual_orchestrator')
-        .select('active_mode, openrouter, hermes_telegram, revision')
+        .select('active_mode, openrouter, hermes_telegram, custom_instructions, revision')
         .eq('workspace_id', workspaceId)
         .maybeSingle();
       if (error) throw error;
@@ -105,6 +107,7 @@ function orchestratorStore(): OrchestratorStore {
         activeMode: data.active_mode,
         openrouter: data.openrouter as WorkspaceOrchestratorBinding['openrouter'],
         hermesTelegram: data.hermes_telegram as WorkspaceOrchestratorBinding['hermesTelegram'],
+        customInstructions: data.custom_instructions as string,
         revision: data.revision,
       };
     },
@@ -112,6 +115,28 @@ function orchestratorStore(): OrchestratorStore {
       // Never written from the chat path — it only ever reads the model policy.
     },
   };
+}
+
+function agendaPorts(): AgendaPorts {
+  const client = serviceClient();
+  return {
+    async createTask(workspaceId, actorUserId, input) {
+      const { error } = await client.from('agenda_tasks').insert({
+        workspace_id: workspaceId,
+        title: input.title,
+        notes: input.notes,
+        scheduled_date: input.scheduledDate,
+        created_by: actorUserId,
+      });
+      if (error) throw error;
+    },
+  };
+}
+
+async function resolveNowContext(workspaceId: string): Promise<string> {
+  const info = await getBusinessInfo(workspaceId);
+  const timezone = (info?.structured?.timezone as string | undefined) ?? undefined;
+  return buildNowContext(timezone);
 }
 
 function ports(): RealChatServicePorts {
@@ -131,6 +156,8 @@ function ports(): RealChatServicePorts {
       },
     },
     generateReply: generateChatReply,
+    agenda: agendaPorts(),
+    resolveNowContext,
   };
 }
 
@@ -165,7 +192,7 @@ export async function POST(
   }
 
   try {
-    const result = await handleCoordinatorMessage(workspaceId, parsed.data.history, parsed.data.message, ports());
+    const result = await handleCoordinatorMessage(workspaceId, parsed.data.history, parsed.data.message, auth.userId, ports());
     if (!result.success) {
       return NextResponse.json({ error: ERROR_MESSAGE[result.code] }, { status: 409 });
     }

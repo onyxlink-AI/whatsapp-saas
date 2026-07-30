@@ -91,6 +91,8 @@ export type WorkspaceOrchestratorBinding = {
   activeMode: OrchestratorMode;
   openrouter: OpenRouterConfig;
   hermesTelegram: HermesTelegramConfig;
+  /** Free-text behavior instructions for the Coordinador itself — mirrors a specialist's own `instructions` field, injected into its system prompt regardless of active mode. */
+  customInstructions: string;
   revision: number;
 };
 
@@ -100,6 +102,7 @@ export type OrchestratorAuditAction =
   | 'openrouter_model_policy_updated'
   | 'openrouter_agent_override_updated'
   | 'hermes_bot_updated'
+  | 'custom_instructions_updated'
   | 'backend_status_reported';
 
 export type OrchestratorAuditEntry = {
@@ -154,6 +157,9 @@ export type OrchestratorCommand =
   // Admin-triggered: identifies *which* Telegram bot belongs to this
   // workspace. Never carries an endpoint — that's backend-provisioned.
   | (CommandBase & { type: 'orchestrator.hermes_bot_updated'; botId: string | null })
+  // Admin-triggered: free-text behavior instructions for the Coordinador,
+  // e.g. how to resolve relative dates/times or how terse to be.
+  | (CommandBase & { type: 'orchestrator.custom_instructions_updated'; instructions: string })
   // System-only: the backend reporting what it knows for one mode —
   // whether a secret/API key now exists, the resulting status, and (for
   // hermes_telegram) the bridge endpoint + opaque connection id it
@@ -173,7 +179,8 @@ export type OrchestratorMutationErrorCode =
   | 'unauthorized'
   | 'stale_revision'
   | 'invalid_endpoint'
-  | 'invalid_model_policy';
+  | 'invalid_model_policy'
+  | 'invalid_custom_instructions';
 
 export type OrchestratorMutationResult =
   | { success: true; state: CentralOrchestratorState; binding: WorkspaceOrchestratorBinding; duplicate: boolean }

@@ -51,6 +51,10 @@ export const OrchestratorCommandSchema = z.discriminatedUnion('type', [
     botId: z.string().trim().max(200).nullable(),
   }).strict(),
   Base.extend({
+    type: z.literal('orchestrator.custom_instructions_updated'),
+    instructions: z.string().max(4000),
+  }).strict(),
+  Base.extend({
     type: z.literal('orchestrator.backend_status_reported'),
     mode: z.enum(['openrouter', 'hermes_telegram']),
     status: z.enum(['not_configured', 'pending', 'connected', 'error']),

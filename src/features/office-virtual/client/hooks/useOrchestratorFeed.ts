@@ -78,6 +78,8 @@ export type OrchestratorFeed = {
   updateOpenRouterModelPolicy: (patch: ModelPolicyPatch) => void;
   /** Per-seat override; pass `null` to clear it and fall back to the workspace policy. */
   updateAgentModelOverride: (agentId: AgentId, patch: AgentOverridePatch | null) => void;
+  /** Free-text behavior instructions for the Coordinador itself, injected into its system prompt. */
+  updateCustomInstructions: (instructions: string) => void;
   /** Resolved model + readiness for one seat (workspace default vs. its own override) — pure derivation, no network. */
   resolveModelForAgent: (agentId: AgentId) => ResolvedOpenRouterModel;
   /** Full local preflight status, including active mode and backend connection state. */
@@ -207,6 +209,12 @@ export function useOrchestratorFeed(
       occurredAt: new Date().toISOString(), expectedRevision, agentId, override: patch,
     }));
 
+  const updateCustomInstructions = (instructions: string) =>
+    dispatch((expectedRevision) => ({
+      type: 'orchestrator.custom_instructions_updated', commandId: crypto.randomUUID(), workspaceId, actor,
+      occurredAt: new Date().toISOString(), expectedRevision, instructions,
+    }));
+
   const resolveModelForAgent = (agentId: AgentId) => selectOpenRouterModelForAgent(state.binding, agentId);
   const resolveExecutionForAgent = (agentId: AgentId) => selectOpenRouterExecutionForAgent(state.binding, agentId);
 
@@ -221,6 +229,7 @@ export function useOrchestratorFeed(
     updateHermesBotId,
     updateOpenRouterModelPolicy,
     updateAgentModelOverride,
+    updateCustomInstructions,
     resolveModelForAgent,
     resolveExecutionForAgent,
   };

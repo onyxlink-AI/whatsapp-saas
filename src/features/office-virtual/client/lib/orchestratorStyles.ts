@@ -40,6 +40,7 @@ export const ORCHESTRATOR_ERROR_LABEL_ES: Record<OrchestratorMutationErrorCode, 
   stale_revision: 'Alguien más cambió esta configuración mientras editabas. Vuelve a intentarlo.',
   invalid_endpoint: 'El endpoint debe ser una URL https:// válida.',
   invalid_model_policy: 'La política de modelos contiene límites o valores no válidos.',
+  invalid_custom_instructions: 'Las instrucciones personalizadas no pueden superar los 4000 caracteres.',
 };
 
 export const OPENROUTER_COST_PROFILE_LABEL_ES: Record<OpenRouterCostProfile, string> = {

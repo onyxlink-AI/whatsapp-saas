@@ -103,7 +103,8 @@ export type OrchestratorCommandInput = Extract<
       | 'orchestrator.openrouter_config_updated'
       | 'orchestrator.openrouter_model_policy_updated'
       | 'orchestrator.openrouter_agent_override_updated'
-      | 'orchestrator.hermes_bot_updated';
+      | 'orchestrator.hermes_bot_updated'
+      | 'orchestrator.custom_instructions_updated';
   }
 >;
 

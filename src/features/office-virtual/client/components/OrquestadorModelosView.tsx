@@ -147,6 +147,41 @@ function WorkspacePolicyPanel({ feed }: { feed: OrchestratorFeed }) {
   );
 }
 
+function CustomInstructionsPanel({ feed }: { feed: OrchestratorFeed }) {
+  const [draft, setDraft] = useState(feed.binding.customInstructions);
+  const dirty = draft !== feed.binding.customInstructions;
+
+  return (
+    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45 mb-1">Instrucciones personalizadas del Orquestador</div>
+      <p className="text-[11px] text-white/35 mb-3 leading-relaxed">
+        Igual que en cada especialista: escribe aquí cómo quieres que actúe el Coordinador cuando hablas con él directamente — por ejemplo,
+        cómo interpretar fechas relativas (&ldquo;mañana&rdquo;, &ldquo;el lunes que viene&rdquo;), qué tan detallado o breve debe ser, o
+        cualquier costumbre del negocio que no quieras repetir en cada conversación. Se incluye siempre en su instrucción, antes de que
+        responda o delegue una tarea.
+      </p>
+      <textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        maxLength={4000}
+        rows={6}
+        placeholder="Ej.: Cuando te pida agendar algo y no te dé el año, asume que es el más próximo en el futuro. Sé directo y evita confirmaciones innecesarias si ya tienes todos los datos."
+        className="onyx-input w-full rounded-md px-3 py-2 text-xs resize-y"
+      />
+      <div className="flex items-center justify-between mt-2 gap-2">
+        <span className="text-[10px] text-white/25">{draft.length}/4000</span>
+        <button
+          onClick={() => feed.updateCustomInstructions(draft)}
+          disabled={!dirty}
+          className="ml-auto shrink-0 bg-[#79CBCA] hover:bg-[#83CFCE] text-[#102828] rounded-md px-3 py-1.5 text-[11px] font-semibold transition-colors border border-[#8AD3D2]/25 disabled:opacity-40 disabled:pointer-events-none"
+        >
+          Guardar instrucciones
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ExecutionStatusRow({ agent, feed }: { agent: Agent; feed: OrchestratorFeed }) {
   const seatRole = agent.seat.role;
 
@@ -324,6 +359,8 @@ export default function OrquestadorModelosView({ feed, agents }: Props) {
 
   return (
     <div className="space-y-4">
+      <CustomInstructionsPanel feed={feed} />
+
       <ExecutionStatusPanel agents={agents} feed={feed} />
 
       <WorkspacePolicyPanel feed={feed} />

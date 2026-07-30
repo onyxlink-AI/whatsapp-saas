@@ -25,6 +25,7 @@ type OrchestratorRow = {
   active_mode: 'openrouter' | 'hermes_telegram';
   openrouter: WorkspaceOrchestratorBinding['openrouter'];
   hermes_telegram: WorkspaceOrchestratorBinding['hermesTelegram'];
+  custom_instructions: string;
   revision: number;
 };
 
@@ -34,6 +35,7 @@ function toBinding(workspaceId: string, row: OrchestratorRow): WorkspaceOrchestr
     activeMode: row.active_mode,
     openrouter: row.openrouter,
     hermesTelegram: row.hermes_telegram,
+    customInstructions: row.custom_instructions,
     revision: row.revision,
   };
 }
@@ -44,7 +46,7 @@ function orchestratorStore(): OrchestratorStore {
     async loadBinding(workspaceId) {
       const { data, error } = await client
         .from('office_virtual_orchestrator')
-        .select('active_mode, openrouter, hermes_telegram, revision')
+        .select('active_mode, openrouter, hermes_telegram, custom_instructions, revision')
         .eq('workspace_id', workspaceId)
         .maybeSingle();
       if (error) throw error;
@@ -58,6 +60,7 @@ function orchestratorStore(): OrchestratorStore {
           active_mode: binding.activeMode,
           openrouter: binding.openrouter,
           hermes_telegram: binding.hermesTelegram,
+          custom_instructions: binding.customInstructions,
           revision: binding.revision,
           updated_by: actorUserId,
           updated_by_email: binding.openrouter.updatedBy,
@@ -124,6 +127,7 @@ const CommandBodySchema = z.discriminatedUnion('type', [
     })
     .strict(),
   z.object({ type: z.literal('orchestrator.hermes_bot_updated'), botId: z.string().trim().max(200).nullable() }).strict(),
+  z.object({ type: z.literal('orchestrator.custom_instructions_updated'), instructions: z.string().max(4000) }).strict(),
 ]);
 
 const PostBodySchema = z.object({
