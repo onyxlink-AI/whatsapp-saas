@@ -31,12 +31,15 @@ type Props = {
   whatsappAgentName: string;
 };
 
+// Requirements are informational only (see readiness.ts) — activation never
+// depends on them, so 'not_ready'/'misconfigured' are unreachable in
+// practice (provisioningState only ever returns 'active'/'ready_to_enable'),
+// but the Record must stay exhaustive against OfficeProvisioningState.
 const STATE_HELPER_ES: Record<OfficeProvisioningReadiness['state'], string> = {
-  not_ready: 'Completa los requisitos pendientes para poder activarla.',
-  ready_to_enable:
-    'Todos los requisitos están listos. Actívala cuando quieras habilitar el add-on para este workspace.',
+  not_ready: 'Puedes activarla cuando quieras — los requisitos de abajo son solo informativos.',
+  ready_to_enable: 'Puedes activarla cuando quieras — los requisitos de abajo son solo informativos.',
   active: 'La oficina está activa y visible para los administradores autorizados del workspace.',
-  misconfigured: 'El flag está activado pero falta un requisito. El acceso sigue bloqueado hasta resolverlo.',
+  misconfigured: 'La oficina está activa y visible para los administradores autorizados del workspace.',
 };
 
 const REJECTION_LABEL_ES: Record<Exclude<OfficeActivationDecisionCode, 'approved'>, string> = {
@@ -44,6 +47,8 @@ const REJECTION_LABEL_ES: Record<Exclude<OfficeActivationDecisionCode, 'approved
   unauthorized: 'Solo superadministración puede activar o desactivar la oficina.',
   workspace_mismatch: 'La solicitud no corresponde a este workspace.',
   stale_state: 'El estado cambió mientras se procesaba la solicitud. Vuelve a intentarlo.',
+  // Unreachable now that requirements never block (blockingRequirementIds is
+  // always empty in readiness.ts) — kept only so this Record stays exhaustive.
   prerequisites_not_met: 'Faltan requisitos técnicos para poder activarla.',
 };
 

@@ -89,29 +89,38 @@ export function selectOfficeRequirements(snapshot: WorkspaceCapabilitySnapshot):
   ];
 }
 
-function provisioningState(prerequisitesMet: boolean, enabled: boolean): OfficeProvisioningState {
-  if (enabled && !prerequisitesMet) return 'misconfigured';
-  if (enabled) return 'active';
-  if (prerequisitesMet) return 'ready_to_enable';
-  return 'not_ready';
+function provisioningState(enabled: boolean): OfficeProvisioningState {
+  return enabled ? 'active' : 'ready_to_enable';
 }
 
+/**
+ * Product decision (2026-07-30): the 7 requirements below are informational
+ * only — they no longer gate whether a workspace can enable or access
+ * Oficina Virtual. Earlier this required WhatsApp/Voice/every paid AI
+ * add-on to be configured first, which made the office unreachable for any
+ * client who only wants the office itself. The superadmin's Activación
+ * switch (`snapshot.virtualOfficeEnabled`) is now the only real gate;
+ * `requirements` still reports each item's real met/unmet state so the
+ * Activación screen can keep showing "N/7 requisitos listos" as a status
+ * hint, but `blockingRequirementIds` is always empty and never blocks
+ * `canEnable`/`visibleToWorkspace`/`accessible` — see activation.ts and
+ * access.ts, which key off those fields rather than `requirements` directly.
+ */
 export function selectOfficeProvisioningReadiness(
   snapshot: WorkspaceCapabilitySnapshot,
 ): OfficeProvisioningReadiness {
   const requirements = selectOfficeRequirements(snapshot);
-  const blockingRequirementIds = requirements.filter((item) => !item.met).map((item) => item.id);
-  const prerequisitesMet = blockingRequirementIds.length === 0;
+  const unmetCount = requirements.filter((item) => !item.met).length;
 
   return {
     workspaceId: snapshot.workspaceId,
-    state: provisioningState(prerequisitesMet, snapshot.virtualOfficeEnabled),
-    requirementsMet: requirements.length - blockingRequirementIds.length,
+    state: provisioningState(snapshot.virtualOfficeEnabled),
+    requirementsMet: requirements.length - unmetCount,
     requirementsTotal: requirements.length,
-    canEnable: prerequisitesMet && !snapshot.virtualOfficeEnabled,
-    visibleToWorkspace: prerequisitesMet && snapshot.virtualOfficeEnabled,
-    accessible: prerequisitesMet && snapshot.virtualOfficeEnabled,
+    canEnable: !snapshot.virtualOfficeEnabled,
+    visibleToWorkspace: snapshot.virtualOfficeEnabled,
+    accessible: snapshot.virtualOfficeEnabled,
     requirements,
-    blockingRequirementIds,
+    blockingRequirementIds: [],
   };
 }
