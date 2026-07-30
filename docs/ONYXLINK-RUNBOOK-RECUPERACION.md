@@ -2,8 +2,8 @@
 
 **Propietario:** NexorLabs / OnyxLink
 **Frecuencia:** Cuando se sustituya, pierda o averíe el ordenador de desarrollo
-**Última actualización:** 29 de julio de 2026
-**Versión de producción verificada al redactarlo:** `7c6d4878c313c5bcfc6045265a116c7ff55f8fa1`
+**Última actualización:** 30 de julio de 2026
+**Versión de producción verificada al actualizarlo:** `8a91c6b0cd6806e7f997ba44887ce13104382eec`
 
 ## 1. Objetivo
 
@@ -129,8 +129,8 @@ git rev-parse HEAD
 - `origin` apunta a `onyxlink-AI/whatsapp-saas`.
 - La rama es `main`.
 - `git status --short` no devuelve nada.
-- El commit debe ser el último de GitHub. El candidato verificado el 29/07/2026
-  era `7c6d4878c313c5bcfc6045265a116c7ff55f8fa1`.
+- El commit debe ser el último de GitHub. La versión verificada el 30/07/2026
+  era `8a91c6b0cd6806e7f997ba44887ce13104382eec`.
 
 **Si GitHub deniega el acceso:** iniciar sesión con la cuenta autorizada en la
 organización `onyxlink-AI` y revisar el segundo factor.
@@ -449,7 +449,15 @@ Supabase Database Backups no incluye automáticamente los objetos físicos de
 Storage. Si OnyxLink empieza a almacenar archivos de clientes en Storage, debe
 existir una copia independiente de esos objetos.
 
-## 14. Troubleshooting
+## 14. Protocolo obligatorio después de cualquier trabajo
+
+Toda persona o asistente que trabaje en OnyxLink debe seguir
+[`ONYXLINK-PROTOCOLO-CIERRE.md`](./ONYXLINK-PROTOCOLO-CIERRE.md) antes de dar la
+tarea por terminada. Ese protocolo obliga a validar el cambio, actualizar GitHub,
+proteger producción y Supabase, y mantener las copias de disco externo y
+Bitwarden que correspondan.
+
+## 15. Troubleshooting
 
 | Síntoma | Causa probable | Solución |
 |---|---|---|
@@ -464,7 +472,7 @@ existir una copia independiente de esos objetos.
 | Producción devuelve 500 tras desplegar | Variables o migraciones incompletas | Revisar logs de Vercel, no tocar datos, y volver al despliegue estable anterior. |
 | WhatsApp recibe pero no responde | Agente detenido, integración o cron | Revisar panel, activación desde Oficina, YCloud y ejecuciones del cron. |
 
-## 15. Rollback de un despliegue defectuoso
+## 16. Rollback de un despliegue defectuoso
 
 Si una versión nueva falla pero la base de datos sigue sana:
 
@@ -478,7 +486,7 @@ Si una versión nueva falla pero la base de datos sigue sana:
 Si la migración ya cambió datos o estructura, no improvisar un SQL inverso.
 Restaurar desde la copia previa o crear una migración correctiva revisada.
 
-## 16. Escalación
+## 17. Escalación
 
 | Situación | Responsable |
 |---|---|
@@ -488,7 +496,7 @@ Restaurar desde la copia previa o crear una migración correctiva revisada.
 | Pérdida de dominio o DNS | Registrador del dominio y Vercel Support |
 | Credencial expuesta | Revocarla, rotarla, actualizar Vercel y revisar logs |
 
-## 17. Cierre de la recuperación
+## 18. Cierre de la recuperación
 
 - [ ] Código clonado desde `onyxlink-AI/whatsapp-saas`.
 - [ ] Rama `main` limpia y actualizada.
@@ -501,8 +509,9 @@ Restaurar desde la copia previa o crear una migración correctiva revisada.
 - [ ] Producción continúa respondiendo correctamente.
 - [ ] Ningún secreto se imprimió, compartió ni añadió a Git.
 
-## 18. Historial
+## 19. Historial
 
 | Fecha | Responsable | Nota |
 |---|---|---|
 | 29/07/2026 | Codex / OnyxLink | Primera versión basada en el candidato de producción `7c6d487`. |
+| 30/07/2026 | Codex / OnyxLink | Añadido el protocolo permanente de cierre, GitHub, producción, Supabase, copia externa y Bitwarden. Versión verificada `8a91c6b`. |
