@@ -222,15 +222,16 @@ export default function OrquestadorView({ feed, agents, connectionFeed }: Props)
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4 max-w-3xl">
-        {tab === 'modelos' && binding.activeMode === 'openrouter' ? (
-          <OrquestadorModelosView feed={feed} agents={agents} />
-        ) : (
-          <>
         {feed.error && (
           <div className="rounded-lg border border-rose-500/25 bg-rose-500/[0.06] px-4 py-3 text-xs text-rose-200/85">
             {ORCHESTRATOR_ERROR_LABEL_ES[feed.error as OrchestratorMutationErrorCode] ?? feed.error}
           </div>
         )}
+
+        {tab === 'modelos' && binding.activeMode === 'openrouter' ? (
+          <OrquestadorModelosView feed={feed} agents={agents} />
+        ) : (
+          <>
 
         <section className="rounded-xl border border-[#8AD3D2]/15 bg-[#83CFCE]/[0.045] p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">

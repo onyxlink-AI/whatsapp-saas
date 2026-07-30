@@ -170,13 +170,18 @@ function CustomInstructionsPanel({ feed }: { feed: OrchestratorFeed }) {
       />
       <div className="flex items-center justify-between mt-2 gap-2">
         <span className="text-[10px] text-white/25">{draft.length}/4000</span>
-        <button
-          onClick={() => feed.updateCustomInstructions(draft)}
-          disabled={!dirty}
-          className="ml-auto shrink-0 bg-[#79CBCA] hover:bg-[#83CFCE] text-[#102828] rounded-md px-3 py-1.5 text-[11px] font-semibold transition-colors border border-[#8AD3D2]/25 disabled:opacity-40 disabled:pointer-events-none"
-        >
-          Guardar instrucciones
-        </button>
+        <div className="flex items-center gap-2 ml-auto">
+          {!dirty && !feed.saving && draft.trim().length > 0 && (
+            <span className="text-[11px] text-emerald-300/80">✓ Guardado</span>
+          )}
+          <button
+            onClick={() => feed.updateCustomInstructions(draft)}
+            disabled={!dirty || feed.saving}
+            className="shrink-0 bg-[#79CBCA] hover:bg-[#83CFCE] text-[#102828] rounded-md px-3 py-1.5 text-[11px] font-semibold transition-colors border border-[#8AD3D2]/25 disabled:opacity-40 disabled:pointer-events-none"
+          >
+            {feed.saving ? 'Guardando…' : 'Guardar instrucciones'}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -359,7 +364,8 @@ export default function OrquestadorModelosView({ feed, agents }: Props) {
 
   return (
     <div className="space-y-4">
-      <CustomInstructionsPanel feed={feed} />
+      {/* Remounts once the real binding finishes loading, so its initial draft never freezes on the pre-load placeholder value. */}
+      <CustomInstructionsPanel key={feed.loading ? 'pending' : 'ready'} feed={feed} />
 
       <ExecutionStatusPanel agents={agents} feed={feed} />
 
