@@ -10,7 +10,9 @@ import {
 
 const UpdateSchema = z.object({
   structured: z.record(z.string(), z.unknown()).optional(),
-  free_text: z.string().max(10_000).optional(),
+  // Nullable: the form sends `null` to clear the field (vs. `undefined` to
+  // leave it untouched) — upsertBusinessInfo already handles both.
+  free_text: z.string().max(10_000).nullable().optional(),
 });
 
 // ── GET /api/workspace/[id]/business-info ─────────────────────────────────────
@@ -100,7 +102,7 @@ export async function PUT(
   const parsed = UpdateSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: parsed.error.flatten() },
+      { error: parsed.error.issues[0]?.message ?? "Datos inválidos" },
       { status: 400 },
     );
   }
