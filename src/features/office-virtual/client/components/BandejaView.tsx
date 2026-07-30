@@ -49,7 +49,7 @@ function ThreadRow({ thread, active, onSelect }: { thread: InboxThread; active: 
     <button
       onClick={onSelect}
       className={`w-full text-left px-3 py-2.5 rounded-lg border transition-colors flex items-start gap-3 ${
-        active ? 'border-violet-400/30 bg-violet-500/[0.06]' : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.035]'
+        active ? 'border-[#8AD3D2]/30 bg-[#83CFCE]/[0.06]' : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.035]'
       }`}
     >
       <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold shrink-0 bg-white/[0.05] text-white/70 border border-white/[0.08]">
@@ -59,7 +59,7 @@ function ThreadRow({ thread, active, onSelect }: { thread: InboxThread; active: 
         <div className="flex items-center gap-1.5">
           <span className="text-sm text-white/90 truncate">{thread.displayName}</span>
           {thread.unreadCount > 0 && (
-            <span className="text-[10px] font-semibold text-white bg-violet-500 rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">
+            <span className="text-[10px] font-semibold text-white bg-[#83CFCE] rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">
               {thread.unreadCount}
             </span>
           )}
@@ -122,7 +122,7 @@ function ThreadDetail({
           </div>
           <button
             onClick={() => onOpenContact360(thread.contactId)}
-            className="self-start shrink-0 whitespace-nowrap text-[11px] font-medium text-violet-300/80 hover:text-violet-200 border border-violet-400/25 hover:bg-violet-500/10 rounded-md px-2.5 py-1.5 transition-colors"
+            className="self-start shrink-0 whitespace-nowrap text-[11px] font-medium text-[#A0DCDB]/80 hover:text-[#BFE7E6] border border-[#8AD3D2]/25 hover:bg-[#83CFCE]/10 rounded-md px-2.5 py-1.5 transition-colors"
           >
             Ver Contacto 360
           </button>
@@ -162,7 +162,7 @@ function ThreadDetail({
                 <div key={msg.id} className={`flex ${msg.direction === 'out' ? 'justify-end' : 'justify-start'}`}>
                   <div
                     className={`max-w-[80%] rounded-lg px-3 py-2 text-xs leading-relaxed ${
-                      msg.direction === 'out' ? 'bg-violet-600/25 text-white/90' : 'bg-white/[0.05] text-white/80'
+                      msg.direction === 'out' ? 'bg-[#79CBCA]/25 text-[#102828]/90' : 'bg-white/[0.05] text-white/80'
                     }`}
                   >
                     <div>{msg.body ?? '(sin contenido)'}</div>
@@ -191,7 +191,7 @@ function ThreadDetail({
                   onSendDraft(draftText);
                   setDraftText('');
                 }}
-                className="bg-violet-600 hover:bg-violet-500 text-white rounded-md px-3 py-2 text-xs font-semibold transition-colors border border-violet-400/25 shrink-0"
+                className="bg-[#79CBCA] hover:bg-[#83CFCE] text-[#102828] rounded-md px-3 py-2 text-xs font-semibold transition-colors border border-[#8AD3D2]/25 shrink-0"
               >
                 Añadir borrador
               </button>
@@ -247,8 +247,8 @@ function ThreadDetail({
           <div className="text-[11px] text-white/35 mt-1">Etapa del lead: {thread.stage}</div>
         </div>
 
-        <div className="rounded-lg border border-violet-400/25 bg-violet-500/[0.05] p-3">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-300/70 mb-1">Siguiente acción</div>
+        <div className="rounded-lg border border-[#8AD3D2]/25 bg-[#83CFCE]/[0.05] p-3">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#A0DCDB]/70 mb-1">Siguiente acción</div>
           <p className="text-xs text-white/85 leading-relaxed">{thread.nextAction ?? 'Sin recomendación todavía.'}</p>
         </div>
 
@@ -279,7 +279,7 @@ export default function BandejaView({ feed, agents, onOpenContact360, openContac
         description="Reúne WhatsApp y Voz con responsable, prioridad, memoria y siguiente acción dentro de una misma conversación."
         meta={
           <div className="flex flex-wrap items-center gap-2 text-[10px] text-white/35">
-            {stats.unread > 0 && <span className="text-violet-300/75">{stats.unread} pendientes</span>}
+            {stats.unread > 0 && <span className="text-[#A0DCDB]/75">{stats.unread} pendientes</span>}
             <span>{stats.total} conversaciones · {stats.handoff} handoff</span>
           </div>
         }
@@ -305,7 +305,7 @@ export default function BandejaView({ feed, agents, onOpenContact360, openContac
             key={tab.id}
             onClick={() => setFilters({ channel: tab.id === 'all' ? undefined : tab.id })}
             className={`text-[11px] px-2.5 py-1.5 rounded-md border transition-colors ${
-              (filters.channel ?? 'all') === tab.id ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/45 hover:text-white/70'
+              (filters.channel ?? 'all') === tab.id ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/10 text-[#BFE7E6]' : 'border-white/10 text-white/45 hover:text-white/70'
             }`}
           >
             {tab.label}

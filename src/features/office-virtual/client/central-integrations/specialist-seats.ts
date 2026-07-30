@@ -35,8 +35,8 @@ export const DEFAULT_SPECIALIST_COLORS: Record<ConfigurableOfficeAgentId, string
   'specialist-2': '#e11d48',
   'specialist-3': '#d97706',
   'specialist-4': '#0891b2',
-  'specialist-5': '#7c3aed',
+  'specialist-5': '#79CBCA',
   'specialist-6': '#059669',
   'specialist-7': '#db2777',
-  'specialist-8': '#4338ca',
+  'specialist-8': '#397C7B',
 };

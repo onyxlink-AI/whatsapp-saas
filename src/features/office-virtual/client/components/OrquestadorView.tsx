@@ -69,13 +69,13 @@ function ModeCard({
     <button
       onClick={onSelect}
       className={`text-left rounded-lg border p-4 flex-1 transition-colors ${
-        active ? 'border-violet-400/40 bg-violet-500/[0.08]' : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]'
+        active ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/[0.08]' : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]'
       }`}
     >
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <span className="text-sm text-white/90 font-medium">{ORCHESTRATOR_MODE_LABEL_ES[mode]}</span>
         {active && (
-          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-violet-400/30 bg-violet-500/10 text-violet-200">
+          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-[#8AD3D2]/30 bg-[#83CFCE]/10 text-[#BFE7E6]">
             Modo activo
           </span>
         )}
@@ -213,7 +213,7 @@ export default function OrquestadorView({ feed, agents, connectionFeed }: Props)
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`text-[11px] font-medium px-3 py-2 border-b-2 transition-colors ${
-              tab === t.id ? 'border-violet-400 text-white' : 'border-transparent text-white/40 hover:text-white/70'
+              tab === t.id ? 'border-[#8AD3D2] text-white' : 'border-transparent text-white/40 hover:text-white/70'
             }`}
           >
             {t.label}
@@ -232,10 +232,10 @@ export default function OrquestadorView({ feed, agents, connectionFeed }: Props)
           </div>
         )}
 
-        <section className="rounded-xl border border-violet-400/15 bg-violet-500/[0.045] p-4">
+        <section className="rounded-xl border border-[#8AD3D2]/15 bg-[#83CFCE]/[0.045] p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-[0.13em] text-violet-300/60">Estado actual</div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#A0DCDB]/60">Estado actual</div>
               <div className="mt-1 flex items-center gap-2 text-sm font-semibold text-white/88">
                 <CheckCircle2 size={16} className="text-emerald-300" />
                 {ORCHESTRATOR_MODE_LABEL_ES[binding.activeMode]} seleccionado

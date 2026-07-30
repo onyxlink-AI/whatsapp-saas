@@ -47,13 +47,13 @@ const EXTENSION_KIND: Record<string, FileKind> = {
 };
 
 export const FILE_KIND_TW: Record<FileKind, string> = {
-  image: 'text-fuchsia-300/80 border-fuchsia-500/25 bg-fuchsia-500/[0.06]',
+  image: 'text-[#A0DCDB]/80 border-[#83CFCE]/25 bg-[#83CFCE]/[0.06]',
   pdf: 'text-rose-300/80 border-rose-500/25 bg-rose-500/[0.06]',
   document: 'text-sky-300/80 border-sky-500/25 bg-sky-500/[0.06]',
   spreadsheet: 'text-emerald-300/80 border-emerald-500/25 bg-emerald-500/[0.06]',
   presentation: 'text-amber-300/80 border-amber-500/25 bg-amber-500/[0.06]',
-  audio: 'text-violet-300/80 border-violet-500/25 bg-violet-500/[0.06]',
-  video: 'text-indigo-300/80 border-indigo-500/25 bg-indigo-500/[0.06]',
+  audio: 'text-[#A0DCDB]/80 border-[#83CFCE]/25 bg-[#83CFCE]/[0.06]',
+  video: 'text-[#A0DCDB]/80 border-[#83CFCE]/25 bg-[#83CFCE]/[0.06]',
   archive: 'text-orange-300/80 border-orange-500/25 bg-orange-500/[0.06]',
   other: 'text-white/50 border-white/10 bg-white/[0.03]',
 };

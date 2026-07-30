@@ -57,7 +57,7 @@ function KindOption({
       disabled={disabled}
       onClick={onSelect}
       className={`text-left rounded-md border p-3 flex-1 transition-colors disabled:opacity-50 disabled:pointer-events-none ${
-        selected ? 'border-violet-400/40 bg-violet-500/[0.08]' : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]'
+        selected ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/[0.08]' : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]'
       }`}
     >
       <div className="text-xs text-white/85 font-medium">{OPENROUTER_CONNECTION_KIND_LABEL_ES[kind]}</div>

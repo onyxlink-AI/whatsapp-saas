@@ -124,7 +124,7 @@ export default function MemoriaView({ state, onForgetItem, openContactId, openRe
                   key={profile.contactId}
                   onClick={() => setSelectedId(profile.contactId)}
                   className={`w-full text-left px-3 py-2.5 rounded-md transition-colors ${
-                    isActive ? 'bg-violet-500/[0.12] border border-violet-400/25' : 'hover:bg-white/[0.035] border border-transparent'
+                    isActive ? 'bg-[#83CFCE]/[0.12] border border-[#8AD3D2]/25' : 'hover:bg-white/[0.035] border border-transparent'
                   }`}
                 >
                   <div className="text-xs font-medium text-white/90 truncate">

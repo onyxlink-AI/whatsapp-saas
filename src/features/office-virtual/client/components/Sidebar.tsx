@@ -102,9 +102,9 @@ function NavButton({ item, active, onSelect, compact = false }: { item: NavItem;
       aria-current={selected ? 'page' : undefined}
       className={`onyx-nav-item relative w-full flex items-center gap-3 rounded-md text-left transition-colors ${compact ? 'px-2.5 py-2' : 'px-3 py-2'} ${selected ? 'is-active text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/[0.04]'}`}
     >
-      <ItemIcon className={`w-[17px] h-[17px] shrink-0 ${selected ? 'text-violet-300' : 'text-white/45'}`} strokeWidth={1.8} />
+      <ItemIcon className={`w-[17px] h-[17px] shrink-0 ${selected ? 'text-[#A0DCDB]' : 'text-white/45'}`} strokeWidth={1.8} />
       <span className="truncate text-[13px]">{item.label}</span>
-      {selected && <ChevronRight className="ml-auto w-3.5 h-3.5 text-violet-300/70" strokeWidth={1.8} />}
+      {selected && <ChevronRight className="ml-auto w-3.5 h-3.5 text-[#A0DCDB]/70" strokeWidth={1.8} />}
     </button>
   );
 }
@@ -120,8 +120,8 @@ export default function Sidebar({ active, onSelect, userEmail, isSuperAdmin, isD
       <aside className="hidden">
         <div className="onyx-brand px-4 py-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-md border border-violet-400/30 bg-violet-500/10 flex items-center justify-center shrink-0 shadow-[inset_0_0_18px_rgba(124,58,237,.12)]">
-              <BriefcaseBusiness className="w-5 h-5 text-violet-300" strokeWidth={1.7} />
+            <div className="w-10 h-10 rounded-md border border-[#8AD3D2]/30 bg-[#83CFCE]/10 flex items-center justify-center shrink-0 shadow-[inset_0_0_18px_rgba(121,203,202,.12)]">
+              <BriefcaseBusiness className="w-5 h-5 text-[#A0DCDB]" strokeWidth={1.7} />
             </div>
             <div className="min-w-0">
               <div className="text-[13px] font-semibold text-white/95">Oficina Virtual</div>
@@ -144,7 +144,7 @@ export default function Sidebar({ active, onSelect, userEmail, isSuperAdmin, isD
         <div className="px-3 pb-3 pt-2 border-t border-white/[0.06]">
           <div className="onyx-identity flex items-center gap-3 px-3 py-2.5">
             <div className="relative shrink-0">
-              <div className="w-8 h-8 rounded-full bg-[#111015] border border-violet-400/40 flex items-center justify-center text-[10px] font-semibold text-white">
+              <div className="w-8 h-8 rounded-full bg-[#111015] border border-[#8AD3D2]/40 flex items-center justify-center text-[10px] font-semibold text-white">
                 {(userEmail ?? 'OV').slice(0, 2).toUpperCase()}
               </div>
               <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#09080b]" />
@@ -163,7 +163,7 @@ export default function Sidebar({ active, onSelect, userEmail, isSuperAdmin, isD
           <section className="onyx-mobile-sheet absolute inset-x-2 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] max-h-[min(72dvh,40rem)] flex flex-col md:inset-y-4 md:left-[17rem] md:right-auto md:bottom-4 md:w-[350px] md:max-h-none" aria-label="Todas las secciones de Oficina Virtual">
             <header className="flex items-center justify-between px-4 py-3 border-b border-white/[0.07] shrink-0">
               <div>
-                <div className="text-[10px] uppercase tracking-[0.14em] text-violet-300/60">Navegación</div>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#A0DCDB]/60">Navegación</div>
                 <div className="text-sm font-semibold text-white mt-0.5">{activeItem?.label ?? 'Todas las secciones'}</div>
               </div>
               <button onClick={onCloseMobileMenu} className="onyx-icon-button w-8 h-8 flex items-center justify-center text-white/60" aria-label="Cerrar menú">

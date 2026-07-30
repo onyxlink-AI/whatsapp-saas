@@ -13,7 +13,7 @@ export const TASK_STATUS_LABEL_ES: Record<TaskStatus, string> = {
 export const TASK_STATUS_TW: Record<TaskStatus, string> = {
   pending: 'text-white/45 border-white/10 bg-white/[0.03]',
   in_progress: 'text-amber-300/80 border-amber-500/25 bg-amber-500/[0.06]',
-  approval_required: 'text-fuchsia-300/80 border-fuchsia-500/25 bg-fuchsia-500/[0.06]',
+  approval_required: 'text-[#A0DCDB]/80 border-[#83CFCE]/25 bg-[#83CFCE]/[0.06]',
   blocked: 'text-orange-300/80 border-orange-500/25 bg-orange-500/[0.06]',
   completed: 'text-emerald-300/80 border-emerald-500/25 bg-emerald-500/[0.06]',
   failed: 'text-rose-300/80 border-rose-500/25 bg-rose-500/[0.06]',

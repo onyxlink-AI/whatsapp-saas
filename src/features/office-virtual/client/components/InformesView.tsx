@@ -62,7 +62,7 @@ function ReportRow({
   return (
     <div
       className={`rounded-lg border p-3 transition-colors flex flex-col gap-2 ${
-        selected ? 'border-violet-400/40 bg-violet-500/[0.08]' : 'border-white/[0.06] bg-white/[0.02]'
+        selected ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/[0.08]' : 'border-white/[0.06] bg-white/[0.02]'
       }`}
     >
       <button onClick={onSelect} className="text-left flex items-start justify-between gap-3">
@@ -131,7 +131,7 @@ function ReportPreviewPanel({
       <div className="onyx-popover w-full max-w-2xl my-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4 border-b border-white/[0.07]">
           <div className="min-w-0">
-            <div className="text-[9px] uppercase tracking-[0.18em] text-violet-300/60 mb-1">Informe</div>
+            <div className="text-[9px] uppercase tracking-[0.18em] text-[#A0DCDB]/60 mb-1">Informe</div>
             <h3 className="text-white font-semibold text-lg leading-snug">{report.title}</h3>
             <div className="flex flex-wrap items-center gap-1.5 mt-2">
               <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${REPORT_STATUS_TW[report.status]}`}>
@@ -282,7 +282,7 @@ export default function InformesView({ feed, agents, isSuperAdmin }: Props) {
       <section className="onyx-report-builder shrink-0">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-[0.13em] text-violet-300/60">Crear en un clic</div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#A0DCDB]/60">Crear en un clic</div>
             <h2 className="mt-1 text-sm font-semibold text-white/90">¿Qué quieres revisar?</h2>
             <p className="mt-0.5 text-[11px] text-white/35">Periodo actual: {REPORT_PERIOD_LABEL_ES[period]}</p>
           </div>
@@ -292,16 +292,16 @@ export default function InformesView({ feed, agents, isSuperAdmin }: Props) {
               <div className="mb-1.5 text-[10px] uppercase tracking-wide text-white/30">Periodo</div>
               <div className="flex flex-wrap gap-1.5">
                 {PERIODS.map((p) => (
-                  <button key={p} onClick={() => setPeriod(p)} className={`rounded-md border px-2.5 py-1.5 text-[11px] ${period === p ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/45'}`}>{REPORT_PERIOD_LABEL_ES[p]}</button>
+                  <button key={p} onClick={() => setPeriod(p)} className={`rounded-md border px-2.5 py-1.5 text-[11px] ${period === p ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/10 text-[#BFE7E6]' : 'border-white/10 text-white/45'}`}>{REPORT_PERIOD_LABEL_ES[p]}</button>
                 ))}
               </div>
               {isSuperAdmin && (
                 <div className="mt-3 border-t border-white/[0.06] pt-3">
                   <div className="mb-1.5 text-[10px] uppercase tracking-wide text-white/30">Equipo incluido</div>
                   <div className="flex flex-wrap gap-1.5">
-                    <button onClick={() => setAgentIds([])} className={`rounded-md border px-2.5 py-1.5 text-[11px] ${agentIds.length === 0 ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/45'}`}>Todo el equipo</button>
+                    <button onClick={() => setAgentIds([])} className={`rounded-md border px-2.5 py-1.5 text-[11px] ${agentIds.length === 0 ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/10 text-[#BFE7E6]' : 'border-white/10 text-white/45'}`}>Todo el equipo</button>
                     {agents.map((agent) => (
-                      <button key={agent.id} onClick={() => toggleAgent(agent.id)} className={`rounded-md border px-2.5 py-1.5 text-[11px] ${agentIds.includes(agent.id) ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/45'}`}>{agent.name}</button>
+                      <button key={agent.id} onClick={() => toggleAgent(agent.id)} className={`rounded-md border px-2.5 py-1.5 text-[11px] ${agentIds.includes(agent.id) ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/10 text-[#BFE7E6]' : 'border-white/10 text-white/45'}`}>{agent.name}</button>
                     ))}
                   </div>
                 </div>
@@ -317,7 +317,7 @@ export default function InformesView({ feed, agents, isSuperAdmin }: Props) {
                 <span className="block text-[12px] font-semibold text-white/82">{REPORT_KIND_LABEL_ES[kind]}</span>
                 <span className="mt-0.5 block text-[10px] leading-relaxed text-white/35">{REPORT_KIND_DESCRIPTION_ES[kind]}</span>
               </span>
-              <span className="text-violet-300/55">→</span>
+              <span className="text-[#A0DCDB]/55">→</span>
             </button>
           ))}
         </div>

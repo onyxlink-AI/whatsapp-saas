@@ -60,7 +60,7 @@ function ResponsiveCamera({ cameraMode }: { cameraMode: CameraMode }) {
 export default function OfficeCanvas({ rooms, selectedId, onSelect, onHover, cameraMode }: Props) {
   const isIso = cameraMode === 'iso';
   const isShowcase = cameraMode === 'showcase';
-  const background = isShowcase ? '#05030a' : '#dfe3e1';
+  const background = isShowcase ? '#041010' : '#dfe3e1';
   const controlsTarget: [number, number, number] = isShowcase
     ? [0, 0.8, 0]
     : [0, 1.35, 3.2];
@@ -81,24 +81,24 @@ export default function OfficeCanvas({ rooms, selectedId, onSelect, onHover, cam
           (real bug, reproduced in the original Agencia IA app too). */}
       <fog
         attach="fog"
-        args={isShowcase ? ['#05030a', 42, 118] : ['#dfe3e1', 48, 170]}
+        args={isShowcase ? ['#041010', 42, 118] : ['#dfe3e1', 48, 170]}
       />
 
       <ambientLight
         intensity={isShowcase ? 1.05 : 1.56}
-        color={isShowcase ? '#ddd6fe' : '#fffdf5'}
+        color={isShowcase ? '#DFF3F3' : '#fffdf5'}
       />
       <hemisphereLight
         args={
           isShowcase
-            ? ['#a78bfa', '#08050d', 1.02]
+            ? ['#A0DCDB', '#071414', 1.02]
             : ['#e9f4f5', '#b8aa92', 0.88]
         }
       />
       <directionalLight
         position={[8, 16, 12]}
         intensity={isShowcase ? 2.85 : 2.65}
-        color={isShowcase ? '#e9d5ff' : '#fff4d8'}
+        color={isShowcase ? '#DFF3F3' : '#fff4d8'}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-18}
@@ -109,19 +109,19 @@ export default function OfficeCanvas({ rooms, selectedId, onSelect, onHover, cam
       <directionalLight
         position={[-10, 10, -6]}
         intensity={isShowcase ? 1.65 : 1.05}
-        color={isShowcase ? '#818cf8' : '#cbe2e5'}
+        color={isShowcase ? '#8AD3D2' : '#cbe2e5'}
       />
       <pointLight
         position={[0, 9, 5]}
         intensity={isShowcase ? 4.35 : 1.15}
-        color={isShowcase ? '#7c3aed' : '#fff8df'}
+        color={isShowcase ? '#79CBCA' : '#fff8df'}
         distance={isShowcase ? 52 : 34}
         decay={2}
       />
       {isShowcase && (
         <>
-          <pointLight position={[-16, 5, -8]} intensity={2.8} color="#6d28d9" distance={34} decay={2} />
-          <pointLight position={[16, 5, 8]} intensity={2.6} color="#a78bfa" distance={34} decay={2} />
+          <pointLight position={[-16, 5, -8]} intensity={2.8} color="#5AA9A8" distance={34} decay={2} />
+          <pointLight position={[16, 5, 8]} intensity={2.6} color="#A0DCDB" distance={34} decay={2} />
         </>
       )}
 

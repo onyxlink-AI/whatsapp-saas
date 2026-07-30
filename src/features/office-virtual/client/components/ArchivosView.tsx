@@ -180,7 +180,7 @@ function FolderChip({
   return (
     <div
       className={`group flex items-center gap-0.5 rounded-md border pl-2.5 pr-1 py-1 text-[11px] transition-colors ${
-        active ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/60 hover:text-white/85'
+        active ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/10 text-[#BFE7E6]' : 'border-white/10 text-white/60 hover:text-white/85'
       }`}
     >
       <button onClick={onOpen} className="flex items-center gap-1.5">
@@ -262,7 +262,7 @@ function FilePreviewPanel({
       <div className="onyx-popover w-full max-w-2xl my-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4 border-b border-white/[0.07]">
           <div className="min-w-0">
-            <div className="text-[9px] uppercase tracking-[0.18em] text-violet-300/60 mb-1">Archivo</div>
+            <div className="text-[9px] uppercase tracking-[0.18em] text-[#A0DCDB]/60 mb-1">Archivo</div>
             <h3 className="text-white font-semibold text-lg leading-snug truncate">{file.name}</h3>
             <div className="flex flex-wrap items-center gap-1.5 mt-2">
               <StatusBadge status={file.status} />
@@ -399,7 +399,7 @@ function FilePreviewPanel({
               <button
                 onClick={toggleAllAgents}
                 className={`text-[11px] px-2.5 py-1.5 rounded-md border transition-colors ${
-                  file.access.allAgents ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/45 hover:text-white/70'
+                  file.access.allAgents ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/10 text-[#BFE7E6]' : 'border-white/10 text-white/45 hover:text-white/70'
                 }`}
               >
                 Todos los agentes
@@ -411,7 +411,7 @@ function FilePreviewPanel({
                   onClick={() => toggleAgent(a.id)}
                   className={`text-[11px] px-2.5 py-1.5 rounded-md border transition-colors disabled:opacity-30 disabled:pointer-events-none ${
                     !file.access.allAgents && file.access.allowedAgentIds.includes(a.id)
-                      ? 'border-violet-400/40 bg-violet-500/10 text-violet-200'
+                      ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/10 text-[#BFE7E6]'
                       : 'border-white/10 text-white/45 hover:text-white/70'
                   }`}
                 >
@@ -571,7 +571,7 @@ export default function ArchivosView({ feed, agents }: Props) {
         <button
           onClick={() => setStatusFilter('all')}
           className={`text-[11px] px-2.5 py-1.5 rounded-md border transition-colors ${
-            statusFilter === 'all' ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/45 hover:text-white/70'
+            statusFilter === 'all' ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/10 text-[#BFE7E6]' : 'border-white/10 text-white/45 hover:text-white/70'
           }`}
         >
           Todos los estados
@@ -581,7 +581,7 @@ export default function ArchivosView({ feed, agents }: Props) {
             key={s}
             onClick={() => setStatusFilter(s)}
             className={`text-[11px] px-2.5 py-1.5 rounded-md border transition-colors ${
-              statusFilter === s ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/45 hover:text-white/70'
+              statusFilter === s ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/10 text-[#BFE7E6]' : 'border-white/10 text-white/45 hover:text-white/70'
             }`}
           >
             {FILE_STATUS_LABEL_ES[s]}
@@ -600,7 +600,7 @@ export default function ArchivosView({ feed, agents }: Props) {
         />
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="ml-auto bg-violet-600 hover:bg-violet-500 text-white rounded-md px-3 py-1.5 text-xs font-semibold transition-colors border border-violet-400/25 whitespace-nowrap"
+          className="ml-auto bg-[#79CBCA] hover:bg-[#83CFCE] text-[#102828] rounded-md px-3 py-1.5 text-xs font-semibold transition-colors border border-[#8AD3D2]/25 whitespace-nowrap"
         >
           + Subir archivos
         </button>
@@ -671,8 +671,8 @@ export default function ArchivosView({ feed, agents }: Props) {
 
       <div className="flex-1 overflow-y-auto px-6 py-4 relative">
         {isDraggingOver && (
-          <div className="absolute inset-3 z-10 rounded-xl border-2 border-dashed border-violet-400/60 bg-violet-500/[0.08] backdrop-blur-sm flex items-center justify-center pointer-events-none">
-            <span className="text-sm text-violet-200 font-medium">Suelta los archivos para subirlos</span>
+          <div className="absolute inset-3 z-10 rounded-xl border-2 border-dashed border-[#8AD3D2]/60 bg-[#83CFCE]/[0.08] backdrop-blur-sm flex items-center justify-center pointer-events-none">
+            <span className="text-sm text-[#BFE7E6] font-medium">Suelta los archivos para subirlos</span>
           </div>
         )}
 

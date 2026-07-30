@@ -114,9 +114,9 @@ function ProposalCard({
   // eslint-disable-next-line react-hooks/purity -- "detected X ago" display is meant to reflect wall-clock time at render.
   const now = Date.now();
   return (
-    <div className="rounded-lg border border-violet-400/25 bg-violet-500/[0.06] p-3 flex flex-col gap-2">
+    <div className="rounded-lg border border-[#8AD3D2]/25 bg-[#83CFCE]/[0.06] p-3 flex flex-col gap-2">
       <div>
-        <div className="text-[9px] uppercase tracking-[0.14em] text-violet-300/70 mb-0.5">
+        <div className="text-[9px] uppercase tracking-[0.14em] text-[#A0DCDB]/70 mb-0.5">
           Propuesta · {proposal.detectedFromTaskCount} tarea(s) repetidas
         </div>
         <div className="text-sm text-white/90">{proposal.suggestedName}</div>
@@ -125,7 +125,7 @@ function ProposalCard({
       <div className="flex items-center gap-1.5">
         <button
           onClick={onCreate}
-          className="flex-1 bg-violet-600 hover:bg-violet-500 text-white rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors border border-violet-400/25"
+          className="flex-1 bg-[#79CBCA] hover:bg-[#83CFCE] text-[#102828] rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors border border-[#8AD3D2]/25"
         >
           Crear skill
         </button>
@@ -146,7 +146,7 @@ function SkillListItem({ skill, active, onSelect }: { skill: Skill; active: bool
     <button
       onClick={onSelect}
       className={`w-full text-left rounded-lg border p-3 flex flex-col gap-1.5 transition-colors ${
-        active ? 'border-violet-400/40 bg-violet-500/[0.08]' : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]'
+        active ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/[0.08]' : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]'
       }`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -190,19 +190,19 @@ function CatalogZone({
   return (
     <div className="h-full flex flex-col min-h-0">
       <div className="px-4 pt-4 pb-3 border-b border-white/[0.06] shrink-0">
-        <div className="text-[9px] uppercase tracking-[0.18em] text-violet-300/60 mb-1">Taller de Skills</div>
+        <div className="text-[9px] uppercase tracking-[0.18em] text-[#A0DCDB]/60 mb-1">Taller de Skills</div>
         <div className="flex items-center gap-2">
           <h2 className="text-white font-semibold text-sm">Biblioteca</h2>
           <span className="text-[10px] text-white/30">{feed.skills.length} skill(s)</span>
           <button
             onClick={() => setCreating((value) => !value)}
-            className="ml-auto inline-flex items-center gap-1 rounded-md border border-violet-400/30 bg-violet-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-violet-100 hover:bg-violet-500/20"
+            className="ml-auto inline-flex items-center gap-1 rounded-md border border-[#8AD3D2]/30 bg-[#83CFCE]/10 px-2.5 py-1.5 text-[11px] font-semibold text-[#DFF3F3] hover:bg-[#83CFCE]/20"
           >
             <Plus size={13} /> Crear skill
           </button>
         </div>
         {creating && (
-          <div className="mt-2.5 rounded-lg border border-violet-400/20 bg-violet-500/[0.06] p-2.5">
+          <div className="mt-2.5 rounded-lg border border-[#8AD3D2]/20 bg-[#83CFCE]/[0.06] p-2.5">
             <label className="text-[10px] text-white/50">Nombre de la nueva habilidad</label>
             <div className="mt-1.5 flex gap-1.5">
               <input
@@ -223,7 +223,7 @@ function CatalogZone({
                   if (id) { onSelectSkill(id); setNewSkillName(''); setCreating(false); }
                 }}
                 disabled={!newSkillName.trim()}
-                className="rounded-md bg-violet-600 px-2.5 text-[11px] font-semibold text-white disabled:opacity-40"
+                className="rounded-md bg-[#79CBCA] px-2.5 text-[11px] font-semibold text-[#102828] disabled:opacity-40"
               >
                 Crear
               </button>
@@ -243,7 +243,7 @@ function CatalogZone({
               key={o}
               onClick={() => setOriginFilter(o)}
               className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors ${
-                originFilter === o ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/45 hover:text-white/70'
+                originFilter === o ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/10 text-[#BFE7E6]' : 'border-white/10 text-white/45 hover:text-white/70'
               }`}
             >
               {o === 'all' ? 'Todas' : SKILL_ORIGIN_LABEL_ES[o]}
@@ -571,7 +571,7 @@ function EditorTab({ draft, onChange }: { draft: SkillDefinition; onChange: (nex
               onClick={() => patch({ approval: { ...draft.approval, policy } })}
               className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
                 draft.approval.policy === policy
-                  ? 'border-violet-400/40 bg-violet-500/10 text-violet-200'
+                  ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/10 text-[#BFE7E6]'
                   : 'border-white/10 text-white/40 hover:text-white/65'
               }`}
             >
@@ -650,7 +650,7 @@ function SimulatorTab({ skill, run, onTest }: { skill: Skill; run: SkillSimulati
         <p className="text-xs text-white/40 max-w-sm">Ejecuta esta skill en un entorno de prueba y sigue el trazado paso a paso.</p>
         <button
           onClick={onTest}
-          className="shrink-0 bg-violet-600 hover:bg-violet-500 text-white rounded-md px-3 py-1.5 text-xs font-semibold transition-colors border border-violet-400/25"
+          className="shrink-0 bg-[#79CBCA] hover:bg-[#83CFCE] text-[#102828] rounded-md px-3 py-1.5 text-xs font-semibold transition-colors border border-[#8AD3D2]/25"
         >
           Ejecutar prueba
         </button>
@@ -784,7 +784,7 @@ function WorkshopZone({ feed, skill }: { feed: SkillsFeed; skill: Skill | null }
     return (
       <div className="h-full flex items-center justify-center text-center px-6">
         <div>
-          <div className="text-[9px] uppercase tracking-[0.18em] text-violet-300/60 mb-2">Taller de Skills</div>
+          <div className="text-[9px] uppercase tracking-[0.18em] text-[#A0DCDB]/60 mb-2">Taller de Skills</div>
           <p className="text-sm text-white/30 max-w-xs">
             Selecciona una skill de la biblioteca o crea una nueva para abrir el taller.
           </p>
@@ -819,7 +819,7 @@ function WorkshopZone({ feed, skill }: { feed: SkillsFeed; skill: Skill | null }
   return (
     <div className="h-full flex flex-col min-h-0">
       <div className="px-4 sm:px-5 pt-4 pb-3 border-b border-white/[0.06] shrink-0">
-        <div className="text-[9px] uppercase tracking-[0.18em] text-violet-300/60 mb-1">Taller de Skills</div>
+        <div className="text-[9px] uppercase tracking-[0.18em] text-[#A0DCDB]/60 mb-1">Taller de Skills</div>
         <div className="flex items-start justify-between gap-2">
           <h2 className="text-white font-semibold text-base leading-snug truncate">{skill.name}</h2>
         </div>
@@ -869,7 +869,7 @@ function WorkshopZone({ feed, skill }: { feed: SkillsFeed; skill: Skill | null }
               <button
                 onClick={confirmPendingAction}
                 disabled={!pendingNote.trim()}
-                className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-violet-600 hover:bg-violet-500 text-white border border-violet-400/25 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-[#79CBCA] hover:bg-[#83CFCE] text-[#102828] border border-[#8AD3D2]/25 disabled:opacity-40 disabled:pointer-events-none transition-colors"
               >
                 Confirmar
               </button>
@@ -889,7 +889,7 @@ function WorkshopZone({ feed, skill }: { feed: SkillsFeed; skill: Skill | null }
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`text-[11px] font-medium px-3 py-2 border-b-2 transition-colors ${
-                tab === t.id ? 'border-violet-400 text-white' : 'border-transparent text-white/40 hover:text-white/70'
+                tab === t.id ? 'border-[#8AD3D2] text-white' : 'border-transparent text-white/40 hover:text-white/70'
               }`}
             >
               {t.label}
@@ -914,7 +914,7 @@ function WorkshopZone({ feed, skill }: { feed: SkillsFeed; skill: Skill | null }
               setSavedSnapshot(JSON.stringify(draft));
             }}
             disabled={!dirty}
-            className="bg-violet-600 hover:bg-violet-500 text-white rounded-md px-4 py-2 text-xs font-semibold transition-colors border border-violet-400/25 disabled:opacity-40 disabled:pointer-events-none"
+            className="bg-[#79CBCA] hover:bg-[#83CFCE] text-[#102828] rounded-md px-4 py-2 text-xs font-semibold transition-colors border border-[#8AD3D2]/25 disabled:opacity-40 disabled:pointer-events-none"
           >
             Guardar cambios
           </button>
@@ -932,7 +932,7 @@ function AssignmentZone({ feed }: { feed: SkillsFeed }) {
   return (
     <div className="h-full flex flex-col min-h-0">
       <div className="px-4 pt-4 pb-3 border-b border-white/[0.06] shrink-0">
-        <div className="text-[9px] uppercase tracking-[0.18em] text-violet-300/60 mb-1">Taller de Skills</div>
+        <div className="text-[9px] uppercase tracking-[0.18em] text-[#A0DCDB]/60 mb-1">Taller de Skills</div>
         <h2 className="text-white font-semibold text-sm">Asignación</h2>
         <p className="text-[11px] text-white/35 mt-0.5">Mapa de capacidades: qué skill puede usar cada puesto.</p>
       </div>
@@ -946,9 +946,9 @@ function AssignmentZone({ feed }: { feed: SkillsFeed }) {
           <table className="min-w-full text-[11px] border-separate border-spacing-0">
             <thead>
               <tr>
-                <th className="sticky left-0 top-0 z-10 bg-[#0b0910] text-left px-2 py-1.5 text-white/40 font-medium">Puesto</th>
+                <th className="sticky left-0 top-0 z-10 bg-[#091313] text-left px-2 py-1.5 text-white/40 font-medium">Puesto</th>
                 {assignable.map((s) => (
-                  <th key={s.id} className="sticky top-0 z-0 bg-[#0b0910] px-2 py-1.5 text-white/40 font-medium whitespace-nowrap text-left">
+                  <th key={s.id} className="sticky top-0 z-0 bg-[#091313] px-2 py-1.5 text-white/40 font-medium whitespace-nowrap text-left">
                     {s.name}
                   </th>
                 ))}
@@ -957,11 +957,11 @@ function AssignmentZone({ feed }: { feed: SkillsFeed }) {
             <tbody>
               {feed.eligibleAssignees.map((assignee) => (
                 <tr key={assignee.agentId} className="border-t border-white/[0.05]">
-                  <td className="sticky left-0 bg-[#0b0910] px-2 py-2 align-top">
+                  <td className="sticky left-0 bg-[#091313] px-2 py-2 align-top">
                     <div className="text-white/85 whitespace-nowrap">{assignee.name}</div>
                     <div className="text-[10px] text-white/30 whitespace-nowrap">{assignee.role}</div>
                     {assignee.isOrchestrator && (
-                      <span className="inline-block mt-0.5 text-[9px] font-medium px-1.5 py-0.5 rounded-full border border-violet-400/25 bg-violet-500/[0.06] text-violet-300/70">
+                      <span className="inline-block mt-0.5 text-[9px] font-medium px-1.5 py-0.5 rounded-full border border-[#8AD3D2]/25 bg-[#83CFCE]/[0.06] text-[#A0DCDB]/70">
                         Orquestador
                       </span>
                     )}
@@ -977,7 +977,7 @@ function AssignmentZone({ feed }: { feed: SkillsFeed }) {
                           aria-label={assigned ? `Quitar ${skill.name} de ${assignee.name}` : `Asignar ${skill.name} a ${assignee.name}`}
                           className={`w-6 h-6 rounded-md border flex items-center justify-center transition-colors ${
                             assigned
-                              ? 'border-violet-400/40 bg-violet-500/20 text-violet-200'
+                              ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/20 text-[#BFE7E6]'
                               : 'border-white/10 text-transparent hover:border-white/25 hover:bg-white/[0.04]'
                           }`}
                         >
@@ -1090,7 +1090,7 @@ function AdminSkillsView({ feed }: { feed: SkillsFeed }) {
             key={id}
             onClick={() => setMobileZone(id)}
             className={`shrink-0 text-[11px] font-medium px-3 py-1.5 rounded-md border transition-colors ${
-              mobileZone === id ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/45'
+              mobileZone === id ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/10 text-[#BFE7E6]' : 'border-white/10 text-white/45'
             }`}
           >
             {label}

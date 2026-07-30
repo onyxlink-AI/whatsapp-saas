@@ -34,8 +34,8 @@ export default function AuthLayout({
         </div>
 
         <div className="relative z-30 max-w-xl pb-16 xl:pb-20">
-          <p className="mb-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-violet-300">
-            <span className="h-px w-8 bg-violet-400/70" aria-hidden="true" />
+          <p className="mb-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-[#A0DCDB]">
+            <span className="h-px w-8 bg-[#8AD3D2]/70" aria-hidden="true" />
             Tu empresa, conectada
           </p>
           <h1 className="font-display max-w-xl text-4xl font-semibold leading-[1.04] tracking-[-0.04em] xl:text-[3.35rem]">
@@ -51,7 +51,7 @@ export default function AuthLayout({
               ["03", "Crece"],
             ].map(([number, label]) => (
               <div key={number} className="auth-capability-chip">
-                <span className="text-[10px] font-semibold text-violet-300">{number}</span>
+                <span className="text-[10px] font-semibold text-[#A0DCDB]">{number}</span>
                 <span className="text-xs font-medium text-white/80">{label}</span>
               </div>
             ))}

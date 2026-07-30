@@ -78,7 +78,7 @@ function MagnitudeBar({ label, value, max }: { label: string; value: number; max
     <div className="flex items-center gap-2">
       <span className="text-[11px] text-white/50 w-28 shrink-0 truncate">{label}</span>
       <div className="flex-1 h-2 rounded-full bg-white/[0.06] overflow-hidden">
-        <div className="h-full rounded-full bg-violet-400" style={{ width: `${pct}%` }} />
+        <div className="h-full rounded-full bg-[#8AD3D2]" style={{ width: `${pct}%` }} />
       </div>
       <span className="text-[11px] text-white/70 w-7 text-right shrink-0">{value}</span>
     </div>
@@ -134,7 +134,7 @@ export default function AnalisisView({ analytics, error, period, onPeriodChange,
             key={p}
             onClick={() => onPeriodChange(p)}
             className={`text-[11px] px-2.5 py-1.5 rounded-md border transition-colors ${
-              period === p ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/45 hover:text-white/70'
+              period === p ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/10 text-[#BFE7E6]' : 'border-white/10 text-white/45 hover:text-white/70'
             }`}
           >
             {ANALYTICS_PERIOD_LABEL_ES[p]}

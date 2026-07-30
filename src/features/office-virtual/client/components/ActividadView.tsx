@@ -70,7 +70,7 @@ export default function ActividadView({ events, agents, onSelectAgent, resolveCo
                     onClick={() => onSelectAgent(event.agentId)}
                     onKeyDown={(e) => e.key === 'Enter' && onSelectAgent(event.agentId)}
                     className={`w-full flex items-start gap-3 text-left px-3 py-2.5 rounded-lg hover:bg-white/[0.035] transition-colors cursor-pointer ${
-                      event.id === highlightedEventId ? 'bg-violet-500/[0.08] ring-1 ring-violet-400/30' : ''
+                      event.id === highlightedEventId ? 'bg-[#83CFCE]/[0.08] ring-1 ring-[#8AD3D2]/30' : ''
                     }`}
                   >
                     <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${STATUS_TW_BG[event.status]}`} />

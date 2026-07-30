@@ -45,7 +45,7 @@ export default function ChatPanel({ agent, messages, isTyping, onClose, onSend, 
             <div
               className="w-10 h-10 rounded-md flex items-center justify-center text-xs font-bold border shrink-0"
               style={{
-                background: `linear-gradient(145deg, ${agent.color}3d, #0b0910 70%)`,
+                background: `linear-gradient(145deg, ${agent.color}3d, #091313 70%)`,
                 borderColor: agent.color,
               }}
             >
@@ -67,7 +67,7 @@ export default function ChatPanel({ agent, messages, isTyping, onClose, onSend, 
           </div>
 
           <div className="px-4 py-3 border-b border-white/[0.05] bg-white/[0.012]">
-            <div className="text-[9px] font-semibold uppercase tracking-[0.15em] text-violet-300/65 mb-1">Canal de agente</div>
+            <div className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[#A0DCDB]/65 mb-1">Canal de agente</div>
             <p className="text-xs leading-relaxed text-white/38">{agent.description}</p>
           </div>
 
@@ -82,7 +82,7 @@ export default function ChatPanel({ agent, messages, isTyping, onClose, onSend, 
                 <div
                   className={`max-w-[85%] rounded-lg px-3.5 py-2.5 text-sm leading-snug whitespace-pre-line border ${
                     m.role === 'user'
-                      ? 'bg-violet-600/90 border-violet-400/30 text-white rounded-br-sm shadow-[0_5px_20px_rgba(91,33,182,.16)]'
+                      ? 'bg-[#79CBCA]/90 border-[#8AD3D2]/30 text-[#102828] rounded-br-sm shadow-[0_5px_20px_rgba(57,124,123,.16)]'
                       : 'bg-white/[0.045] border-white/[0.07] text-white/85 rounded-bl-sm'
                   }`}
                 >
@@ -132,7 +132,7 @@ export default function ChatPanel({ agent, messages, isTyping, onClose, onSend, 
             <button
               onClick={submit}
               disabled={!draft.trim()}
-              className="bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:hover:bg-violet-600 text-white rounded-md px-4 text-sm font-semibold transition-colors border border-violet-400/25"
+              className="bg-[#79CBCA] hover:bg-[#83CFCE] disabled:opacity-40 disabled:hover:bg-[#79CBCA] text-[#102828] rounded-md px-4 text-sm font-semibold transition-colors border border-[#8AD3D2]/25"
             >
               Enviar
             </button>

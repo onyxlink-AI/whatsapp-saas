@@ -109,9 +109,9 @@ export function AuthHeroMotion() {
         <svg className="auth-neural-network" viewBox="0 0 100 100" preserveAspectRatio="none">
           <defs>
             <linearGradient id="auth-neural-gradient" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#7b00ff" stopOpacity="0" />
-              <stop offset="0.48" stopColor="#a855f7" stopOpacity="0.78" />
-              <stop offset="1" stopColor="#c4b5fd" stopOpacity="0.1" />
+              <stop offset="0" stopColor="#79CBCA" stopOpacity="0" />
+              <stop offset="0.48" stopColor="#83CFCE" stopOpacity="0.78" />
+              <stop offset="1" stopColor="#BFE7E6" stopOpacity="0.1" />
             </linearGradient>
             <filter id="auth-neural-glow" x="-50%" y="-50%" width="200%" height="200%">
               <feGaussianBlur stdDeviation="0.45" result="blur" />

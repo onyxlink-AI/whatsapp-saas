@@ -25,7 +25,7 @@ const JEANS_MATERIAL = new THREE.MeshStandardMaterial({ color: JEANS_COLOR, roug
 const SHOE_MATERIAL = new THREE.MeshStandardMaterial({ color: SHOE_COLOR, roughness: 0.72 });
 const EYE_MATERIAL = new THREE.MeshStandardMaterial({ color: '#17131a', roughness: 0.5 });
 const MOUTH_MATERIAL = new THREE.MeshStandardMaterial({ color: '#642d32', roughness: 0.7 });
-const COLLAR_MATERIAL = new THREE.MeshStandardMaterial({ color: '#7c3aed', roughness: 0.6 });
+const COLLAR_MATERIAL = new THREE.MeshStandardMaterial({ color: '#79CBCA', roughness: 0.6 });
 function StandingLeg({
   side,
   legRef,

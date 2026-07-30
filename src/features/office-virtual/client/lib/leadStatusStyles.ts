@@ -15,6 +15,6 @@ export const LEAD_STATUS_TW: Record<ContactStage, string> = {
   new: 'text-sky-300 border-sky-500/30 bg-sky-500/[0.06]',
   engaged: 'text-amber-300 border-amber-500/30 bg-amber-500/[0.06]',
   qualified: 'text-emerald-300 border-emerald-500/30 bg-emerald-500/[0.06]',
-  customer: 'text-violet-300 border-violet-400/30 bg-violet-500/[0.06]',
+  customer: 'text-[#A0DCDB] border-[#8AD3D2]/30 bg-[#83CFCE]/[0.06]',
   lost: 'text-rose-300 border-rose-500/30 bg-rose-500/[0.06]',
 };

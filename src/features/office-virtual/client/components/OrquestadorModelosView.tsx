@@ -138,7 +138,7 @@ function WorkspacePolicyPanel({ feed }: { feed: OrchestratorFeed }) {
         <button
           onClick={() => feed.updateOpenRouterModelPolicy(draft)}
           disabled={!dirty}
-          className="ml-auto shrink-0 bg-violet-600 hover:bg-violet-500 text-white rounded-md px-3 py-1.5 text-[11px] font-semibold transition-colors border border-violet-400/25 disabled:opacity-40 disabled:pointer-events-none"
+          className="ml-auto shrink-0 bg-[#79CBCA] hover:bg-[#83CFCE] text-[#102828] rounded-md px-3 py-1.5 text-[11px] font-semibold transition-colors border border-[#8AD3D2]/25 disabled:opacity-40 disabled:pointer-events-none"
         >
           Guardar política
         </button>
@@ -236,7 +236,7 @@ function SeatOverrideRow({ agent, feed }: { agent: Agent; feed: OrchestratorFeed
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
             <span
               className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
-                hasOverride ? 'border-violet-400/30 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/40 bg-white/[0.03]'
+                hasOverride ? 'border-[#8AD3D2]/30 bg-[#83CFCE]/10 text-[#BFE7E6]' : 'border-white/10 text-white/40 bg-white/[0.03]'
               }`}
             >
               {hasOverride ? 'Override propio' : 'Usa el modelo principal'}

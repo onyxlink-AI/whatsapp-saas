@@ -86,17 +86,17 @@ function MonthCalendar({
               onClick={() => onSelectDay(date)}
               className={`aspect-square rounded-md border p-1.5 text-left flex flex-col transition-colors ${
                 isSelected
-                  ? 'border-violet-400/50 bg-violet-500/[0.12]'
+                  ? 'border-[#8AD3D2]/50 bg-[#83CFCE]/[0.12]'
                   : isToday
-                    ? 'border-violet-400/25 bg-violet-500/[0.05]'
+                    ? 'border-[#8AD3D2]/25 bg-[#83CFCE]/[0.05]'
                     : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.045]'
               }`}
             >
-              <span className={`text-[11px] ${isToday ? 'text-violet-300 font-semibold' : 'text-white/55'}`}>{date.getDate()}</span>
+              <span className={`text-[11px] ${isToday ? 'text-[#A0DCDB] font-semibold' : 'text-white/55'}`}>{date.getDate()}</span>
               {matches.length > 0 && (
                 <div className="flex flex-wrap gap-0.5 mt-auto">
                   {matches.slice(0, 3).map((r) => (
-                    <span key={r.id} className="w-1.5 h-1.5 rounded-full bg-violet-400" title={r.name} />
+                    <span key={r.id} className="w-1.5 h-1.5 rounded-full bg-[#8AD3D2]" title={r.name} />
                   ))}
                   {matches.length > 3 && <span className="text-[9px] text-white/30">+{matches.length - 3}</span>}
                 </div>
@@ -115,7 +115,7 @@ function RoutineActions({ routine, feed }: { routine: Routine; feed: RoutineFeed
       {routine.status === 'active' && (
         <button
           onClick={() => feed.runRoutineNow(routine.id)}
-          className="text-[11px] font-medium px-2.5 py-1.5 rounded-md border border-violet-400/25 bg-violet-500/[0.08] text-violet-200 hover:bg-violet-500/[0.14] transition-colors"
+          className="text-[11px] font-medium px-2.5 py-1.5 rounded-md border border-[#8AD3D2]/25 bg-[#83CFCE]/[0.08] text-[#BFE7E6] hover:bg-[#83CFCE]/[0.14] transition-colors"
         >
           Ejecutar ahora
         </button>
@@ -146,7 +146,7 @@ function RoutineDetailModal({ routine, agents, feed, onClose, onEdit }: { routin
       <div className="onyx-popover w-full max-w-xl my-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4 border-b border-white/[0.07]">
           <div className="min-w-0">
-            <div className="text-[9px] uppercase tracking-[0.18em] text-violet-300/60 mb-1">Rutina</div>
+            <div className="text-[9px] uppercase tracking-[0.18em] text-[#A0DCDB]/60 mb-1">Rutina</div>
             <h3 className="text-white font-semibold text-lg leading-snug">{routine.name}</h3>
             <div className="flex flex-wrap items-center gap-1.5 mt-2">
               <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${ROUTINE_STATUS_TW[routine.status]}`}>
@@ -279,7 +279,7 @@ function RoutineFormModal({
                   key={freq}
                   onClick={() => setDraft({ ...draft, frequency: freq })}
                   className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
-                    draft.frequency === freq ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/40 hover:text-white/65'
+                    draft.frequency === freq ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/10 text-[#BFE7E6]' : 'border-white/10 text-white/40 hover:text-white/65'
                   }`}
                 >
                   {ROUTINE_FREQUENCY_LABEL_ES[freq]}
@@ -376,7 +376,7 @@ function RoutineFormModal({
             </button>
             <button
               onClick={submit}
-              className="bg-violet-600 hover:bg-violet-500 text-white rounded-md px-4 py-2 text-xs font-semibold transition-colors border border-violet-400/25"
+              className="bg-[#79CBCA] hover:bg-[#83CFCE] text-[#102828] rounded-md px-4 py-2 text-xs font-semibold transition-colors border border-[#8AD3D2]/25"
             >
               Guardar
             </button>
@@ -474,20 +474,20 @@ export default function RutinasView({ feed, agents, openRoutineId, openRequestId
           <div className="flex rounded-md border border-white/10 overflow-hidden">
             <button
               onClick={() => setViewMode('calendar')}
-              className={`text-[11px] px-2.5 py-1.5 transition-colors ${viewMode === 'calendar' ? 'bg-violet-500/15 text-violet-200' : 'text-white/45 hover:text-white/70'}`}
+              className={`text-[11px] px-2.5 py-1.5 transition-colors ${viewMode === 'calendar' ? 'bg-[#83CFCE]/15 text-[#BFE7E6]' : 'text-white/45 hover:text-white/70'}`}
             >
               Calendario
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`text-[11px] px-2.5 py-1.5 transition-colors ${viewMode === 'list' ? 'bg-violet-500/15 text-violet-200' : 'text-white/45 hover:text-white/70'}`}
+              className={`text-[11px] px-2.5 py-1.5 transition-colors ${viewMode === 'list' ? 'bg-[#83CFCE]/15 text-[#BFE7E6]' : 'text-white/45 hover:text-white/70'}`}
             >
               Lista
             </button>
           </div>
           <button
             onClick={() => setFormMode('create')}
-            className="bg-violet-600 hover:bg-violet-500 text-white rounded-md px-3 py-1.5 text-xs font-semibold transition-colors border border-violet-400/25 whitespace-nowrap"
+            className="bg-[#79CBCA] hover:bg-[#83CFCE] text-[#102828] rounded-md px-3 py-1.5 text-xs font-semibold transition-colors border border-[#8AD3D2]/25 whitespace-nowrap"
           >
             + Nueva rutina
           </button>

@@ -22,7 +22,7 @@ export const STATUS_HEX: Record<AgentStatus, string> = {
   completed: '#5eead4',
   failed: '#f43f5e',
   blocked: '#f97316',
-  approval_required: '#e879f9',
+  approval_required: '#79CBCA',
 };
 
 export const STATUS_TW_BG: Record<AgentStatus, string> = {
@@ -32,7 +32,7 @@ export const STATUS_TW_BG: Record<AgentStatus, string> = {
   completed: 'bg-teal-300',
   failed: 'bg-rose-500',
   blocked: 'bg-orange-500',
-  approval_required: 'bg-fuchsia-400',
+  approval_required: 'bg-[#8AD3D2]',
 };
 
 export const SOURCE_LABEL_ES: Record<OfficeActivitySource, string> = {
@@ -45,6 +45,6 @@ export const SOURCE_LABEL_ES: Record<OfficeActivitySource, string> = {
 export const SOURCE_TW_TEXT: Record<OfficeActivitySource, string> = {
   whatsapp: 'text-emerald-300',
   voice: 'text-sky-300',
-  manual: 'text-violet-300',
+  manual: 'text-[#A0DCDB]',
   automation: 'text-amber-300',
 };

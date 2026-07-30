@@ -40,7 +40,7 @@ export default function AgentesView({ agents, rooms, snapshots, onOpenOffice, on
         meta={
           <div className="flex items-center gap-2 text-[10px] text-white/45">
             <span className="onyx-header-stat"><span className="bg-emerald-400" />{workingCount} trabajando</span>
-            <span className="onyx-header-stat"><span className="bg-violet-400" />{activeTasks} tareas activas</span>
+            <span className="onyx-header-stat"><span className="bg-[#8AD3D2]" />{activeTasks} tareas activas</span>
           </div>
         }
         guide={{
@@ -55,7 +55,7 @@ export default function AgentesView({ agents, rooms, snapshots, onOpenOffice, on
 
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
         <div className="mb-4 flex items-center gap-2 text-[11px] text-white/35">
-          <Network size={14} className="text-violet-300/60" />
+          <Network size={14} className="text-[#A0DCDB]/60" />
           <span>{activeAgents.length} puestos activos</span>
           <span className="text-white/15">·</span>
           <span>Sin mostrar puestos desactivados</span>
@@ -80,7 +80,7 @@ export default function AgentesView({ agents, rooms, snapshots, onOpenOffice, on
                   <div className="flex items-start gap-3.5">
                     <div
                       className="w-12 h-12 rounded-md flex items-center justify-center text-xs font-bold border shrink-0"
-                      style={{ background: `linear-gradient(145deg, ${agent.color}3d, #0b0910 70%)`, borderColor: agent.color }}
+                      style={{ background: `linear-gradient(145deg, ${agent.color}3d, #091313 70%)`, borderColor: agent.color }}
                     >
                       {agent.name.slice(0, 2).toUpperCase()}
                     </div>
@@ -132,7 +132,7 @@ export default function AgentesView({ agents, rooms, snapshots, onOpenOffice, on
                       <Building2 size={14} /> Ver en la oficina
                     </button>
                     {legacyAgent && (
-                      <button onClick={() => onOpenChat(legacyAgent.id)} className="flex-1 min-w-[138px] bg-violet-600 hover:bg-violet-500 text-white rounded-md px-3 py-2.5 text-xs font-semibold transition-colors border border-violet-400/25 flex items-center justify-center gap-2">
+                      <button onClick={() => onOpenChat(legacyAgent.id)} className="flex-1 min-w-[138px] bg-[#79CBCA] hover:bg-[#83CFCE] text-[#102828] rounded-md px-3 py-2.5 text-xs font-semibold transition-colors border border-[#8AD3D2]/25 flex items-center justify-center gap-2">
                         <MessageSquareText size={14} /> Conversación
                       </button>
                     )}

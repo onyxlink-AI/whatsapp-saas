@@ -55,7 +55,7 @@ const VISUAL: Record<AgentId, { color: string; status: AgentStatus; appearance: 
   strategy: {
     color: '#fbbf24',
     status: 'available',
-    appearance: { shirtColor: '#7c3aed', pantsColor: '#111827', skinColor: '#f4c99b', hairColor: '#4a2c1a' },
+    appearance: { shirtColor: '#79CBCA', pantsColor: '#111827', skinColor: '#f4c99b', hairColor: '#4a2c1a' },
   },
   proposal: {
     color: '#34d399',
@@ -63,7 +63,7 @@ const VISUAL: Record<AgentId, { color: string; status: AgentStatus; appearance: 
     appearance: { shirtColor: '#059669', pantsColor: '#1e293b', skinColor: '#e3ab7a', hairColor: '#171310' },
   },
   operations: {
-    color: '#a78bfa',
+    color: '#A0DCDB',
     status: 'available',
     appearance: { shirtColor: '#f97316', pantsColor: '#111827', skinColor: '#f4c99b', hairColor: '#222222' },
   },

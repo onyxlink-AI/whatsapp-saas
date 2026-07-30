@@ -35,7 +35,7 @@ function Highlighted({ text, query }: { text: string; query: string }) {
     <>
       {parts.map((part, i) =>
         part.toLocaleLowerCase('es') === trimmed.toLocaleLowerCase('es') ? (
-          <mark key={i} className="bg-violet-500/30 text-violet-100 rounded-sm px-0.5">
+          <mark key={i} className="bg-[#83CFCE]/30 text-[#DFF3F3] rounded-sm px-0.5">
             {part}
           </mark>
         ) : (
@@ -69,7 +69,7 @@ function ResultRow({
       onClick={onOpen}
       onMouseEnter={onHover}
       className={`w-full text-left px-3 py-2.5 rounded-lg border transition-colors flex items-start gap-3 ${
-        focused ? 'border-violet-400/40 bg-violet-500/[0.08]' : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.035]'
+        focused ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/[0.08]' : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.035]'
       }`}
     >
       <span className={`shrink-0 mt-0.5 text-[10px] font-medium px-2 py-0.5 rounded-full border ${SEARCH_CATEGORY_TW[result.category]}`}>
@@ -168,7 +168,7 @@ export default function BuscarView({ feed, onOpenResult }: Props) {
           <button
             onClick={() => setCategory('all')}
             className={`text-[11px] px-2.5 py-1.5 rounded-md border transition-colors ${
-              category === 'all' ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/45 hover:text-white/70'
+              category === 'all' ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/10 text-[#BFE7E6]' : 'border-white/10 text-white/45 hover:text-white/70'
             }`}
           >
             Todos
@@ -178,7 +178,7 @@ export default function BuscarView({ feed, onOpenResult }: Props) {
               key={cat}
               onClick={() => setCategory(cat)}
               className={`text-[11px] px-2.5 py-1.5 rounded-md border transition-colors ${
-                category === cat ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/45 hover:text-white/70'
+                category === cat ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/10 text-[#BFE7E6]' : 'border-white/10 text-white/45 hover:text-white/70'
               }`}
             >
               {SEARCH_CATEGORY_LABEL_ES[cat]}

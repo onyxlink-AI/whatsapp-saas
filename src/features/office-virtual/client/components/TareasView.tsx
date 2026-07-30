@@ -175,7 +175,7 @@ function TaskDetailModal({
       <div className="onyx-popover w-full max-w-xl my-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4 border-b border-white/[0.07]">
           <div className="min-w-0">
-            <div className="text-[9px] uppercase tracking-[0.18em] text-violet-300/60 mb-1">Tarea</div>
+            <div className="text-[9px] uppercase tracking-[0.18em] text-[#A0DCDB]/60 mb-1">Tarea</div>
             <h3 className="text-white font-semibold text-lg leading-snug">{task.title}</h3>
             <div className="flex flex-wrap items-center gap-1.5 mt-2">
               <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${TASK_STATUS_TW[task.status]}`}>
@@ -216,7 +216,7 @@ function TaskDetailModal({
               </div>
               <button
                 onClick={() => onOpenContact360(related.contactId)}
-                className="shrink-0 text-[11px] font-medium text-violet-300/80 hover:text-violet-200 border border-violet-400/25 hover:bg-violet-500/10 rounded-md px-2.5 py-1.5 transition-colors"
+                className="shrink-0 text-[11px] font-medium text-[#A0DCDB]/80 hover:text-[#BFE7E6] border border-[#8AD3D2]/25 hover:bg-[#83CFCE]/10 rounded-md px-2.5 py-1.5 transition-colors"
               >
                 Ver Contacto 360
               </button>
@@ -378,7 +378,7 @@ function TaskFormModal({
             </button>
             <button
               onClick={submit}
-              className="bg-violet-600 hover:bg-violet-500 text-white rounded-md px-4 py-2 text-xs font-semibold transition-colors border border-violet-400/25"
+              className="bg-[#79CBCA] hover:bg-[#83CFCE] text-[#102828] rounded-md px-4 py-2 text-xs font-semibold transition-colors border border-[#8AD3D2]/25"
             >
               Guardar
             </button>
@@ -480,20 +480,20 @@ export default function TareasView({ feed, agents, contacts, onOpenContact360, o
           <div className="flex rounded-md border border-white/10 overflow-hidden">
             <button
               onClick={() => setViewMode('list')}
-              className={`text-[11px] px-2.5 py-1.5 transition-colors ${viewMode === 'list' ? 'bg-violet-500/15 text-violet-200' : 'text-white/45 hover:text-white/70'}`}
+              className={`text-[11px] px-2.5 py-1.5 transition-colors ${viewMode === 'list' ? 'bg-[#83CFCE]/15 text-[#BFE7E6]' : 'text-white/45 hover:text-white/70'}`}
             >
               Lista
             </button>
             <button
               onClick={() => setViewMode('board')}
-              className={`text-[11px] px-2.5 py-1.5 transition-colors ${viewMode === 'board' ? 'bg-violet-500/15 text-violet-200' : 'text-white/45 hover:text-white/70'}`}
+              className={`text-[11px] px-2.5 py-1.5 transition-colors ${viewMode === 'board' ? 'bg-[#83CFCE]/15 text-[#BFE7E6]' : 'text-white/45 hover:text-white/70'}`}
             >
               Tablero
             </button>
           </div>
           <button
             onClick={() => setFormMode('create')}
-            className="bg-violet-600 hover:bg-violet-500 text-white rounded-md px-3 py-1.5 text-xs font-semibold transition-colors border border-violet-400/25 whitespace-nowrap"
+            className="bg-[#79CBCA] hover:bg-[#83CFCE] text-[#102828] rounded-md px-3 py-1.5 text-xs font-semibold transition-colors border border-[#8AD3D2]/25 whitespace-nowrap"
           >
             + Nueva tarea
           </button>

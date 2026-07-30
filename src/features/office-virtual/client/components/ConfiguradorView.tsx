@@ -73,7 +73,7 @@ function TemplatePicker({ selected, onSelect }: { selected: SpecialistTemplateId
             title={template.summary}
             className={`text-left rounded-md border px-2.5 py-2 transition-colors ${
               selected === template.id
-                ? 'border-violet-400/40 bg-violet-500/[0.08]'
+                ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/[0.08]'
                 : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]'
             }`}
           >
@@ -231,7 +231,7 @@ function SpecialistCard({
     <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4 flex flex-col gap-3 border-l-2" style={{ borderLeftColor: draft.color }}>
       <div className="flex items-start justify-between gap-2">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-300/60">{seatLabel}</div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#A0DCDB]/60">{seatLabel}</div>
           <div className="text-sm text-white/85 font-medium mt-0.5">{draft.name}</div>
           <div className="text-[11px] text-white/35">{template ? template.label : 'Sin plantilla — puesto sin preparar'}</div>
           {template && <p className="text-[11px] text-white/45 mt-1 max-w-md leading-snug">{template.summary}</p>}
@@ -329,7 +329,7 @@ function SpecialistCard({
           </div>
 
           <details className="group rounded-lg border border-white/[0.07] bg-black/15 p-3">
-            <summary className="cursor-pointer list-none text-[11px] font-semibold text-violet-200/80 flex items-center justify-between">
+            <summary className="cursor-pointer list-none text-[11px] font-semibold text-[#BFE7E6]/80 flex items-center justify-between">
               Ajustes técnicos avanzados
               <span className="text-white/30 group-open:rotate-180 transition-transform">⌄</span>
             </summary>
@@ -340,7 +340,7 @@ function SpecialistCard({
                 <textarea value={draft.instructions} onChange={(e) => onChange({ instructions: e.target.value })} rows={6} className="onyx-input w-full rounded-md px-3 py-2 text-xs leading-relaxed mt-1 resize-y" />
               </div>
 
-              <button onClick={() => setShowCompiled((v) => !v)} className="text-[11px] text-violet-300/70 hover:text-violet-200 text-left w-fit">
+              <button onClick={() => setShowCompiled((v) => !v)} className="text-[11px] text-[#A0DCDB]/70 hover:text-[#BFE7E6] text-left w-fit">
                 {showCompiled ? 'Ocultar prompt final' : 'Comprobar prompt final'}
               </button>
               {showCompiled && (
@@ -370,7 +370,7 @@ function SpecialistCard({
                       key={policy}
                       onClick={() => onChange({ approvalPolicy: policy })}
                       className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
-                        draft.approvalPolicy === policy ? 'border-violet-400/40 bg-violet-500/10 text-violet-200' : 'border-white/10 text-white/40 hover:text-white/65'
+                        draft.approvalPolicy === policy ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/10 text-[#BFE7E6]' : 'border-white/10 text-white/40 hover:text-white/65'
                       }`}
                     >
                       {APPROVAL_POLICY_LABEL_ES[policy]}
@@ -414,7 +414,7 @@ function SectorPicker({ sectorId, preview, onPreview, onApply, onClear }: {
             onClick={() => onPreview(vertical.id)}
             title={vertical.summary}
             className={`text-left rounded-md border px-2.5 py-2 transition-colors ${
-              sectorId === vertical.id ? 'border-violet-400/40 bg-violet-500/[0.08]' : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]'
+              sectorId === vertical.id ? 'border-[#8AD3D2]/40 bg-[#83CFCE]/[0.08]' : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]'
             }`}
           >
             <div className="text-sm">{vertical.icon}</div>
@@ -513,7 +513,7 @@ export default function ConfiguradorView(props: Props) {
           : 'Personalización real para esta empresa. Se guarda en el servidor y persiste al recargar.'}
         meta={
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border text-violet-300/70 border-violet-400/25 bg-violet-500/[0.05]">
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border text-[#A0DCDB]/70 border-[#8AD3D2]/25 bg-[#83CFCE]/[0.05]">
               {STANDARD_OFFICE_PRESET.displayName} · v{presetVersion}
             </span>
             <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${CONFIGURATION_STATUS_TW[status]}`}>{CONFIGURATION_STATUS_LABEL_ES[status]}</span>
@@ -549,7 +549,7 @@ export default function ConfiguradorView(props: Props) {
           <section className="onyx-config-launchpad">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <div className="flex items-center gap-2 text-sm font-semibold text-white/90"><WandSparkles size={16} className="text-violet-300" /> Puesta en marcha rápida</div>
+                <div className="flex items-center gap-2 text-sm font-semibold text-white/90"><WandSparkles size={16} className="text-[#A0DCDB]" /> Puesta en marcha rápida</div>
                 <p className="mt-1 text-[11px] text-white/40">Elige el sector, añade los perfiles que necesites y publica. Los detalles técnicos quedan disponibles dentro de cada puesto.</p>
               </div>
               <div className="flex gap-2 text-[10px]">
@@ -583,7 +583,7 @@ export default function ConfiguradorView(props: Props) {
                     onClick={() => addTemplateToNextSeat(template.id)}
                     disabled={!nextEmptySeat}
                     title={template.summary}
-                    className="shrink-0 rounded-lg border border-white/[0.07] bg-white/[0.025] px-3 py-2 text-left hover:border-violet-400/25 hover:bg-violet-500/[0.06] disabled:opacity-35"
+                    className="shrink-0 rounded-lg border border-white/[0.07] bg-white/[0.025] px-3 py-2 text-left hover:border-[#8AD3D2]/25 hover:bg-[#83CFCE]/[0.06] disabled:opacity-35"
                   >
                     <span className="mr-1.5">{template.icon}</span><span className="text-[11px] font-medium text-white/68">{template.label}</span>
                   </button>
@@ -671,7 +671,7 @@ export default function ConfiguradorView(props: Props) {
             onClick={publish}
             disabled={saving}
             title="Publica la Oficina: los especialistas activados pasan a verse en la Oficina Virtual del cliente."
-            className="bg-violet-600 hover:bg-violet-500 text-white rounded-md px-4 py-2 text-xs font-semibold transition-colors border border-violet-400/25 disabled:opacity-50"
+            className="bg-[#79CBCA] hover:bg-[#83CFCE] text-[#102828] rounded-md px-4 py-2 text-xs font-semibold transition-colors border border-[#8AD3D2]/25 disabled:opacity-50"
           >
             Publicar
           </button>

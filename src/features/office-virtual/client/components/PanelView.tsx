@@ -46,7 +46,7 @@ export default function PanelView({ state, agents, activeSeatCount, onSelectAgen
     { label: 'Actividades en cola', value: overview.queuedActivities, color: '#38bdf8' },
     { label: 'Tareas completadas', value: overview.completedActivities, color: '#5eead4' },
     { label: 'Errores y bloqueos', value: errorsAndBlocks, color: '#f43f5e' },
-    { label: 'Aprobaciones pendientes', value: pendingApprovals, color: '#e879f9' },
+    { label: 'Aprobaciones pendientes', value: pendingApprovals, color: '#79CBCA' },
   ];
 
   return (
@@ -100,7 +100,7 @@ export default function PanelView({ state, agents, activeSeatCount, onSelectAgen
                       </span>
                     </div>
                     <div className="h-1.5 rounded-full bg-white/[0.05] overflow-hidden">
-                      <div className="h-full rounded-full bg-violet-400/70" style={{ width: `${activeShare}%` }} />
+                      <div className="h-full rounded-full bg-[#8AD3D2]/70" style={{ width: `${activeShare}%` }} />
                     </div>
                   </div>
                 );

@@ -57,9 +57,9 @@ const CHATBOT_SHELL: OfficeSceneAgent = {
   id: 'chatbot',
   name: 'Chatbot',
   department: 'Chatbot',
-  color: '#818cf8',
+  color: '#8AD3D2',
   status: 'available',
-  appearance: { shirtColor: '#4f46e5', pantsColor: '#172033', skinColor: '#cbd5e1', hairColor: '#334155' },
+  appearance: { shirtColor: '#5AA9A8', pantsColor: '#172033', skinColor: '#cbd5e1', hairColor: '#334155' },
 };
 
 const SPECIALIST_APPEARANCES: Record<ConfigurableOfficeAgentId, CharacterAppearance> = {
@@ -67,10 +67,10 @@ const SPECIALIST_APPEARANCES: Record<ConfigurableOfficeAgentId, CharacterAppeara
   'specialist-2': { shirtColor: '#e11d48', pantsColor: '#202536', skinColor: '#f1c19b', hairColor: '#151515' },
   'specialist-3': { shirtColor: '#d97706', pantsColor: '#1f2937', skinColor: '#8d5524', hairColor: '#19110b' },
   'specialist-4': { shirtColor: '#0891b2', pantsColor: '#152235', skinColor: '#f2c6a0', hairColor: '#6b3f25' },
-  'specialist-5': { shirtColor: '#7c3aed', pantsColor: '#1e293b', skinColor: '#e3ab7a', hairColor: '#171310' },
+  'specialist-5': { shirtColor: '#79CBCA', pantsColor: '#1e293b', skinColor: '#e3ab7a', hairColor: '#171310' },
   'specialist-6': { shirtColor: '#059669', pantsColor: '#111827', skinColor: '#f4c99b', hairColor: '#222222' },
   'specialist-7': { shirtColor: '#db2777', pantsColor: '#1e293b', skinColor: '#e3ab7a', hairColor: '#1a1a1a' },
-  'specialist-8': { shirtColor: '#4338ca', pantsColor: '#1e293b', skinColor: '#f4c99b', hairColor: '#5c3a21' },
+  'specialist-8': { shirtColor: '#397C7B', pantsColor: '#1e293b', skinColor: '#f4c99b', hairColor: '#5c3a21' },
 };
 
 export function buildOfficeRoomSlots(roster: OfficeAgentSeatProjection[], readiness: OfficeSeatReadiness): OfficeRoomSlot[] {

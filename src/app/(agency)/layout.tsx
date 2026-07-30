@@ -95,7 +95,7 @@ export default async function AgencyLayout({
         </div>
 
         <div className="mx-3 mb-6 flex items-center gap-3 rounded-xl border border-primary/25 bg-primary/15 px-3 py-3 text-white">
-          <ShieldCheck className="h-5 w-5 text-violet-300" aria-hidden="true" />
+          <ShieldCheck className="h-5 w-5 text-[#A0DCDB]" aria-hidden="true" />
           <div>
             <p className="text-xs font-semibold">Panel de administración</p>
             <p className="text-[10px] text-white/45">Solo para OnyxLink</p>

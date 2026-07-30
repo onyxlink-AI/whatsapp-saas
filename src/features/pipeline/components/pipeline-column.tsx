@@ -23,10 +23,10 @@ const STAGE_COLORS: Record<
     dot: "bg-sky-400",
   },
   interes: {
-    header: "bg-violet-500/15",
-    border: "border-violet-500/40",
-    text: "text-violet-400",
-    dot: "bg-violet-400",
+    header: "bg-[#83CFCE]/15",
+    border: "border-[#83CFCE]/40",
+    text: "text-[#8AD3D2]",
+    dot: "bg-[#8AD3D2]",
   },
   listo_para_comprar: {
     header: "bg-amber-500/15",

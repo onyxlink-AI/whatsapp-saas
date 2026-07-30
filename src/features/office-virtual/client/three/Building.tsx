@@ -28,7 +28,7 @@ export default function Building({ rooms, selectedId, onSelect, onHover, present
       <mesh position={[0, -0.2, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[BUILDING_WIDTH + 20, BUILDING_DEPTH + 20]} />
         <meshStandardMaterial
-          color={presentation ? '#030207' : '#d9ddda'}
+          color={presentation ? '#020808' : '#d9ddda'}
           roughness={presentation ? 0.68 : 0.88}
           metalness={presentation ? 0.22 : 0}
         />
@@ -38,7 +38,7 @@ export default function Building({ rooms, selectedId, onSelect, onHover, present
       <mesh position={[0, -0.115, corridorZ]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[BUILDING_WIDTH + 1.2, 1.15]} />
         <meshStandardMaterial
-          color={presentation ? '#0a0710' : '#c4cbc8'}
+          color={presentation ? '#081414' : '#c4cbc8'}
           metalness={presentation ? 0.3 : 0.06}
           roughness={0.76}
         />
@@ -46,12 +46,12 @@ export default function Building({ rooms, selectedId, onSelect, onHover, present
       {[-1.5 * SPACING_X, -0.5 * SPACING_X, 0.5 * SPACING_X, 1.5 * SPACING_X].map((x) => (
         <mesh key={x} position={[x, -0.105, corridorZ]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[0.055, 1.05]} />
-          <meshBasicMaterial color={presentation ? '#5b21b6' : '#8fa29d'} />
+          <meshBasicMaterial color={presentation ? '#397C7B' : '#8fa29d'} />
         </mesh>
       ))}
       <mesh position={[0, -0.1, corridorZ]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[ROOM_W, 0.035]} />
-        <meshBasicMaterial color={presentation ? '#8b5cf6' : '#879995'} />
+        <meshBasicMaterial color={presentation ? '#83CFCE' : '#879995'} />
       </mesh>
 
       {visibleRooms.map((slot, i) => (

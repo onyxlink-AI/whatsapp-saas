@@ -30,9 +30,9 @@
     --popover: 1 0 0;
     --popover-foreground: 0.2 0.01 264;
 
-    /* Onyxlink Violet — acento de marca (#7B00FF) */
-    --primary: 0.53 0.29 293;
-    --primary-foreground: 0.98 0.005 293;
+    /* Onyxlink Violet — acento de marca (#79CBCA) */
+    --primary: 0.789693 0.080365 194.64;
+    --primary-foreground: 0.20 0.02 194.64;
 
     --secondary: 0.955 0.007 264;
     --secondary-foreground: 0.25 0.01 264;
@@ -52,9 +52,9 @@
 
     --border: 0.895 0.009 264;
     --input: 0.885 0.011 264;
-    --ring: 0.53 0.29 293;
+    --ring: 0.789693 0.080365 194.64;
 
-    --chart-1: 0.53 0.29 293;
+    --chart-1: 0.789693 0.080365 194.64;
     --chart-2: 0.62 0.15 250;
     --chart-3: 0.78 0.16 80;
     --chart-4: 0.65 0.17 150;
@@ -70,14 +70,14 @@
     --glass-border-alpha: 0.5;
 
     /* Glass tintado (violeta de marca ~10%) — ver .glass-accent */
-    --glass-tint: 0.53 0.29 293;
+    --glass-tint: 0.789693 0.080365 194.64;
     --glass-tint-alpha: 0.1;
     --glass-tint-border-alpha: 0.35;
 
     --radius: 0.75rem;
 
     /* Legacy HSL accent (badges/avatars) — kept in sync with --primary */
-    --electric-lime: 269 100% 50%;
+    --electric-lime: 179.268 44.086% 63.529%;
   }
 
   .dark {
@@ -91,8 +91,8 @@
     --popover: 0.18 0.01 264;
     --popover-foreground: 0.97 0.002 247;
 
-    --primary: 0.53 0.29 293;
-    --primary-foreground: 0.98 0.005 293;
+    --primary: 0.789693 0.080365 194.64;
+    --primary-foreground: 0.20 0.02 194.64;
 
     --secondary: 0.235 0.012 264;
     --secondary-foreground: 0.97 0.002 247;
@@ -112,9 +112,9 @@
 
     --border: 0.275 0.014 264;
     --input: 0.295 0.016 264;
-    --ring: 0.53 0.29 293;
+    --ring: 0.789693 0.080365 194.64;
 
-    --chart-1: 0.53 0.29 293;
+    --chart-1: 0.789693 0.080365 194.64;
     --chart-2: 0.68 0.14 250;
     --chart-3: 0.82 0.16 85;
     --chart-4: 0.72 0.17 150;
@@ -130,12 +130,12 @@
 
     /* Glass tintado (violeta de marca) — alpha algo mayor que en light para
        que el tinte se note sobre un vidrio casi negro */
-    --glass-tint: 0.53 0.29 293;
+    --glass-tint: 0.789693 0.080365 194.64;
     --glass-tint-alpha: 0.14;
     --glass-tint-border-alpha: 0.4;
 
     /* Legacy HSL accent (badges/avatars) — kept in sync with --primary */
-    --electric-lime: 269 100% 50%;
+    --electric-lime: 179.268 44.086% 63.529%;
   }
 }
 
@@ -150,7 +150,7 @@
     background-image:
       radial-gradient(
         52rem 34rem at 35% -20%,
-        oklch(0.53 0.29 293 / 0.045),
+        oklch(0.789693 0.080365 194.64 / 0.045),
         transparent 60%
       ),
       radial-gradient(
@@ -247,18 +247,18 @@
     background:
       radial-gradient(
         28rem 24rem at -10% -10%,
-        oklch(0.53 0.29 293 / 0.22),
+        oklch(0.789693 0.080365 194.64 / 0.22),
         transparent 58%
       ),
-      linear-gradient(180deg, #17131f 0%, #100e16 100%);
+      linear-gradient(180deg, #121D1D 0%, #0D1717 100%);
     box-shadow: 18px 0 55px -44px rgb(15 23 42 / 0.7);
   }
 
   .auth-hero {
     isolation: isolate;
     background:
-      radial-gradient(44rem 30rem at 78% 78%, rgb(123 0 255 / 0.16), transparent 68%),
-      linear-gradient(145deg, #15101e 0%, #0d0b12 55%, #07070a 100%);
+      radial-gradient(44rem 30rem at 78% 78%, rgb(121 203 202 / 0.16), transparent 68%),
+      linear-gradient(145deg, #111C1C 0%, #0A1515 55%, #07070a 100%);
   }
 
   .auth-hero__grid {
@@ -288,7 +288,7 @@
     right: 10%;
     width: 18rem;
     height: 18rem;
-    background: rgb(123 0 255 / 0.34);
+    background: rgb(121 203 202 / 0.34);
   }
 
   .auth-hero__aurora--two {
@@ -296,7 +296,7 @@
     bottom: 4%;
     width: 13rem;
     height: 13rem;
-    background: rgb(98 58 255 / 0.2);
+    background: rgb(90 169 168 / 0.2);
     animation-delay: -4s;
   }
 
@@ -369,7 +369,7 @@
     width: 42rem;
     height: 34rem;
     border-radius: 50%;
-    background: radial-gradient(circle, rgb(123 0 255 / 0.26), transparent 66%);
+    background: radial-gradient(circle, rgb(121 203 202 / 0.26), transparent 66%);
     filter: blur(18px);
   }
 
@@ -379,8 +379,8 @@
     z-index: 12;
     inset: 0;
     background:
-      linear-gradient(90deg, #110e18 0%, rgb(17 14 24 / 0.92) 35%, transparent 68%),
-      linear-gradient(0deg, rgb(10 8 14 / 0.72) 0%, transparent 26%);
+      linear-gradient(90deg, #0E1818 0%, rgb(14 24 24 / 0.92) 35%, transparent 68%),
+      linear-gradient(0deg, rgb(8 17 17 / 0.72) 0%, transparent 26%);
   }
 
   .auth-hero__scan {
@@ -391,8 +391,8 @@
     right: 3%;
     width: 48%;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgb(182 139 255 / 0.72), transparent);
-    box-shadow: 0 0 18px 2px rgb(123 0 255 / 0.25);
+    background: linear-gradient(90deg, transparent, rgb(160 220 219 / 0.72), transparent);
+    box-shadow: 0 0 18px 2px rgb(121 203 202 / 0.25);
     opacity: 0;
   }
 
@@ -412,7 +412,7 @@
     height: 100%;
     overflow: visible;
     opacity: 0.72;
-    filter: drop-shadow(0 0 7px rgb(123 0 255 / 0.42));
+    filter: drop-shadow(0 0 7px rgb(121 203 202 / 0.42));
   }
 
   .auth-neural-network path {
@@ -447,7 +447,7 @@
 
   .auth-data-node__halo {
     inset: -32%;
-    background: radial-gradient(circle, rgb(168 85 247 / 0.28), rgb(123 0 255 / 0.08) 38%, transparent 68%);
+    background: radial-gradient(circle, rgb(131 207 206 / 0.28), rgb(121 203 202 / 0.08) 38%, transparent 68%);
     filter: blur(7px);
     transform: translateZ(calc(var(--node-depth) * -0.45));
   }
@@ -455,16 +455,16 @@
   .auth-data-node__sphere {
     inset: 27%;
     overflow: hidden;
-    border: 1px solid rgb(221 214 254 / 0.72);
+    border: 1px solid rgb(191 231 230 / 0.72);
     background:
-      radial-gradient(circle at 31% 24%, rgb(255 255 255 / 0.98) 0 5%, rgb(221 214 254 / 0.9) 7%, transparent 19%),
-      radial-gradient(circle at 36% 32%, #c084fc 0%, #7c3aed 34%, #3b0764 70%, #12021f 100%);
+      radial-gradient(circle at 31% 24%, rgb(255 255 255 / 0.98) 0 5%, rgb(191 231 230 / 0.9) 7%, transparent 19%),
+      radial-gradient(circle at 36% 32%, #8AD3D2 0%, #79CBCA 34%, #153534 70%, #0C1F1F 100%);
     box-shadow:
-      inset -5px -7px 10px rgb(16 1 31 / 0.82),
-      inset 3px 3px 6px rgb(233 213 255 / 0.42),
-      0 0 7px rgb(233 213 255 / 0.8),
-      0 0 22px rgb(123 0 255 / 0.94),
-      0 0 48px rgb(123 0 255 / 0.38);
+      inset -5px -7px 10px rgb(12 31 31 / 0.82),
+      inset 3px 3px 6px rgb(223 243 243 / 0.42),
+      0 0 7px rgb(223 243 243 / 0.8),
+      0 0 22px rgb(121 203 202 / 0.94),
+      0 0 48px rgb(121 203 202 / 0.38);
     transform: translateZ(var(--node-depth));
   }
 
@@ -480,8 +480,8 @@
 
   .auth-data-node__core {
     inset: 34%;
-    background: #f5f3ff;
-    box-shadow: 0 0 9px 3px rgb(216 180 254 / 0.95);
+    background: #F1FAFA;
+    box-shadow: 0 0 9px 3px rgb(191 231 230 / 0.95);
     animation: auth-node-core 2.2s ease-in-out infinite;
   }
 
@@ -492,8 +492,8 @@
   }
 
   .auth-data-node__orbit {
-    border: 1px solid rgb(196 181 253 / 0.52);
-    box-shadow: inset 0 0 5px rgb(168 85 247 / 0.2), 0 0 8px rgb(123 0 255 / 0.28);
+    border: 1px solid rgb(160 220 219 / 0.52);
+    box-shadow: inset 0 0 5px rgb(131 207 206 / 0.2), 0 0 8px rgb(121 203 202 / 0.28);
     transform-style: preserve-3d;
   }
 
@@ -507,7 +507,7 @@
     inset: -7% 18%;
     width: 64%;
     left: 18%;
-    border-color: rgb(168 85 247 / 0.36);
+    border-color: rgb(131 207 206 / 0.36);
   }
 
   .auth-data-node__satellite {
@@ -518,13 +518,13 @@
     height: 0.23rem;
     margin-top: -0.115rem;
     border-radius: 50%;
-    background: #ede9fe;
-    box-shadow: 0 0 5px #ffffff, 0 0 11px #a855f7;
+    background: #E2F5F5;
+    box-shadow: 0 0 5px #ffffff, 0 0 11px #83CFCE;
   }
 
   .auth-data-node__pulse {
     inset: 10%;
-    border: 1px solid rgb(196 181 253 / 0.68);
+    border: 1px solid rgb(160 220 219 / 0.68);
     animation: auth-node-pulse 2.8s ease-out infinite;
   }
 
@@ -535,7 +535,7 @@
 
   .auth-login-canvas {
     background:
-      radial-gradient(30rem 24rem at 105% 5%, oklch(0.53 0.29 293 / 0.075), transparent 65%),
+      radial-gradient(30rem 24rem at 105% 5%, oklch(0.789693 0.080365 194.64 / 0.075), transparent 65%),
       oklch(var(--background));
   }
 
@@ -566,7 +566,7 @@
     overflow: hidden;
     box-shadow:
       0 1px 2px rgb(15 23 42 / 0.04),
-      0 24px 70px -44px rgb(80 0 180 / 0.38);
+      0 24px 70px -44px rgb(57 124 123 / 0.38);
   }
 
   .auth-login-card::before {

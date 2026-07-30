@@ -48,7 +48,7 @@ const SOURCE_TYPE_LABELS: Record<SourceType, string> = {
 const SOURCE_TYPE_COLORS: Record<SourceType, string> = {
   doc: "text-blue-400 border-blue-400/30",
   faq: "text-amber-400 border-amber-400/30",
-  url: "text-purple-400 border-purple-400/30",
+  url: "text-[#8AD3D2] border-[#8AD3D2]/30",
   snippet: "text-green-400 border-green-400/30",
 };
 

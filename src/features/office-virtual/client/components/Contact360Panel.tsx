@@ -58,7 +58,7 @@ export default function Contact360Panel({ contact, onClose }: Props) {
           >
             <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4 border-b border-white/[0.07]">
               <div className="min-w-0">
-                <div className="text-[9px] uppercase tracking-[0.18em] text-violet-300/60 mb-1">Contacto 360</div>
+                <div className="text-[9px] uppercase tracking-[0.18em] text-[#A0DCDB]/60 mb-1">Contacto 360</div>
                 <h3 className="text-white font-semibold text-lg truncate">{contact.displayName}</h3>
                 <div className="text-xs text-white/40 mt-0.5">
                   {contact.phoneMasked}
@@ -188,8 +188,8 @@ export default function Contact360Panel({ contact, onClose }: Props) {
                 </Section>
               </div>
 
-              <div className="rounded-lg border border-violet-400/25 bg-violet-500/[0.05] p-4">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-300/70 mb-1.5">
+              <div className="rounded-lg border border-[#8AD3D2]/25 bg-[#83CFCE]/[0.05] p-4">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#A0DCDB]/70 mb-1.5">
                   Próximo paso recomendado
                 </div>
                 <p className="text-sm text-white/85 leading-relaxed">

@@ -71,7 +71,7 @@ export const CAPABILITY_STATUS_LABEL_ES: Record<CapabilityStatus, string> = {
 
 export const CAPABILITY_STATUS_TW: Record<CapabilityStatus, string> = {
   available: 'text-emerald-300/80',
-  needs_approval: 'text-violet-300/80',
+  needs_approval: 'text-[#A0DCDB]/80',
   missing_connection: 'text-amber-300/80',
   not_available: 'text-white/30',
 };

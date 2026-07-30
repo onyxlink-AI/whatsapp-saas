@@ -35,7 +35,7 @@ export const AVATAR_PRESETS: AvatarPreset[] = [
     // 1 of 6 deliberately varied persona fallback colors (only shown if the
     // photo fails to load), not the app's primary brand chrome.
     // impeccable-disable-next-line ai-color-palette: deliberate, see above
-    fallbackGradient: "from-violet-400 to-fuchsia-600",
+    fallbackGradient: "from-[#8AD3D2] to-[#79CBCA]",
   },
   {
     key: "ana",
