@@ -20,7 +20,22 @@ import type { Agent, ChatMessage } from '../types';
 
 export type PendingApproval = { agentId: AgentId; description: string };
 
-export function useAgentChat() {
+type CoordinatorChatResponse = {
+  coordinatorText: string;
+  delegation: { agentId: string; specialistName: string; text: string } | null;
+};
+
+/**
+ * `workspaceId`/`realChat` gate the ONE real path in this hook: talking to
+ * the Coordinador (agent.id === 'coordinator') outside demo mode calls
+ * src/app/api/workspace/[id]/office-virtual/chat (real-chat-service.ts) —
+ * a genuine OpenRouter call using the model configured in Orquestador →
+ * Modelos de especialistas, which may delegate to a real published
+ * specialist. Every other agent (WhatsApp/Voice/the 4 legacy roles) still
+ * runs through OfficeEngine's in-memory simulation — wiring those up to a
+ * real model is the next, separate piece of work.
+ */
+export function useAgentChat(workspaceId: string, realChat: boolean) {
   // useState's lazy initializer (not a ref read during render) is the
   // sanctioned way to build one expensive object per instance — engine is
   // built once per mount and never reassigned.
@@ -31,10 +46,70 @@ export function useAgentChat() {
   const [typingAgentId, setTypingAgentId] = useState<string | null>(null);
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | null>(null);
 
+  const sendCoordinatorMessage = useCallback(async (agent: Agent, priorMessages: ChatMessage[]) => {
+    try {
+      const history = priorMessages
+        .filter((m) => !m.approvalRequestId)
+        .slice(-20)
+        .map((m) => ({ role: m.role === 'user' ? ('user' as const) : ('assistant' as const), content: m.text }));
+      const lastUserText = priorMessages[priorMessages.length - 1]?.text ?? '';
+
+      const response = await fetch(`/api/workspace/${encodeURIComponent(workspaceId)}/office-virtual/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: lastUserText, history: history.slice(0, -1) }),
+      });
+      const body = (await response.json().catch(() => null)) as (CoordinatorChatResponse & { error?: string }) | null;
+
+      if (!response.ok || !body) {
+        const errorMsg: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: 'agent',
+          text: `⚠️ ${body?.error ?? 'No se pudo hablar con el Orquestador.'}`,
+          timestamp: Date.now(),
+        };
+        setMessagesByAgent((prev) => ({ ...prev, [agent.id]: [...(prev[agent.id] ?? []), errorMsg] }));
+        return;
+      }
+
+      const replies: ChatMessage[] = [
+        { id: crypto.randomUUID(), role: 'agent', text: body.coordinatorText, timestamp: Date.now() },
+      ];
+      if (body.delegation) {
+        replies.push({
+          id: crypto.randomUUID(),
+          role: 'agent',
+          text: `🔧 ${body.delegation.specialistName} responde:\n\n${body.delegation.text}`,
+          timestamp: Date.now(),
+        });
+      }
+      setMessagesByAgent((prev) => ({ ...prev, [agent.id]: [...(prev[agent.id] ?? []), ...replies] }));
+    } catch {
+      const errorMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'agent',
+        text: '⚠️ No se pudo contactar con el backend del Orquestador.',
+        timestamp: Date.now(),
+      };
+      setMessagesByAgent((prev) => ({ ...prev, [agent.id]: [...(prev[agent.id] ?? []), errorMsg] }));
+    } finally {
+      setTypingAgentId((current) => (current === agent.id ? null : current));
+    }
+  }, [workspaceId]);
+
   const sendMessage = useCallback(async (agent: Agent, text: string) => {
     const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', text, timestamp: Date.now() };
-    setMessagesByAgent((prev) => ({ ...prev, [agent.id]: [...(prev[agent.id] ?? []), userMsg] }));
+    let nextMessages: ChatMessage[] = [];
+    setMessagesByAgent((prev) => {
+      nextMessages = [...(prev[agent.id] ?? []), userMsg];
+      return { ...prev, [agent.id]: nextMessages };
+    });
     setTypingAgentId(agent.id);
+
+    if (realChat && agent.id === 'coordinator') {
+      await sendCoordinatorMessage(agent, nextMessages);
+      return;
+    }
 
     await new Promise((r) => setTimeout(r, 350 + Math.random() * 400)); // feels like the character is "typing"
 
@@ -54,7 +129,7 @@ export function useAgentChat() {
     if (result.approvalRequestId) {
       setPendingApproval({ agentId: agent.id, description: agentMsg.text });
     }
-  }, [engine]);
+  }, [engine, realChat, sendCoordinatorMessage]);
 
   const decideApproval = useCallback(async (agent: Agent, approved: boolean) => {
     if (!activeRunIdRef.current) return;

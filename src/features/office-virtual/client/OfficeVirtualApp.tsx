@@ -142,7 +142,10 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, isDemoPresen
   const searchActor = { actorId: userEmail, role: workspaceRole, workspaceId };
   const reportActor = { actorId: userEmail, role: workspaceRole, workspaceId };
 
-  const { messagesByAgent, sendMessage, decideApproval, typingAgentId, pendingApproval } = useAgentChat();
+  const { messagesByAgent, sendMessage, decideApproval, typingAgentId, pendingApproval } = useAgentChat(
+    workspaceId,
+    !isDemoPresentation,
+  );
   const { snapshots: activitySnapshots, recentEvents, state: activityState } = useOfficeActivityFeed(workspaceId, isDemoPresentation);
   const { state: memoryState, forgetItem } = useContactMemoryFeed(workspaceId, isDemoPresentation);
   const { contacts: contact360List, getContact } = useContact360Feed(workspaceId, isDemoPresentation);
