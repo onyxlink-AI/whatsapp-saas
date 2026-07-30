@@ -46,6 +46,7 @@ import { useReportsFeed } from './hooks/useReportsFeed';
 import { useSkillsFeed } from './hooks/useSkillsFeed';
 import { useTaskFeed } from './hooks/useTaskFeed';
 import { createSaasOpenRouterConnectionAdapter } from './lib/saasOpenRouterConnectionAdapter';
+import { createSaasOrchestratorAdapter } from './lib/saasOrchestratorAdapter';
 import { isChatbotChannelReady, isVoiceChannelReady, isWhatsAppChannelReady } from './central-integrations';
 import { CONFIGURABLE_AGENT_IDS } from './central-integrations/specialist-seats';
 import type { OfficeAgentSeatProjection } from './central-integrations/office-agent-projection';
@@ -179,7 +180,15 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, isDemoPresen
   const realOfficeConfigurator = useOfficeConfigurator(workspaceId, isSuperAdmin);
   const demoOfficeConfigurator = useDemoOfficeConfigurator(workspaceId, isDemoPresentation);
   const officeConfigurator = isDemoPresentation ? demoOfficeConfigurator : realOfficeConfigurator;
-  const orchestratorFeed = useOrchestratorFeed(userEmail, workspaceRole, workspaceId, isDemoPresentation);
+  const orchestratorAdapter = useMemo(() => createSaasOrchestratorAdapter(), []);
+  const orchestratorFeed = useOrchestratorFeed(
+    userEmail,
+    workspaceRole,
+    workspaceId,
+    isDemoPresentation,
+    orchestratorAdapter,
+    isSuperAdmin,
+  );
   const openRouterAdapter = useMemo(() => createSaasOpenRouterConnectionAdapter(), []);
   const realOpenRouterConnectionFeed = useOpenRouterConnectionFeed(
     userEmail,

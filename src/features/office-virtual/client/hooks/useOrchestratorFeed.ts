@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AgentId } from '../../schemas';
 import {
   applyOrchestratorCommand,
@@ -20,6 +20,7 @@ import type {
   ResolvedOpenRouterModel,
   WorkspaceOrchestratorBinding,
 } from '../central-orchestrator';
+import { UNCONFIGURED_ORCHESTRATOR_ADAPTER, type OrchestratorAdapter, type OrchestratorAdapterCommand } from '../lib/orchestratorAdapter';
 
 export type ModelPolicyPatch = Partial<{
   model: string | null;
@@ -64,8 +65,11 @@ function createDemoOrchestratorState(workspaceId: string, actorEmail: string): C
 export type OrchestratorFeed = {
   binding: WorkspaceOrchestratorBinding;
   activeConfig: OpenRouterConfig | HermesTelegramConfig;
+  /** True while the initial snapshot is being fetched from the backend. */
   loading: boolean;
   error: string | null;
+  /** True while a dispatched command is being persisted to the backend. */
+  saving: boolean;
   selectMode: (mode: OrchestratorMode) => void;
   updateOpenRouterConfig: (model: string | null) => void;
   /** Only the bot identifier — the bridge endpoint is backend-provisioned, never admin-entered. */
@@ -80,27 +84,96 @@ export type OrchestratorFeed = {
   resolveExecutionForAgent: (agentId: AgentId) => ResolvedOpenRouterExecution;
 };
 
-export function useOrchestratorFeed(actorEmail: string, role: OrchestratorActorRole, workspaceId: string, demoMode = false): OrchestratorFeed {
-  // Honestly empty — no real orchestrator backend is wired yet, so this no
-  // longer seeds a fake "already configured" model policy (see
-  // useTaskFeed.ts for the same pattern). createCentralOrchestratorState's
-  // own default (activeMode 'openrouter', blank configs) IS the correct
-  // "not configured yet" state, not a placeholder needing a fixture on top.
+/**
+ * `adapter`/`enabled` mirror useOpenRouterConnectionFeed.ts exactly: `load()`
+ * hydrates the persisted policy (with the REAL OpenRouter hasApiKey/status
+ * signal already overlaid server-side — see orchestrator-service.ts) on
+ * mount, and every dispatched command is both applied optimistically via the
+ * pure reducer AND persisted through `send()`, reconciling on the backend's
+ * authoritative response. `enabled` should be `isSuperAdmin` at the call
+ * site (route.ts is requireSuperAdmin()-only), matching the sibling
+ * connection feed's convention of skipping the fetch for everyone else
+ * instead of an expected-but-noisy 403.
+ */
+export function useOrchestratorFeed(
+  actorEmail: string,
+  role: OrchestratorActorRole,
+  workspaceId: string,
+  demoMode = false,
+  adapter: OrchestratorAdapter = UNCONFIGURED_ORCHESTRATOR_ADAPTER,
+  enabled = true,
+): OrchestratorFeed {
   const [state, setState] = useState<CentralOrchestratorState>(() => demoMode
     ? createDemoOrchestratorState(workspaceId, actorEmail)
     : createCentralOrchestratorState(workspaceId));
+  const stateRef = useRef(state);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(!demoMode && enabled);
   const actor = { actorId: actorEmail, role, workspaceId };
 
-  const dispatch = (build: (expectedRevision: number) => OrchestratorCommand) => {
-    setState((previous) => {
-      const result = applyOrchestratorCommand(previous, build(previous.binding.revision));
-      if (!result.success) {
-        setError(result.code);
-        return previous;
+  const commitState = (next: CentralOrchestratorState) => {
+    stateRef.current = next;
+    setState(next);
+  };
+
+  // Hydrate from the backend's persisted binding on mount. OfficeVirtualApp
+  // remounts this hook via key={workspaceId} on workspace switch, so a
+  // mount-only effect never needs to react to workspaceId changing mid-life
+  // (same reasoning as useOpenRouterConnectionFeed.ts).
+  useEffect(() => {
+    // `loading`'s initial value already accounts for demoMode/enabled (see
+    // useState above), so the disabled case needs no synchronous setState
+    // here — only the async fetch branch below ever needs to turn it off.
+    if (demoMode || !enabled) return;
+    let cancelled = false;
+    adapter.load(workspaceId).then((result) => {
+      if (cancelled) return;
+      if (result.status === 'error') {
+        setError(result.message);
+        setLoading(false);
+        return;
       }
-      setError(null);
-      return result.state;
+      commitState({ ...stateRef.current, binding: result.binding });
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceId, demoMode, enabled]);
+
+  const dispatch = (build: (expectedRevision: number) => OrchestratorCommand) => {
+    const command = build(stateRef.current.binding.revision);
+    const result = applyOrchestratorCommand(stateRef.current, command);
+    if (!result.success) {
+      setError(result.code);
+      return;
+    }
+    setError(null);
+    commitState(result.state);
+
+    if (demoMode || !enabled) return;
+
+    const {
+      commandId: _commandId,
+      workspaceId: _workspaceId,
+      actor: _actor,
+      occurredAt: _occurredAt,
+      expectedRevision: _expectedRevision,
+      ...payload
+    } = command;
+    setSaving(true);
+    adapter.send(workspaceId, command.expectedRevision, payload as OrchestratorAdapterCommand).then((sendResult) => {
+      setSaving(false);
+      if (sendResult.status === 'error') {
+        setError(sendResult.message);
+        return;
+      }
+      // The backend's binding is authoritative (it re-derives the real
+      // OpenRouter signal and owns `revision`) — it supersedes the local
+      // optimistic guess even if they happen to differ.
+      commitState({ ...stateRef.current, binding: sendResult.binding });
     });
   };
 
@@ -140,8 +213,9 @@ export function useOrchestratorFeed(actorEmail: string, role: OrchestratorActorR
   return {
     binding: state.binding,
     activeConfig: selectActiveOrchestratorConfig(state),
-    loading: false,
+    loading,
     error,
+    saving,
     selectMode,
     updateOpenRouterConfig,
     updateHermesBotId,
