@@ -69,11 +69,20 @@ export async function listAgendaTasksForWeek(
 
   if (!user) return [];
 
+  // A task assigned to a single day (scheduled_date set, scheduled_week_start
+  // NULL) never matched `.eq("scheduled_week_start", weekStart)` — it simply
+  // vanished from Semana even for the exact week containing its day. Also
+  // catch any day-mode task whose date falls in this week, in addition to
+  // week-mode tasks assigned directly to this week's Monday.
+  const weekEnd = addDaysToIsoDate(weekStart, 6);
+
   const { data, error } = await supabase
     .from("agenda_tasks")
     .select("*")
     .eq("workspace_id", workspaceId)
-    .eq("scheduled_week_start", weekStart)
+    .or(
+      `scheduled_week_start.eq.${weekStart},and(scheduled_date.gte.${weekStart},scheduled_date.lte.${weekEnd})`,
+    )
     .order("created_at", { ascending: true });
 
   if (error || !data) {
@@ -82,6 +91,12 @@ export async function listAgendaTasksForWeek(
   }
 
   return data as AgendaTaskRow[];
+}
+
+function addDaysToIsoDate(isoDate: string, days: number): string {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const utc = new Date(Date.UTC(year, month - 1, day + days));
+  return utc.toISOString().slice(0, 10);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

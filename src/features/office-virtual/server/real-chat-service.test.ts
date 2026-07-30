@@ -301,7 +301,7 @@ describe('real chat service — real Agenda tool', () => {
       reply: (systemPrompt) =>
         systemPrompt.includes('Eres el Orquestador')
           ? 'Se lo paso a Ana.\n<delegate agent="specialist-1">Agenda la llamada con Antonio Fernández mañana a las 11</delegate>'
-          : 'Confirmada y cerrada.\n<agenda_task title="Llamada con Antonio Fernández" date="2026-08-01">Visita de mantenimiento a las 11:00</agenda_task>',
+          : 'Confirmada y cerrada.\n<agenda_task title="Llamada con Antonio Fernández" date="2026-08-01" start="11:00" end="11:30">Visita de mantenimiento</agenda_task>',
     });
 
     const result = await handleCoordinatorMessage('workspace-a', [], 'Agenda una llamada con Antonio Fernández mañana a las 11', 'user-1', ports);
@@ -309,11 +309,49 @@ describe('real chat service — real Agenda tool', () => {
     expect(result.success).toBe(true);
     if (!result.success) return;
     expect(result.delegation?.text).toBe('Confirmada y cerrada.'); // tag stripped from visible text
-    expect(result.delegation?.agendaTask).toEqual({ title: 'Llamada con Antonio Fernández', scheduledDate: '2026-08-01' });
+    expect(result.delegation?.agendaTask).toEqual({
+      title: 'Llamada con Antonio Fernández',
+      scheduledDate: '2026-08-01',
+      startTime: '11:00',
+      endTime: '11:30',
+    });
     expect(createTask).toHaveBeenCalledWith('workspace-a', 'user-1', {
       title: 'Llamada con Antonio Fernández',
-      notes: 'Visita de mantenimiento a las 11:00',
+      notes: 'Visita de mantenimiento',
       scheduledDate: '2026-08-01',
+      startTime: '11:00',
+      endTime: '11:30',
+    });
+  });
+
+  it('persists a title/date-only appointment fine when the specialist omits start/end (no fixed time)', async () => {
+    const createTask = vi.fn(async () => {});
+    const ports = fakePorts({
+      doc: agendaSpecialistDoc(),
+      binding: binding(),
+      agenda: { createTask },
+      reply: (systemPrompt) =>
+        systemPrompt.includes('Eres el Orquestador')
+          ? 'Se lo paso a Ana.\n<delegate agent="specialist-1">Anota revisar el inventario el jueves</delegate>'
+          : 'Anotado.\n<agenda_task title="Revisar inventario" date="2026-08-06">Pendiente de contar existencias</agenda_task>',
+    });
+
+    const result = await handleCoordinatorMessage('workspace-a', [], 'Anota revisar el inventario el jueves', 'user-1', ports);
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.delegation?.agendaTask).toEqual({
+      title: 'Revisar inventario',
+      scheduledDate: '2026-08-06',
+      startTime: null,
+      endTime: null,
+    });
+    expect(createTask).toHaveBeenCalledWith('workspace-a', 'user-1', {
+      title: 'Revisar inventario',
+      notes: 'Pendiente de contar existencias',
+      scheduledDate: '2026-08-06',
+      startTime: null,
+      endTime: null,
     });
   });
 

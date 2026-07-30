@@ -14,6 +14,7 @@ import { OPENROUTER_STATUS_ACTIVATES } from '@/features/office-virtual/client/ce
 import type { WorkspaceOrchestratorBinding } from '@/features/office-virtual/client/central-orchestrator';
 import { generateChatReply } from '@/features/inbox/services/openrouter';
 import { getBusinessInfo, buildNowContext } from '@/features/inbox/services/business-info';
+import { getGoogleCalendarConfig, createGoogleEvent, zonedDateTime } from '@/features/inbox/services/google-calendar-client';
 import { readJsonBody } from '@/lib/auth/workspace-access';
 
 function serviceClient() {
@@ -117,18 +118,57 @@ function orchestratorStore(): OrchestratorStore {
   };
 }
 
+/** "HH:MM" -> { hour, minute }. Assumes AGENDA_TASK_TAG's regex already validated the shape. */
+function parseHourMinute(time: string): { hour: number; minute: number } {
+  const [hour, minute] = time.split(':').map(Number);
+  return { hour, minute };
+}
+
 function agendaPorts(): AgendaPorts {
   const client = serviceClient();
   return {
     async createTask(workspaceId, actorUserId, input) {
-      const { error } = await client.from('agenda_tasks').insert({
-        workspace_id: workspaceId,
-        title: input.title,
-        notes: input.notes,
-        scheduled_date: input.scheduledDate,
-        created_by: actorUserId,
-      });
+      const { data, error } = await client
+        .from('agenda_tasks')
+        .insert({
+          workspace_id: workspaceId,
+          title: input.title,
+          notes: input.notes,
+          scheduled_date: input.scheduledDate,
+          start_time: input.startTime ? `${input.startTime}:00` : null,
+          end_time: input.endTime ? `${input.endTime}:00` : null,
+          created_by: actorUserId,
+        })
+        .select('id')
+        .single();
       if (error) throw error;
+
+      // Best-effort: a Google Calendar hiccup (not connected, transient API
+      // error) must never fail the Agenda write itself — the task above is
+      // already real and saved either way.
+      if (!input.startTime) return;
+      try {
+        const config = await getGoogleCalendarConfig(workspaceId);
+        if (!config) return;
+
+        const { hour, minute } = parseHourMinute(input.startTime);
+        const start = zonedDateTime(input.scheduledDate, hour, minute, config.timezone);
+        const durationMinutes = input.endTime
+          ? Math.max(5, (parseHourMinute(input.endTime).hour * 60 + parseHourMinute(input.endTime).minute) - (hour * 60 + minute))
+          : 30;
+
+        const event = await createGoogleEvent({
+          calendarId: config.calendarId,
+          startIso: start.toISOString(),
+          durationMinutes,
+          summary: input.title,
+          description: input.notes ?? undefined,
+        });
+
+        await client.from('agenda_tasks').update({ google_event_id: event.id }).eq('id', data.id);
+      } catch (calendarError) {
+        console.error('[office-virtual/chat] Google Calendar sync failed', calendarError);
+      }
     },
   };
 }

@@ -165,7 +165,7 @@ function utcOffsetFor(timeZone: string, referenceDate: Date): string {
 }
 
 /** Builds a real Date for `dateStr` (YYYY-MM-DD) at local hour:minute in `timeZone`. */
-function zonedDateTime(
+export function zonedDateTime(
   dateStr: string,
   hour: number,
   minute: number,

@@ -33,7 +33,7 @@ type CoordinatorChatResponse = {
         agentId: string;
         specialistName: string;
         text: string;
-        agendaTask: { title: string; scheduledDate: string } | null;
+        agendaTask: { title: string; scheduledDate: string; startTime: string | null; endTime: string | null } | null;
       }
     | null;
 };
@@ -96,10 +96,12 @@ export function useAgentChat(workspaceId: string, realChat: boolean) {
           timestamp: Date.now(),
         });
         if (body.delegation.agendaTask) {
+          const { title, scheduledDate, startTime, endTime } = body.delegation.agendaTask;
+          const time = startTime ? ` a las ${startTime}${endTime ? `–${endTime}` : ''}` : '';
           replies.push({
             id: crypto.randomUUID(),
             role: 'agent',
-            text: `📅 Guardado en tu Agenda: "${body.delegation.agendaTask.title}" — ${formatScheduledDate(body.delegation.agendaTask.scheduledDate)}`,
+            text: `📅 Guardado en tu Agenda: "${title}" — ${formatScheduledDate(scheduledDate)}${time}`,
             timestamp: Date.now(),
           });
         }

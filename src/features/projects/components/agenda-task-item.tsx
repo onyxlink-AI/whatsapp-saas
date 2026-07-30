@@ -18,6 +18,18 @@ interface AgendaTaskItemProps {
   onChanged: () => void;
 }
 
+/** "11:00:00" -> "11:00" — Postgres TIME always includes seconds. */
+function formatTime(time: string): string {
+  return time.slice(0, 5);
+}
+
+function timeRangeLabel(task: AgendaTaskRow): string | null {
+  if (!task.start_time) return null;
+  return task.end_time
+    ? `${formatTime(task.start_time)}–${formatTime(task.end_time)}`
+    : formatTime(task.start_time);
+}
+
 export function AgendaTaskItem({ task, onEdit, onChanged }: AgendaTaskItemProps) {
   const [isPending, startTransition] = useTransition();
 
@@ -56,14 +68,21 @@ export function AgendaTaskItem({ task, onEdit, onChanged }: AgendaTaskItemProps)
         aria-label={`Marcar "${task.title}" como completada`}
       />
       <div className="flex-1 min-w-0">
-        <p
-          className={cn(
-            "text-sm font-medium",
-            task.done && "line-through text-muted-foreground",
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {timeRangeLabel(task) && (
+            <span className="text-[11px] font-medium text-muted-foreground tabular-nums shrink-0">
+              {timeRangeLabel(task)}
+            </span>
           )}
-        >
-          {task.title}
-        </p>
+          <p
+            className={cn(
+              "text-sm font-medium",
+              task.done && "line-through text-muted-foreground",
+            )}
+          >
+            {task.title}
+          </p>
+        </div>
         {task.notes && (
           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
             {task.notes}

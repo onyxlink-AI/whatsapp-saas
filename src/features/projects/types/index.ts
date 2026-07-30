@@ -72,6 +72,11 @@ export interface AgendaTaskRow {
   notes: string | null;
   scheduled_date: string | null;
   scheduled_week_start: string | null;
+  /** "HH:MM:SS" (Postgres TIME), null when the task has no specific time. */
+  start_time: string | null;
+  end_time: string | null;
+  /** Google Calendar event id when this task was also synced there, else null. */
+  google_event_id: string | null;
   done: boolean;
   assigned_to: string | null;
   created_by: string | null;

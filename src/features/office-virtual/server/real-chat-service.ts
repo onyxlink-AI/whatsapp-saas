@@ -24,7 +24,8 @@ import type { OfficeConfigurationDocument } from '../client/central-integrations
 // configured allowedActions — never by trusting the model's own claim.
 
 const DELEGATE_TAG = /<delegate\s+agent="([a-z0-9-]+)">([\s\S]*?)<\/delegate>/i;
-const AGENDA_TASK_TAG = /<agenda_task\s+title="([^"]*)"\s+date="(\d{4}-\d{2}-\d{2})">([\s\S]*?)<\/agenda_task>/i;
+const AGENDA_TASK_TAG =
+  /<agenda_task\s+title="([^"]*)"\s+date="(\d{4}-\d{2}-\d{2})"(?:\s+start="(\d{2}:\d{2})")?(?:\s+end="(\d{2}:\d{2})")?>([\s\S]*?)<\/agenda_task>/i;
 
 export type ChatTurn = { role: 'user' | 'assistant'; content: string };
 
@@ -36,7 +37,14 @@ export type GenerateChatReply = (params: {
   maxOutputTokens?: number;
 }) => Promise<{ text: string }>;
 
-export type AgendaTaskInput = { title: string; notes: string | null; scheduledDate: string };
+export type AgendaTaskInput = {
+  title: string;
+  notes: string | null;
+  scheduledDate: string;
+  /** "HH:MM", 24h, in the workspace's configured timezone — null when the item has no specific time. */
+  startTime: string | null;
+  endTime: string | null;
+};
 
 export type AgendaPorts = {
   /** Real INSERT into `agenda_tasks` — the whole reason this tag isn't just text. */
@@ -102,9 +110,13 @@ function specialistSystemPrompt(
 ): string {
   const agendaTool = canManageAgenda(specialist)
     ? [
-        'Herramienta real de Agenda: cuando el título y la fecha de una cita, llamada o tarea queden confirmados con el usuario, termina tu respuesta con exactamente un bloque en esta forma exacta — esto SÍ se guarda de verdad en la Agenda del negocio, no es solo una frase de cortesía:',
-        '<agenda_task title="título breve" date="YYYY-MM-DD">notas opcionales (con quién es, detalles acordados)</agenda_task>',
-        'Usa la fecha de hoy de arriba para calcular la fecha exacta cuando te den una relativa ("mañana", "el viernes que viene", etc.) — nunca preguntes el año si ya lo puedes deducir. No incluyas este bloque si todavía falta el título o la fecha exacta, o si el usuario no ha confirmado: en ese caso sigue preguntando en tu texto normal.',
+        'Herramienta real de Agenda: cuando el título y la fecha de una cita, llamada o tarea queden confirmados con el usuario, termina tu respuesta con exactamente un bloque en esta forma exacta — esto SÍ se guarda de verdad en la Agenda del negocio (y en Google Calendar si está conectado), no es solo una frase de cortesía:',
+        '<agenda_task title="título breve" date="YYYY-MM-DD" start="HH:MM" end="HH:MM">una frase corta y clara para un humano</agenda_task>',
+        'Usa la fecha de hoy de arriba para calcular la fecha exacta cuando te den una relativa ("mañana", "el viernes que viene", etc.) — nunca preguntes el año si ya lo puedes deducir.',
+        'Los atributos start/end son opcionales (en formato 24h, hora del negocio) — inclúyelos solo si la cita tiene una hora concreta, y omítelos por completo si es una tarea sin hora fija.',
+        'El título va SOLO el nombre corto de la cita/tarea (ej. "Reunión con Antonio Fernández") — nunca metas fechas, horas ni datos técnicos ahí.',
+        'Las notas son UNA frase breve para que un humano las lea de un vistazo (ej. "Cliente interesado en revisar el Toyota Corolla, prefiere WhatsApp"). Nunca escribas ahí fechas/horas en formato técnico (ISO, con T, con offset como +02:00) — ya van en date/start/end. Nunca escribas ahí instrucciones sobre cómo debes comportarte tú (esas las sigues en silencio, no se las cuentas al dueño).',
+        'No incluyas este bloque si todavía falta el título o la fecha exacta, o si el usuario no ha confirmado: en ese caso sigue preguntando en tu texto normal.',
       ].join('\n')
     : '';
 
@@ -133,7 +145,7 @@ export type RealChatResult =
             specialistName: string;
             text: string;
             /** Non-null only when the specialist's confirmed tag was actually written to `agenda_tasks`. */
-            agendaTask: { title: string; scheduledDate: string } | null;
+            agendaTask: { title: string; scheduledDate: string; startTime: string | null; endTime: string | null } | null;
           }
         | null;
     }
@@ -200,7 +212,7 @@ export async function handleCoordinatorMessage(
 
   const agendaMatch = specialistReply.text.match(AGENDA_TASK_TAG);
   const visibleSpecialistText = specialistReply.text.replace(AGENDA_TASK_TAG, '').trim();
-  let agendaTask: { title: string; scheduledDate: string } | null = null;
+  let agendaTask: { title: string; scheduledDate: string; startTime: string | null; endTime: string | null } | null = null;
 
   // Defense in depth: only ever act on the tag when THIS specialist's own
   // configured allowedActions actually grant it — never trust the model's
@@ -209,10 +221,12 @@ export async function handleCoordinatorMessage(
   if (agendaMatch && canManageAgenda(targetConfig)) {
     const title = agendaMatch[1].trim();
     const scheduledDate = agendaMatch[2];
-    const notes = agendaMatch[3].trim() || null;
+    const startTime = agendaMatch[3] ?? null;
+    const endTime = agendaMatch[4] ?? null;
+    const notes = agendaMatch[5].trim() || null;
     if (title) {
-      await ports.agenda.createTask(workspaceId, actorUserId, { title, notes, scheduledDate });
-      agendaTask = { title, scheduledDate };
+      await ports.agenda.createTask(workspaceId, actorUserId, { title, notes, scheduledDate, startTime, endTime });
+      agendaTask = { title, scheduledDate, startTime, endTime };
     }
   }
 
