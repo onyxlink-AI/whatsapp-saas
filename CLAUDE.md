@@ -5,6 +5,9 @@ Antes de trabajar, lee `AGENTS.md`,
 `docs/ONYXLINK-PROTOCOLO-CIERRE.md`. El protocolo de cierre forma parte de la
 definición de terminado.
 
+Para cualquier tarea de PWA, instalación en ordenadores/móviles o publicación
+en tiendas, lee también `docs/ONYXLINK-PWA-ESCRITORIO-Y-TIENDAS.md`.
+
 Reglas:
 
 - Respeta el trabajo existente y limita cada commit al alcance solicitado.

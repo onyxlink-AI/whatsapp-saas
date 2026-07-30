@@ -10,6 +10,8 @@ repositorio.
 - Antes de actuar, lee
   `docs/ONYXLINK-RUNBOOK-RECUPERACION.md` y
   `docs/ONYXLINK-PROTOCOLO-CIERRE.md`.
+- Para trabajos de instalación o publicación en tiendas, lee además
+  `docs/ONYXLINK-PWA-ESCRITORIO-Y-TIENDAS.md`.
 - Conserva todos los cambios previos del usuario y separa el alcance propio.
 
 ## Seguridad
