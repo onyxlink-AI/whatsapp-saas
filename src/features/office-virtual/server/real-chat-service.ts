@@ -213,7 +213,10 @@ export async function handleCoordinatorMessage(
   }
 
   const specialistReply = await ports.generateReply({
-    model,
+    // The specialist's own model (set directly on its card in the
+    // Configurador) takes priority over the workspace default — this is the
+    // only place that choice actually reaches a real OpenRouter call.
+    model: targetConfig.model ?? model,
     systemPrompt: specialistSystemPrompt(head.document.officeDisplayName, targetConfig, nowContext),
     messages: [{ role: 'user', content: task }],
     workspaceId,

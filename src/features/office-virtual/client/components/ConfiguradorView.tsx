@@ -4,6 +4,7 @@ import { STANDARD_OFFICE_PRESET } from '../central-integrations/preset';
 import { CONFIGURABLE_AGENT_IDS, type ConfigurableOfficeAgentId } from '../central-integrations/specialist-seats';
 import type { OfficeApprovalPolicy, OfficeSpecialistAction } from '../central-integrations/configuration';
 import { SPECIALIST_TEMPLATES, findSpecialistTemplate, type SpecialistTemplateId } from '../central-integrations/specialist-templates';
+import { ModelPicker } from '@/features/agents/components/model-picker';
 import { SPECIALIST_EXTENSIONS, type SpecialistExtension } from '../central-integrations/specialist-extensions';
 import { SPECIALIST_SKILLS } from '../central-integrations/specialist-skills';
 import { SPECIALIST_VERTICALS, type VerticalId } from '../central-integrations/specialist-verticals';
@@ -320,6 +321,15 @@ function SpecialistCard({
           <div>
             <label className="text-[10px] uppercase tracking-wide text-white/30">Objetivo</label>
             <textarea value={draft.objective} onChange={(e) => onChange({ objective: e.target.value })} rows={2} className="onyx-input w-full rounded-md px-3 py-2 text-xs leading-relaxed mt-1 resize-y" />
+          </div>
+
+          <div>
+            <label className="text-[10px] uppercase tracking-wide text-white/30 mb-1 block">Modelo de IA</label>
+            <ModelPicker
+              value={draft.model}
+              onChange={(id) => onChange({ model: id })}
+              emptyHint="Usa el modelo principal del workspace (Orquestador → Modelos de especialistas) si no eliges uno propio aquí."
+            />
           </div>
 
           <div>

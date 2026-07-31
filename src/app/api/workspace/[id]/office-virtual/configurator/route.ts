@@ -127,6 +127,7 @@ const SpecialistPatchSchema = z
     objective: z.string().trim().min(1).max(500),
     instructions: z.string().trim().min(1).max(4000),
     clientLayer: z.string().max(4000),
+    model: z.string().trim().max(200).nullable(),
     extensions: z.array(z.enum(SPECIALIST_EXTENSION_IDS)).max(SPECIALIST_EXTENSION_IDS.length),
     skills: z.array(z.enum(SPECIALIST_SKILL_IDS)).max(SPECIALIST_SKILL_IDS.length),
     allowedActions: z.array(z.enum(OFFICE_SPECIALIST_ACTIONS)),

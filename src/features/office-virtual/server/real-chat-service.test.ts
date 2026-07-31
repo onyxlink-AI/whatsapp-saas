@@ -27,6 +27,7 @@ function specialist(agentId: ConfigurableOfficeAgentId, overrides: Partial<Offic
     objective: 'Sin objetivo',
     instructions: 'Sin instrucciones',
     clientLayer: '',
+    model: null,
     extensions: [],
     skills: [],
     allowedActions: ['read_contacts'],
@@ -212,6 +213,54 @@ describe('real chat service — delegation', () => {
       text: 'Aquí tienes la propuesta redactada para el cliente X.',
       agendaTask: null,
     });
+  });
+
+  it("uses the specialist's own model override for its real call, not the workspace default", async () => {
+    const doc = document({
+      specialists: {
+        ...document().specialists,
+        'specialist-1': specialist('specialist-1', {
+          enabled: true,
+          name: 'Marco',
+          model: 'openai/gpt-5.4-mini',
+        }),
+      },
+    });
+
+    const generateReply = vi.fn(async ({ model, systemPrompt }: { model: string; systemPrompt: string }) => ({
+      text: systemPrompt.includes('Eres el Orquestador')
+        ? 'Se lo paso a Marco.\n<delegate agent="specialist-1">tarea</delegate>'
+        : 'listo',
+    }));
+    const ports = fakePorts({ doc, binding: binding({ model: 'anthropic/claude-opus-4.8' }), reply: () => '' });
+    ports.generateReply = generateReply;
+
+    await handleCoordinatorMessage('workspace-a', [], 'algo', null, ports);
+
+    expect(generateReply).toHaveBeenCalledTimes(2);
+    expect(generateReply.mock.calls[0][0].model).toBe('anthropic/claude-opus-4.8'); // coordinator: workspace default
+    expect(generateReply.mock.calls[1][0].model).toBe('openai/gpt-5.4-mini'); // specialist: its own override
+  });
+
+  it('falls back to the workspace default model when a specialist has no override of its own', async () => {
+    const doc = document({
+      specialists: {
+        ...document().specialists,
+        'specialist-1': specialist('specialist-1', { enabled: true, name: 'Marco' }), // model: null (default)
+      },
+    });
+
+    const generateReply = vi.fn(async ({ systemPrompt }: { model: string; systemPrompt: string }) => ({
+      text: systemPrompt.includes('Eres el Orquestador')
+        ? 'Se lo paso a Marco.\n<delegate agent="specialist-1">tarea</delegate>'
+        : 'listo',
+    }));
+    const ports = fakePorts({ doc, binding: binding({ model: 'anthropic/claude-opus-4.8' }), reply: () => '' });
+    ports.generateReply = generateReply;
+
+    await handleCoordinatorMessage('workspace-a', [], 'algo', null, ports);
+
+    expect(generateReply.mock.calls[1][0].model).toBe('anthropic/claude-opus-4.8');
   });
 
   it('ignores a delegation to a specialist that is not enabled/published — never invents an agent', async () => {

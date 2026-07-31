@@ -50,6 +50,7 @@ function sameSpecialist(a: OfficeSpecialistConfiguration, b: SpecialistDraft): b
     a.objective === b.objective &&
     a.instructions === b.instructions &&
     a.clientLayer === b.clientLayer &&
+    a.model === b.model &&
     a.approvalPolicy === b.approvalPolicy &&
     a.allowedActions.length === b.allowedActions.length &&
     a.allowedActions.every((action) => b.allowedActions.includes(action)) &&

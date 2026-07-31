@@ -40,6 +40,8 @@ export type OfficeSpecialistConfiguration = {
   instructions: string;
   /** The only layer the client ever edits directly. Never touched by apply_vertical. */
   clientLayer: string;
+  /** OpenRouter model id this specialist uses when delegated to — null falls back to the workspace's default model (Orquestador → Modelos de especialistas). Set directly here, not through the Orquestador's legacy per-seat overrides. */
+  model: string | null;
   extensions: SpecialistExtensionId[];
   skills: SpecialistSkillId[];
   allowedActions: OfficeSpecialistAction[];
@@ -133,6 +135,7 @@ export function defaultSpecialist(agentId: ConfigurableOfficeAgentId): OfficeSpe
     objective: 'Elige una plantilla para preparar este puesto.',
     instructions: 'Trabaja solo dentro de las acciones y aprobaciones configuradas.',
     clientLayer: '',
+    model: null,
     extensions: [],
     skills: [],
     allowedActions: ['read_contacts', 'read_memory', 'create_task', 'request_handoff'],
@@ -166,6 +169,9 @@ export function validateOfficeConfiguration(document: OfficeConfigurationDocumen
     validateText(issues, `${prefix}.instructions`, specialist.instructions, 4000);
     if (specialist.clientLayer.length > 4000) {
       issues.push({ field: `${prefix}.clientLayer`, message: 'La personalización de cliente no puede superar 4000 caracteres.' });
+    }
+    if (specialist.model !== null && specialist.model.length > 200) {
+      issues.push({ field: `${prefix}.model`, message: 'El identificador del modelo no puede superar 200 caracteres.' });
     }
     if (!/^#[0-9a-fA-F]{6}$/.test(specialist.color)) {
       issues.push({ field: `${prefix}.color`, message: 'El color debe ser un valor hexadecimal válido.' });

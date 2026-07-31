@@ -78,6 +78,7 @@ export function createDemoOfficeConfiguration(workspaceId: string): OfficeConfig
           objective: template.objective,
           instructions: template.instructions,
           clientLayer: 'Ejemplo de presentación: prioriza claridad, trazabilidad y aprobación humana en acciones sensibles.',
+          model: null,
           extensions: index === 2 ? ['marketing-contenidos'] : index === 3 ? ['agenda-reservas'] : [],
           skills: index % 2 === 0 ? ['redaccion', 'revision-calidad'] : ['investigacion', 'analisis-documental'],
           allowedActions: [...template.allowedActions],
