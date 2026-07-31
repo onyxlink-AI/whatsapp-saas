@@ -12,9 +12,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { createDeal, getDeal } from "@/features/pipeline/services/deal-actions";
 import { SectorCombobox } from "./sector-combobox";
-import type { ContactSummary, DealWithContact } from "@/features/pipeline/types";
+import { DEAL_PRODUCTS, type ContactSummary, type DealWithContact } from "@/features/pipeline/types";
 
 interface CreateDealDialogProps {
   open: boolean;
@@ -65,8 +72,8 @@ export function CreateDealDialog({
       toast.error("El teléfono es requerido");
       return;
     }
-    if (!title.trim()) {
-      toast.error("El título es requerido");
+    if (!title) {
+      toast.error("Selecciona un producto");
       return;
     }
 
@@ -145,13 +152,19 @@ export function CreateDealDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs">Título</Label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ej. Plan Agent AI Max"
-              className="h-8 text-sm"
-            />
+            <Label className="text-xs">Producto</Label>
+            <Select value={title} onValueChange={setTitle}>
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue placeholder="Elige un producto..." />
+              </SelectTrigger>
+              <SelectContent>
+                {DEAL_PRODUCTS.map((product) => (
+                  <SelectItem key={product} value={product}>
+                    {product}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

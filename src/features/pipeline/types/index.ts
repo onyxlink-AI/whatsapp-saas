@@ -79,6 +79,10 @@ export interface TaskRow {
   updated_at: string;
 }
 
+/** Fixed set of what an opportunity is actually about — shown as a selector, not free text. */
+export const DEAL_PRODUCTS = ["Herramienta", "Panel completo", "Oficina Virtual"] as const;
+export type DealProduct = (typeof DEAL_PRODUCTS)[number];
+
 export const DEAL_STAGES: DealStage[] = [
   "exploracion",
   "interes",
