@@ -1100,7 +1100,7 @@ function ZoomSection({
         body: JSON.stringify({
           provider: "zoom",
           enabled: true,
-          config: { host_email: hostEmail },
+          config: { host_email: hostEmail.trim() },
         }),
       });
       const json = (await res.json()) as { ok?: boolean; error?: string };

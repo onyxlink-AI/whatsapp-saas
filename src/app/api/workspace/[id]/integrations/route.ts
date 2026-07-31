@@ -159,6 +159,11 @@ export async function PUT(
 
   // Zoom's host must be a real email — a Server-to-Server app can only host
   // meetings as a user that belongs to the platform's own Zoom account.
+  // Trimmed first: a stray leading/trailing space (easy to pick up on paste)
+  // otherwise fails the format check even for a perfectly valid address.
+  if (parsed.data.provider === "zoom" && typeof parsed.data.config?.host_email === "string") {
+    parsed.data.config.host_email = parsed.data.config.host_email.trim();
+  }
   const hostEmail = parsed.data.config?.host_email;
   if (
     parsed.data.provider === "zoom" &&
