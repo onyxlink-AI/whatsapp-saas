@@ -117,6 +117,21 @@ describe('projectPublishedOfficeAgents — the only data the live office may rea
     });
   });
 
+  it('projects an enabled seat fine even when `model` is entirely absent from storage — real documents saved before that field existed', () => {
+    let doc = baseDocument('workspace-a');
+    doc = enable(doc, 'specialist-1', { name: 'Legado', function: 'Ventas', objective: 'x' });
+    // Simulates a real pre-existing JSONB row: `model` was never written, so
+    // the key is missing (undefined), not merely set to null.
+    const legacySpecialist = { ...doc.specialists['specialist-1'] } as Partial<OfficeConfigurationDocument['specialists']['specialist-1']>;
+    delete legacySpecialist.model;
+    doc = { ...doc, specialists: { ...doc.specialists, 'specialist-1': legacySpecialist as OfficeConfigurationDocument['specialists']['specialist-1'] } };
+
+    const result = projectPublishedOfficeAgents(doc, 'workspace-a');
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.projection.seats.find((s) => s.agentId === 'specialist-1')).toMatchObject({ name: 'Legado' });
+  });
+
   it('never returns data for a different workspace than requested — no cross-tenant contamination', () => {
     let doc = baseDocument('empresa-a');
     doc = enable(doc, 'specialist-1', { name: 'Solo Empresa A', function: 'Ventas', objective: 'x' });

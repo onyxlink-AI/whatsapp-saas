@@ -170,7 +170,12 @@ export function validateOfficeConfiguration(document: OfficeConfigurationDocumen
     if (specialist.clientLayer.length > 4000) {
       issues.push({ field: `${prefix}.clientLayer`, message: 'La personalización de cliente no puede superar 4000 caracteres.' });
     }
-    if (specialist.model !== null && specialist.model.length > 200) {
+    // typeof-guarded, not `!== null` — every specialist persisted before this
+    // field existed has `model` genuinely absent (undefined) in its stored
+    // JSONB, not null; `undefined.length` would throw and take down the
+    // whole projection (see office-agent-projection.ts), which is exactly
+    // what silently emptied the live office's roster in production.
+    if (typeof specialist.model === 'string' && specialist.model.length > 200) {
       issues.push({ field: `${prefix}.model`, message: 'El identificador del modelo no puede superar 200 caracteres.' });
     }
     if (!/^#[0-9a-fA-F]{6}$/.test(specialist.color)) {
