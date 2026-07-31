@@ -100,6 +100,7 @@ function coordinatorSystemPrompt(
     'Cuando decidas delegar una tarea a un especialista disponible, termina tu respuesta con exactamente un bloque en esta forma exacta (una sola vez, el último elemento de tu respuesta):',
     '<delegate agent="ID_DEL_ESPECIALISTA">instrucciones claras y completas de la tarea para ese especialista</delegate>',
     'El texto de tu respuesta ANTES de ese bloque es lo único que ve el usuario de tu parte — escribe ahí algo breve confirmando a quién le estás pasando la tarea. No inventes especialistas que no estén en la lista de arriba. Si ningún especialista encaja, no incluyas el bloque y responde tú directamente.',
+    'Importante sobre "pedir aprobación antes de acciones sensibles": eso aplica a enviar mensajes externos, publicar, pagos, borrar datos o cambiar permisos — NUNCA a agendar una cita o tarea nueva que el dueño ya te pidió explícitamente en su mensaje. Si el dueño ya dijo con quién y cuándo, eso YA es su confirmación: delega el dato completo y deja que el especialista la cree directamente, no le pidas al especialista que solo "prepare un borrador" ni que "espere confirmación" — eso genera fricción innecesaria que el dueño no quiere.',
   ].join('\n');
 }
 
@@ -110,13 +111,16 @@ function specialistSystemPrompt(
 ): string {
   const agendaTool = canManageAgenda(specialist)
     ? [
-        'Herramienta real de Agenda: cuando el título y la fecha de una cita, llamada o tarea queden confirmados con el usuario, termina tu respuesta con exactamente un bloque en esta forma exacta — esto SÍ se guarda de verdad en la Agenda del negocio (y en Google Calendar si está conectado), no es solo una frase de cortesía:',
+        'Herramienta real de Agenda: cuando tengas un título y una fecha, termina tu respuesta con exactamente un bloque en esta forma exacta — esto SÍ se guarda de verdad en la Agenda del negocio (y en Google Calendar si está conectado), no es solo una frase de cortesía:',
         '<agenda_task title="título breve" date="YYYY-MM-DD" start="HH:MM" end="HH:MM">una frase corta y clara para un humano</agenda_task>',
-        'Usa la fecha de hoy de arriba para calcular la fecha exacta cuando te den una relativa ("mañana", "el viernes que viene", etc.) — nunca preguntes el año si ya lo puedes deducir.',
-        'Los atributos start/end son opcionales (en formato 24h, hora del negocio) — inclúyelos solo si la cita tiene una hora concreta, y omítelos por completo si es una tarea sin hora fija.',
+        'ÚNICO requisito real para crearla: título + fecha (la hora es opcional). Eso es todo lo que necesita esta herramienta.',
+        'Si el mensaje que te llegó ya dice claramente con quién y cuándo (aunque sea "mañana", "el lunes que viene", etc.), eso YA es la confirmación del dueño — crea la cita en esta misma respuesta, con ese bloque. NUNCA describas un "borrador pendiente de aprobación" ni digas que necesitas confirmación extra: si te delegaron la tarea con esos datos, es porque el dueño ya la confirmó.',
+        'NUNCA pidas duración, modalidad (presencial/videollamada), enlace de reunión, email o teléfono del invitado, ni recordatorios — esta herramienta no los usa ni los necesita. Pedir eso es la razón por la que antes esto no funcionaba: solo pregunta si de verdad falta el título o el día.',
+        'Usa la fecha de hoy de arriba para calcular la fecha exacta cuando te den una relativa — nunca preguntes el año si ya lo puedes deducir.',
+        'Los atributos start/end son opcionales (formato 24h, hora del negocio) — inclúyelos solo si te dieron una hora concreta, y omítelos por completo si no.',
         'El título va SOLO el nombre corto de la cita/tarea (ej. "Reunión con Antonio Fernández") — nunca metas fechas, horas ni datos técnicos ahí.',
         'Las notas son UNA frase breve para que un humano las lea de un vistazo (ej. "Cliente interesado en revisar el Toyota Corolla, prefiere WhatsApp"). Nunca escribas ahí fechas/horas en formato técnico (ISO, con T, con offset como +02:00) — ya van en date/start/end. Nunca escribas ahí instrucciones sobre cómo debes comportarte tú (esas las sigues en silencio, no se las cuentas al dueño).',
-        'No incluyas este bloque si todavía falta el título o la fecha exacta, o si el usuario no ha confirmado: en ese caso sigue preguntando en tu texto normal.',
+        'Solo sigue preguntando en tu texto normal (sin el bloque) si de verdad falta el título o un día identificable — nunca por los detalles que la lista de arriba dice que no pidas.',
       ].join('\n')
     : '';
 
