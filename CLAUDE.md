@@ -8,6 +8,10 @@ definición de terminado.
 Para cualquier tarea de PWA, instalación en ordenadores/móviles o publicación
 en tiendas, lee también `docs/ONYXLINK-PWA-ESCRITORIO-Y-TIENDAS.md`.
 
+Para dar de alta un cliente nuevo que vaya a usar la Agenda real (citas,
+Google Calendar, Zoom), lee también
+`docs/ONYXLINK-CHECKLIST-CLIENTE-NUEVO-AGENDA-CALENDARIO.md`.
+
 Reglas:
 
 - Respeta el trabajo existente y limita cada commit al alcance solicitado.
