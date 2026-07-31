@@ -317,18 +317,24 @@ export interface CreateEventInput {
   requestMeetLink?: boolean;
 }
 
-export async function createGoogleEvent(
-  input: CreateEventInput,
-): Promise<{ id: string; htmlLink?: string; meetLink?: string }> {
-  const token = await getAccessToken();
-  const start = new Date(input.startIso);
-  const end = new Date(start.getTime() + input.durationMinutes * 60_000);
+type InsertedEvent = {
+  id: string;
+  htmlLink?: string;
+  conferenceData?: { entryPoints?: { entryPointType?: string; uri?: string }[] };
+};
 
+async function insertEvent(
+  input: CreateEventInput,
+  start: Date,
+  end: Date,
+  withConference: boolean,
+): Promise<{ status: number; body: string; json?: InsertedEvent }> {
+  const token = await getAccessToken();
   const url = new URL(
     `${CALENDAR_API}/calendars/${encodeURIComponent(input.calendarId)}/events`,
   );
   // Required by the Calendar API for `conferenceData` to actually be honored.
-  if (input.requestMeetLink) url.searchParams.set("conferenceDataVersion", "1");
+  if (withConference) url.searchParams.set("conferenceDataVersion", "1");
 
   const res = await fetch(url.toString(), {
     method: "POST",
@@ -341,7 +347,7 @@ export async function createGoogleEvent(
       description: input.description,
       start: { dateTime: start.toISOString() },
       end: { dateTime: end.toISOString() },
-      ...(input.requestMeetLink
+      ...(withConference
         ? {
             conferenceData: {
               createRequest: {
@@ -354,22 +360,41 @@ export async function createGoogleEvent(
     }),
   });
 
-  if (!res.ok) {
-    throw new Error(
-      `Google events.insert error: ${res.status} ${(await res.text()).slice(0, 200)}`,
+  const body = await res.text();
+  if (!res.ok) return { status: res.status, body };
+  return { status: res.status, body, json: JSON.parse(body) as InsertedEvent };
+}
+
+export async function createGoogleEvent(
+  input: CreateEventInput,
+): Promise<{ id: string; htmlLink?: string; meetLink?: string }> {
+  const start = new Date(input.startIso);
+  const end = new Date(start.getTime() + input.durationMinutes * 60_000);
+
+  // Meet-link generation via a bare service account isn't supported on every
+  // calendar (Google rejects it outright: "Invalid conference type value" —
+  // it generally needs Workspace domain-wide delegation). That must never
+  // take the whole booking down with it, so it's a best-effort add-on: if
+  // asking for a link fails, silently retry the exact same event without it
+  // rather than surfacing an error for something the event itself doesn't need.
+  if (input.requestMeetLink) {
+    const withLink = await insertEvent(input, start, end, true);
+    if (withLink.json) {
+      const meetLink = withLink.json.conferenceData?.entryPoints?.find(
+        (entry) => entry.entryPointType === "video",
+      )?.uri;
+      return { id: withLink.json.id, htmlLink: withLink.json.htmlLink, meetLink };
+    }
+    console.error(
+      `[google-calendar-client] Meet link request failed (${withLink.status}), retrying without it: ${withLink.body.slice(0, 200)}`,
     );
   }
 
-  const json = (await res.json()) as {
-    id: string;
-    htmlLink?: string;
-    conferenceData?: { entryPoints?: { entryPointType?: string; uri?: string }[] };
-  };
-  const meetLink = json.conferenceData?.entryPoints?.find(
-    (entry) => entry.entryPointType === "video",
-  )?.uri;
-
-  return { id: json.id, htmlLink: json.htmlLink, meetLink };
+  const plain = await insertEvent(input, start, end, false);
+  if (!plain.json) {
+    throw new Error(`Google events.insert error: ${plain.status} ${plain.body.slice(0, 200)}`);
+  }
+  return { id: plain.json.id, htmlLink: plain.json.htmlLink };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
