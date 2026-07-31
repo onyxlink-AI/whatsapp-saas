@@ -23,7 +23,8 @@ type Provider =
   | "highlevel"
   | "google_calendar"
   | "airtable"
-  | "telegram";
+  | "telegram"
+  | "zoom";
 
 type IntegrationData = {
   provider: Provider;
@@ -1073,6 +1074,121 @@ function GoogleCalendarSection({
   );
 }
 
+// ─── Zoom section ─────────────────────────────────────────────────────────────
+
+function ZoomSection({
+  workspaceId,
+  initial,
+  onSaved,
+}: {
+  workspaceId: string;
+  initial: IntegrationData | undefined;
+  onSaved: () => void;
+}) {
+  const [hostEmail, setHostEmail] = useState(
+    (initial?.config?.host_email as string | undefined) ?? "",
+  );
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/workspace/${workspaceId}/integrations`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "zoom",
+          enabled: true,
+          config: { host_email: hostEmail },
+        }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (json.ok) {
+        toast.success("Configuración de Zoom guardada");
+        onSaved();
+      } else {
+        toast.error(json.error ?? "Error al guardar");
+      }
+    } catch {
+      toast.error("Error de red al guardar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleTest() {
+    setTesting(true);
+    try {
+      const res = await fetch(
+        `/api/workspace/${workspaceId}/integrations/zoom/test`,
+        { method: "POST" },
+      );
+      const json = (await res.json()) as { ok: boolean; error?: string };
+      if (json.ok) {
+        toast.success("Zoom conectado");
+      } else {
+        toast.error(json.error ?? "Error al probar la conexión");
+      }
+    } catch {
+      toast.error("Error de red al probar la conexión");
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  return (
+    <Section
+      title="Zoom"
+      description="Genera un enlace de reunión real de Zoom para cada cita agendada."
+    >
+      <div className="grid gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="zoom-host">Email del anfitrión</Label>
+          <Input
+            id="zoom-host"
+            placeholder="tucuenta@zoom.us o el email con el que iniciaste sesión en Zoom"
+            value={hostEmail}
+            onChange={(e) => setHostEmail(e.target.value)}
+            className="font-mono text-sm"
+          />
+          <p className="text-xs text-muted-foreground">
+            El usuario de la cuenta de Zoom de la plataforma que aparecerá como anfitrión de la reunión.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleTest}
+            disabled={testing}
+            aria-busy={testing}
+          >
+            {testing && (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
+            )}
+            Probar conexión
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleSave}
+            disabled={saving}
+            aria-busy={saving}
+          >
+            {saving && (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
+            )}
+            Guardar
+          </Button>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
 // ─── Airtable section ─────────────────────────────────────────────────────────
 
 function AirtableSection({
@@ -1288,6 +1404,7 @@ export function IntegrationsTab({
   const openrouter = findIntegration(integrations, "openrouter");
   const highlevel = findIntegration(integrations, "highlevel");
   const googleCalendar = findIntegration(integrations, "google_calendar");
+  const zoom = findIntegration(integrations, "zoom");
   const airtable = findIntegration(integrations, "airtable");
   const telegram = findIntegration(integrations, "telegram");
 
@@ -1315,6 +1432,12 @@ export function IntegrationsTab({
         workspaceId={workspaceId}
         initial={googleCalendar}
         serviceAccountEmail={googleServiceAccountEmail ?? ""}
+        onSaved={refresh}
+      />
+      <Separator />
+      <ZoomSection
+        workspaceId={workspaceId}
+        initial={zoom}
         onSaved={refresh}
       />
       <Separator />

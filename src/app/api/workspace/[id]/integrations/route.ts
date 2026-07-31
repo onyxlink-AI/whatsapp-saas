@@ -20,6 +20,7 @@ const IntegrationSchema = z.object({
     "google_calendar",
     "airtable",
     "telegram",
+    "zoom",
   ]),
   enabled: z.boolean().optional(),
   credentials: z.record(z.string(), z.string()).optional(),
@@ -152,6 +153,21 @@ export async function PUT(
       {
         error: `Base ID inválido: "${baseId}". Debe empezar con "app" (Airtable → base → Ayuda → API docs).`,
       },
+      { status: 400 },
+    );
+  }
+
+  // Zoom's host must be a real email — a Server-to-Server app can only host
+  // meetings as a user that belongs to the platform's own Zoom account.
+  const hostEmail = parsed.data.config?.host_email;
+  if (
+    parsed.data.provider === "zoom" &&
+    typeof hostEmail === "string" &&
+    hostEmail.length > 0 &&
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(hostEmail)
+  ) {
+    return NextResponse.json(
+      { error: `Email inválido: "${hostEmail}".` },
       { status: 400 },
     );
   }

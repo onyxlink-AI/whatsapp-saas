@@ -15,6 +15,7 @@ import type { WorkspaceOrchestratorBinding } from '@/features/office-virtual/cli
 import { generateChatReply } from '@/features/inbox/services/openrouter';
 import { getBusinessInfo, buildNowContext } from '@/features/inbox/services/business-info';
 import { getGoogleCalendarConfig, createGoogleEvent, zonedDateTime } from '@/features/inbox/services/google-calendar-client';
+import { getZoomConfig, createZoomMeeting } from '@/features/inbox/services/zoom-client';
 import { readJsonBody } from '@/lib/auth/workspace-access';
 
 function serviceClient() {
@@ -124,6 +125,12 @@ function parseHourMinute(time: string): { hour: number; minute: number } {
   return { hour, minute };
 }
 
+/** The business's own configured timezone (Ajustes → Negocio) — same source `resolveNowContext` uses, independent of whether any calendar integration is connected. */
+async function resolveWorkspaceTimezone(workspaceId: string): Promise<string> {
+  const info = await getBusinessInfo(workspaceId);
+  return (info?.structured?.timezone as string | undefined) ?? 'America/Mexico_City';
+}
+
 function agendaPorts(): AgendaPorts {
   const client = serviceClient();
   return {
@@ -143,47 +150,77 @@ function agendaPorts(): AgendaPorts {
         .single();
       if (error) throw error;
 
-      // Best-effort: a Google Calendar hiccup (not connected, transient API
-      // error) must never fail the Agenda write itself — the task above is
-      // already real and saved either way.
+      // Best-effort: neither Zoom nor Google Calendar hiccups (not connected,
+      // transient API error) must ever fail the Agenda write itself — the
+      // task above is already real and saved either way.
       if (!input.startTime) return { meetingLink: null };
+
+      const { hour, minute } = parseHourMinute(input.startTime);
+      const durationMinutes = input.endTime
+        ? Math.max(5, (parseHourMinute(input.endTime).hour * 60 + parseHourMinute(input.endTime).minute) - (hour * 60 + minute))
+        : 30;
+
+      // Zoom first: a real join_url with no Workspace/domain-delegation
+      // requirement, unlike Google Meet (see google-calendar-client.ts).
+      let meetingLink: string | null = null;
+      try {
+        const zoomConfig = await getZoomConfig(workspaceId);
+        if (zoomConfig) {
+          const zoomTimezone = await resolveWorkspaceTimezone(workspaceId);
+          const start = zonedDateTime(input.scheduledDate, hour, minute, zoomTimezone);
+          const meeting = await createZoomMeeting({
+            hostEmail: zoomConfig.hostEmail,
+            topic: input.title,
+            startIso: start.toISOString(),
+            durationMinutes,
+            timezone: zoomTimezone,
+          });
+          meetingLink = meeting.joinUrl;
+        }
+      } catch (zoomError) {
+        console.error('[office-virtual/chat] Zoom sync failed', zoomError);
+      }
+
       try {
         const config = await getGoogleCalendarConfig(workspaceId);
-        if (!config) return { meetingLink: null };
+        if (!config) return { meetingLink };
 
-        const { hour, minute } = parseHourMinute(input.startTime);
         const start = zonedDateTime(input.scheduledDate, hour, minute, config.timezone);
-        const durationMinutes = input.endTime
-          ? Math.max(5, (parseHourMinute(input.endTime).hour * 60 + parseHourMinute(input.endTime).minute) - (hour * 60 + minute))
-          : 30;
+        const description = [input.notes, meetingLink ? `Enlace: ${meetingLink}` : null]
+          .filter((line): line is string => Boolean(line))
+          .join('\n');
 
         const event = await createGoogleEvent({
           calendarId: config.calendarId,
           startIso: start.toISOString(),
           durationMinutes,
           summary: input.title,
-          description: input.notes ?? undefined,
-          requestMeetLink: true,
+          description: description || undefined,
+          // Only ask Google for its own Meet link when Zoom didn't already provide one.
+          requestMeetLink: !meetingLink,
         });
+
+        meetingLink = meetingLink ?? event.meetLink ?? null;
 
         await client
           .from('agenda_tasks')
-          .update({ google_event_id: event.id, meeting_link: event.meetLink ?? null })
+          .update({ google_event_id: event.id, meeting_link: meetingLink })
           .eq('id', data.id);
 
-        return { meetingLink: event.meetLink ?? null };
+        return { meetingLink };
       } catch (calendarError) {
         console.error('[office-virtual/chat] Google Calendar sync failed', calendarError);
-        return { meetingLink: null };
+        if (meetingLink) {
+          await client.from('agenda_tasks').update({ meeting_link: meetingLink }).eq('id', data.id);
+        }
+        return { meetingLink };
       }
     },
   };
 }
 
 async function resolveNowContext(workspaceId: string): Promise<string> {
-  const info = await getBusinessInfo(workspaceId);
-  const timezone = (info?.structured?.timezone as string | undefined) ?? undefined;
-  return buildNowContext(timezone);
+  return buildNowContext(await resolveWorkspaceTimezone(workspaceId));
 }
 
 function ports(): RealChatServicePorts {
