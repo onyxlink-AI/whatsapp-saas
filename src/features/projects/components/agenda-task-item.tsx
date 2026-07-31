@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2 } from "lucide-react";
+import { Copy, Pencil, Trash2, Video } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   deleteAgendaTask,
@@ -42,6 +42,12 @@ export function AgendaTaskItem({ task, onEdit, onChanged }: AgendaTaskItemProps)
       }
       onChanged();
     });
+  }
+
+  function handleCopyLink() {
+    if (!task.meeting_link) return;
+    void navigator.clipboard.writeText(task.meeting_link);
+    toast.success("Enlace copiado");
   }
 
   function handleDelete() {
@@ -87,6 +93,28 @@ export function AgendaTaskItem({ task, onEdit, onChanged }: AgendaTaskItemProps)
           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
             {task.notes}
           </p>
+        )}
+        {task.meeting_link && (
+          <div className="flex items-center gap-1.5 mt-1">
+            <a
+              href={task.meeting_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-primary hover:underline truncate"
+            >
+              <Video className="h-3 w-3 shrink-0" />
+              Enlace de la reunión
+            </a>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5 shrink-0"
+              onClick={handleCopyLink}
+              aria-label="Copiar enlace de la reunión"
+            >
+              <Copy className="h-3 w-3" />
+            </Button>
+          </div>
         )}
       </div>
       <div className="flex items-center gap-1 shrink-0">

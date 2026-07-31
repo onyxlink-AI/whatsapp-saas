@@ -313,31 +313,46 @@ export interface CreateEventInput {
   durationMinutes: number;
   summary: string;
   description?: string;
+  /** When true, asks Google to generate a real Google Meet link for the event (not needed for phone-call-style bookings, so opt-in). */
+  requestMeetLink?: boolean;
 }
 
 export async function createGoogleEvent(
   input: CreateEventInput,
-): Promise<{ id: string; htmlLink?: string }> {
+): Promise<{ id: string; htmlLink?: string; meetLink?: string }> {
   const token = await getAccessToken();
   const start = new Date(input.startIso);
   const end = new Date(start.getTime() + input.durationMinutes * 60_000);
 
-  const res = await fetch(
+  const url = new URL(
     `${CALENDAR_API}/calendars/${encodeURIComponent(input.calendarId)}/events`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        summary: input.summary,
-        description: input.description,
-        start: { dateTime: start.toISOString() },
-        end: { dateTime: end.toISOString() },
-      }),
-    },
   );
+  // Required by the Calendar API for `conferenceData` to actually be honored.
+  if (input.requestMeetLink) url.searchParams.set("conferenceDataVersion", "1");
+
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      summary: input.summary,
+      description: input.description,
+      start: { dateTime: start.toISOString() },
+      end: { dateTime: end.toISOString() },
+      ...(input.requestMeetLink
+        ? {
+            conferenceData: {
+              createRequest: {
+                requestId: `agenda-${start.getTime()}-${Math.random().toString(36).slice(2, 10)}`,
+                conferenceSolutionKey: { type: "hangoutsMeet" },
+              },
+            },
+          }
+        : {}),
+    }),
+  });
 
   if (!res.ok) {
     throw new Error(
@@ -345,8 +360,16 @@ export async function createGoogleEvent(
     );
   }
 
-  const json = (await res.json()) as { id: string; htmlLink?: string };
-  return json;
+  const json = (await res.json()) as {
+    id: string;
+    htmlLink?: string;
+    conferenceData?: { entryPoints?: { entryPointType?: string; uri?: string }[] };
+  };
+  const meetLink = json.conferenceData?.entryPoints?.find(
+    (entry) => entry.entryPointType === "video",
+  )?.uri;
+
+  return { id: json.id, htmlLink: json.htmlLink, meetLink };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

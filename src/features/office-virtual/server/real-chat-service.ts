@@ -47,8 +47,12 @@ export type AgendaTaskInput = {
 };
 
 export type AgendaPorts = {
-  /** Real INSERT into `agenda_tasks` — the whole reason this tag isn't just text. */
-  createTask: (workspaceId: string, actorUserId: string | null, input: AgendaTaskInput) => Promise<void>;
+  /** Real INSERT into `agenda_tasks` — the whole reason this tag isn't just text. Returns the Google Meet link when one was generated (timed appointment + Calendar connected), else null. */
+  createTask: (
+    workspaceId: string,
+    actorUserId: string | null,
+    input: AgendaTaskInput,
+  ) => Promise<{ meetingLink: string | null }>;
 };
 
 export type RealChatServicePorts = {
@@ -149,7 +153,9 @@ export type RealChatResult =
             specialistName: string;
             text: string;
             /** Non-null only when the specialist's confirmed tag was actually written to `agenda_tasks`. */
-            agendaTask: { title: string; scheduledDate: string; startTime: string | null; endTime: string | null } | null;
+            agendaTask:
+              | { title: string; scheduledDate: string; startTime: string | null; endTime: string | null; meetingLink: string | null }
+              | null;
           }
         | null;
     }
@@ -216,7 +222,9 @@ export async function handleCoordinatorMessage(
 
   const agendaMatch = specialistReply.text.match(AGENDA_TASK_TAG);
   const visibleSpecialistText = specialistReply.text.replace(AGENDA_TASK_TAG, '').trim();
-  let agendaTask: { title: string; scheduledDate: string; startTime: string | null; endTime: string | null } | null = null;
+  let agendaTask:
+    | { title: string; scheduledDate: string; startTime: string | null; endTime: string | null; meetingLink: string | null }
+    | null = null;
 
   // Defense in depth: only ever act on the tag when THIS specialist's own
   // configured allowedActions actually grant it — never trust the model's
@@ -229,8 +237,8 @@ export async function handleCoordinatorMessage(
     const endTime = agendaMatch[4] ?? null;
     const notes = agendaMatch[5].trim() || null;
     if (title) {
-      await ports.agenda.createTask(workspaceId, actorUserId, { title, notes, scheduledDate, startTime, endTime });
-      agendaTask = { title, scheduledDate, startTime, endTime };
+      const { meetingLink } = await ports.agenda.createTask(workspaceId, actorUserId, { title, notes, scheduledDate, startTime, endTime });
+      agendaTask = { title, scheduledDate, startTime, endTime, meetingLink };
     }
   }
 

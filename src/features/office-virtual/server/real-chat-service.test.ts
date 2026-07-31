@@ -90,7 +90,7 @@ function fakePorts(opts: {
     configuration: { store: configStore, resolveOpenRouterConnected: async () => true },
     orchestrator: { store: orchestratorStore, resolveRealOpenRouterStatus: async () => opts.realOpenRouterStatus ?? 'configured' },
     generateReply: vi.fn(async ({ systemPrompt }) => ({ text: opts.reply(systemPrompt) })),
-    agenda: opts.agenda ?? { createTask: vi.fn(async () => {}) },
+    agenda: opts.agenda ?? { createTask: vi.fn(async () => ({ meetingLink: null })) },
     resolveNowContext: async () => opts.nowContext ?? NOW_CONTEXT,
   };
 }
@@ -292,8 +292,8 @@ describe('real chat service — real Agenda tool', () => {
     });
   }
 
-  it('really persists the appointment when a specialist with schedule_call/create_task confirms it', async () => {
-    const createTask = vi.fn(async () => {});
+  it('really persists the appointment when a specialist with schedule_call/create_task confirms it, including the generated Meet link', async () => {
+    const createTask = vi.fn(async () => ({ meetingLink: 'https://meet.google.com/abc-defg-hij' }));
     const ports = fakePorts({
       doc: agendaSpecialistDoc(),
       binding: binding(),
@@ -314,6 +314,7 @@ describe('real chat service — real Agenda tool', () => {
       scheduledDate: '2026-08-01',
       startTime: '11:00',
       endTime: '11:30',
+      meetingLink: 'https://meet.google.com/abc-defg-hij',
     });
     expect(createTask).toHaveBeenCalledWith('workspace-a', 'user-1', {
       title: 'Llamada con Antonio Fernández',
@@ -324,8 +325,8 @@ describe('real chat service — real Agenda tool', () => {
     });
   });
 
-  it('persists a title/date-only appointment fine when the specialist omits start/end (no fixed time)', async () => {
-    const createTask = vi.fn(async () => {});
+  it('persists a title/date-only appointment fine when the specialist omits start/end (no fixed time, no Meet link)', async () => {
+    const createTask = vi.fn(async () => ({ meetingLink: null }));
     const ports = fakePorts({
       doc: agendaSpecialistDoc(),
       binding: binding(),
@@ -345,6 +346,7 @@ describe('real chat service — real Agenda tool', () => {
       scheduledDate: '2026-08-06',
       startTime: null,
       endTime: null,
+      meetingLink: null,
     });
     expect(createTask).toHaveBeenCalledWith('workspace-a', 'user-1', {
       title: 'Revisar inventario',
@@ -366,7 +368,7 @@ describe('real chat service — real Agenda tool', () => {
         }),
       },
     });
-    const createTask = vi.fn(async () => {});
+    const createTask = vi.fn(async () => ({ meetingLink: null }));
     const ports = fakePorts({
       doc,
       binding: binding(),
@@ -387,7 +389,7 @@ describe('real chat service — real Agenda tool', () => {
   });
 
   it('does not treat an unconfirmed/incomplete reply as a real appointment', async () => {
-    const createTask = vi.fn(async () => {});
+    const createTask = vi.fn(async () => ({ meetingLink: null }));
     const ports = fakePorts({
       doc: agendaSpecialistDoc(),
       binding: binding(),

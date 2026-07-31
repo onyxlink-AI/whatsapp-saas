@@ -77,6 +77,8 @@ export interface AgendaTaskRow {
   end_time: string | null;
   /** Google Calendar event id when this task was also synced there, else null. */
   google_event_id: string | null;
+  /** Google Meet link generated alongside the synced Calendar event, else null. */
+  meeting_link: string | null;
   done: boolean;
   assigned_to: string | null;
   created_by: string | null;

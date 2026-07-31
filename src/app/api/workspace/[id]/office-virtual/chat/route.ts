@@ -146,10 +146,10 @@ function agendaPorts(): AgendaPorts {
       // Best-effort: a Google Calendar hiccup (not connected, transient API
       // error) must never fail the Agenda write itself — the task above is
       // already real and saved either way.
-      if (!input.startTime) return;
+      if (!input.startTime) return { meetingLink: null };
       try {
         const config = await getGoogleCalendarConfig(workspaceId);
-        if (!config) return;
+        if (!config) return { meetingLink: null };
 
         const { hour, minute } = parseHourMinute(input.startTime);
         const start = zonedDateTime(input.scheduledDate, hour, minute, config.timezone);
@@ -163,11 +163,18 @@ function agendaPorts(): AgendaPorts {
           durationMinutes,
           summary: input.title,
           description: input.notes ?? undefined,
+          requestMeetLink: true,
         });
 
-        await client.from('agenda_tasks').update({ google_event_id: event.id }).eq('id', data.id);
+        await client
+          .from('agenda_tasks')
+          .update({ google_event_id: event.id, meeting_link: event.meetLink ?? null })
+          .eq('id', data.id);
+
+        return { meetingLink: event.meetLink ?? null };
       } catch (calendarError) {
         console.error('[office-virtual/chat] Google Calendar sync failed', calendarError);
+        return { meetingLink: null };
       }
     },
   };

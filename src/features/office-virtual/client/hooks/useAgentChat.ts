@@ -33,7 +33,9 @@ type CoordinatorChatResponse = {
         agentId: string;
         specialistName: string;
         text: string;
-        agendaTask: { title: string; scheduledDate: string; startTime: string | null; endTime: string | null } | null;
+        agendaTask:
+          | { title: string; scheduledDate: string; startTime: string | null; endTime: string | null; meetingLink: string | null }
+          | null;
       }
     | null;
 };
@@ -96,12 +98,13 @@ export function useAgentChat(workspaceId: string, realChat: boolean) {
           timestamp: Date.now(),
         });
         if (body.delegation.agendaTask) {
-          const { title, scheduledDate, startTime, endTime } = body.delegation.agendaTask;
+          const { title, scheduledDate, startTime, endTime, meetingLink } = body.delegation.agendaTask;
           const time = startTime ? ` a las ${startTime}${endTime ? `–${endTime}` : ''}` : '';
+          const link = meetingLink ? `\n🔗 Enlace de la reunión: ${meetingLink}` : '';
           replies.push({
             id: crypto.randomUUID(),
             role: 'agent',
-            text: `📅 Guardado en tu Agenda: "${title}" — ${formatScheduledDate(scheduledDate)}${time}`,
+            text: `📅 Guardado en tu Agenda: "${title}" — ${formatScheduledDate(scheduledDate)}${time}${link}`,
             timestamp: Date.now(),
           });
         }
