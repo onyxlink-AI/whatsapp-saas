@@ -24,10 +24,17 @@ export interface ContactSummary {
   stage: string | null;
 }
 
+/** A Notion-style creatable tag — typed once, reused as an option from then on. */
+export interface SectorSummary {
+  id: string;
+  name: string;
+}
+
 export interface DealRow {
   id: string;
   workspace_id: string;
-  contact_id: string;
+  /** Null when the deal is still just an inline lead — see lead_name/lead_phone/lead_email below. */
+  contact_id: string | null;
   title: string;
   stage: DealStage;
   value: number;
@@ -39,12 +46,19 @@ export interface DealRow {
   position: number;
   notes: string | null;
   source: string | null;
+  /** Inline lead identity, used until (and preserved after) the deal is promoted into a real Contact on win. */
+  lead_name: string | null;
+  lead_phone: string | null;
+  lead_email: string | null;
+  sector_id: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface DealWithContact extends DealRow {
-  contact: ContactSummary;
+  /** Null for a deal that's still just an inline lead (no Contact yet). */
+  contact: ContactSummary | null;
+  sector: SectorSummary | null;
   open_task_count: number;
 }
 

@@ -13,12 +13,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createDeal, getDeal } from "@/features/pipeline/services/deal-actions";
-import { ContactPicker } from "./contact-picker";
+import { SectorCombobox } from "./sector-combobox";
 import type { ContactSummary, DealWithContact } from "@/features/pipeline/types";
 
 interface CreateDealDialogProps {
   open: boolean;
   workspaceId: string;
+  /** Set via the "Crear negocio" shortcut on an existing contact's own page (?createFor=<id>) — pre-fills the lead fields and links the deal to this real contact directly, instead of the inline-lead/promotion path. */
   initialContact: ContactSummary | null;
   onClose: () => void;
   onCreated: (deal: DealWithContact) => void;
@@ -31,14 +32,20 @@ export function CreateDealDialog({
   onClose,
   onCreated,
 }: CreateDealDialogProps) {
-  const [contact, setContact] = useState<ContactSummary | null>(initialContact);
+  const [leadName, setLeadName] = useState(initialContact?.name ?? "");
+  const [leadPhone, setLeadPhone] = useState(initialContact?.phone ?? "");
+  const [leadEmail, setLeadEmail] = useState(initialContact?.email ?? "");
+  const [sectorName, setSectorName] = useState("");
   const [title, setTitle] = useState("");
   const [value, setValue] = useState("");
   const [expectedCloseDate, setExpectedCloseDate] = useState("");
   const [isPending, startTransition] = useTransition();
 
   function reset() {
-    setContact(initialContact);
+    setLeadName(initialContact?.name ?? "");
+    setLeadPhone(initialContact?.phone ?? "");
+    setLeadEmail(initialContact?.email ?? "");
+    setSectorName("");
     setTitle("");
     setValue("");
     setExpectedCloseDate("");
@@ -50,8 +57,12 @@ export function CreateDealDialog({
   }
 
   function handleCreate() {
-    if (!contact) {
-      toast.error("Selecciona un contacto");
+    if (!initialContact && !leadName.trim()) {
+      toast.error("El nombre es requerido");
+      return;
+    }
+    if (!initialContact && !leadPhone.trim()) {
+      toast.error("El teléfono es requerido");
       return;
     }
     if (!title.trim()) {
@@ -60,8 +71,12 @@ export function CreateDealDialog({
     }
 
     startTransition(async () => {
-      const result = await createDeal({
-        contact_id: contact.id,
+      const result = await createDeal(workspaceId, {
+        contact_id: initialContact?.id,
+        lead_name: leadName.trim(),
+        lead_phone: leadPhone.trim(),
+        lead_email: leadEmail.trim(),
+        sector_name: sectorName.trim(),
         title: title.trim(),
         value: value ? Number(value) : undefined,
         expected_close_date: expectedCloseDate || undefined,
@@ -88,28 +103,45 @@ export function CreateDealDialog({
         </DialogHeader>
 
         <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs">Contacto</Label>
-            {contact ? (
-              <div className="flex items-center justify-between rounded-md border border-border/50 px-3 py-2">
-                <div className="flex flex-col">
-                  <span className="text-sm">{contact.name || "Sin nombre"}</span>
-                  <span className="text-xs text-muted-foreground font-mono">
-                    {contact.phone}
-                  </span>
-                </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 text-xs"
-                  onClick={() => setContact(null)}
-                >
-                  Cambiar
-                </Button>
-              </div>
-            ) : (
-              <ContactPicker workspaceId={workspaceId} onSelect={setContact} />
-            )}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Nombre</Label>
+              <Input
+                value={leadName}
+                onChange={(e) => setLeadName(e.target.value)}
+                placeholder="Ej. Antonio Fernández"
+                className="h-8 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Sector</Label>
+              <SectorCombobox
+                workspaceId={workspaceId}
+                value={sectorName}
+                onChange={setSectorName}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Teléfono</Label>
+              <Input
+                value={leadPhone}
+                onChange={(e) => setLeadPhone(e.target.value)}
+                placeholder="+34..."
+                className="h-8 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Correo</Label>
+              <Input
+                type="email"
+                value={leadEmail}
+                onChange={(e) => setLeadEmail(e.target.value)}
+                className="h-8 text-sm"
+              />
+            </div>
           </div>
 
           <div className="space-y-1.5">

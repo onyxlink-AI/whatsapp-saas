@@ -79,9 +79,13 @@ export function DealCard({ deal, onClick, index = 0 }: DealCardProps) {
       )}
     >
       <div className="flex items-center gap-2">
-        <Initials name={deal.contact?.name ?? null} />
+        <Initials name={deal.contact?.name ?? deal.lead_name ?? null} />
         <p className="text-xs font-medium truncate flex-1">
-          {deal.contact?.name || deal.contact?.phone || "Sin contacto"}
+          {deal.contact?.name ||
+            deal.lead_name ||
+            deal.contact?.phone ||
+            deal.lead_phone ||
+            "Sin contacto"}
         </p>
       </div>
 
@@ -101,15 +105,22 @@ export function DealCard({ deal, onClick, index = 0 }: DealCardProps) {
         )}
       </div>
 
-      {deal.open_task_count > 0 && (
-        <Badge
-          variant="secondary"
-          className="text-[9px] gap-1 px-1.5 py-0 h-4 w-fit"
-        >
-          <ListTodo className="h-2.5 w-2.5" />
-          {deal.open_task_count}
-        </Badge>
-      )}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {deal.sector && (
+          <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 w-fit">
+            {deal.sector.name}
+          </Badge>
+        )}
+        {deal.open_task_count > 0 && (
+          <Badge
+            variant="secondary"
+            className="text-[9px] gap-1 px-1.5 py-0 h-4 w-fit"
+          >
+            <ListTodo className="h-2.5 w-2.5" />
+            {deal.open_task_count}
+          </Badge>
+        )}
+      </div>
     </div>
   );
 }

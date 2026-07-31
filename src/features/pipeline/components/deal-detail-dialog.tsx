@@ -127,12 +127,32 @@ export function DealDetailDialog({
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {deal?.contact?.name || deal?.contact?.phone || "Negocio"}
+            {deal?.contact?.name ||
+              deal?.lead_name ||
+              deal?.contact?.phone ||
+              deal?.lead_phone ||
+              "Negocio"}
           </DialogTitle>
         </DialogHeader>
 
         {deal && (
           <div className="space-y-4">
+            {(deal.contact?.phone || deal.lead_phone || deal.contact?.email || deal.lead_email || deal.sector) && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground -mt-2">
+                {(deal.contact?.phone || deal.lead_phone) && (
+                  <span>{deal.contact?.phone || deal.lead_phone}</span>
+                )}
+                {(deal.contact?.email || deal.lead_email) && (
+                  <span>{deal.contact?.email || deal.lead_email}</span>
+                )}
+                {deal.sector && (
+                  <span className="rounded-full border border-border/50 px-2 py-0.5">
+                    {deal.sector.name}
+                  </span>
+                )}
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label className="text-xs">Título</Label>
               <Input

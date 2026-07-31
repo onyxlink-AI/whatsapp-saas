@@ -300,6 +300,31 @@ export async function createWorkspaceForClient(
     free_text: "",
   });
 
+  // Seed the standard 16 niches as Notion-style sector tags (see
+  // supabase/migrations/20260731020000_sectors.sql for the same list applied
+  // to pre-existing workspaces) so Pipeline/Clientes have them ready to pick
+  // from day one instead of the agency having to type each one by hand once.
+  await service.from("sectors").insert(
+    [
+      "Dentistas",
+      "Formadores",
+      "Centros de tatuajes",
+      "Gimnasios",
+      "Deporte al aire libre",
+      "Talleres de móviles y ordenadores",
+      "Empresas de experiencias",
+      "Barberías grandes",
+      "Inmobiliarias",
+      "Spas",
+      "Alquiler de coches o motos",
+      "Náutica",
+      "Agencias de viajes",
+      "Psicólogos",
+      "Fisioterapia",
+      "Limpieza de coches",
+    ].map((sectorName) => ({ workspace_id: workspaceId, name: sectorName })),
+  );
+
   // Fail loud instead of shipping a dead placeholder host to the client.
   // In dev, fall back to localhost so local testing works.
   const baseUrl =

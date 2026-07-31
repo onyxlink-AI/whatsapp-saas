@@ -3,6 +3,16 @@
 /**
  * deal-actions.ts — Server actions for deal (sales opportunity) CRUD,
  * kanban stage moves, and within-column reordering.
+ *
+ * Creating a deal no longer requires an existing Contact — the admin types
+ * the lead's name/phone/email/sector directly on the deal (lead_name/
+ * lead_phone/lead_email/sector_id on `deals`). The Contact only gets
+ * created — never duplicated — when the deal is actually won; see
+ * promoteDealToContactIfWon() below, called from every place a deal's stage
+ * can become 'cliente' through this file (updateDeal, moveDealStage). The
+ * AI auto-mover in pipeline-suggestion.ts never needs this: every deal it
+ * touches already has a real contact_id (it only ever acts on deals tied to
+ * an actual WhatsApp/voice conversation with an existing contact).
  */
 
 import { z } from "zod";
@@ -23,9 +33,130 @@ export type ActionResult<T> =
   | { ok: false; data?: never; error: string };
 
 // ──────────────────────────────────────────────────────────────────────────────
+// findOrCreateSectorId — "type or create" semantics for the Sector field,
+// mirroring findOrCreateCompanyId in features/clients/services/client-actions.ts.
+// ──────────────────────────────────────────────────────────────────────────────
+async function findOrCreateSectorId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  workspaceId: string,
+  sectorName: string | undefined,
+): Promise<string | null> {
+  const trimmed = sectorName?.trim();
+  if (!trimmed) return null;
+
+  const { data: existing } = await supabase
+    .from("sectors")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("name", trimmed)
+    .maybeSingle();
+
+  if (existing) return existing.id as string;
+
+  const { data: created, error } = await supabase
+    .from("sectors")
+    .insert({ workspace_id: workspaceId, name: trimmed })
+    .select("id")
+    .single();
+
+  if (error || !created) {
+    console.error("[findOrCreateSectorId] Supabase error:", error?.message);
+    return null;
+  }
+
+  return created.id as string;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// promoteDealToContactIfWon — the whole reason lead_name/lead_phone/lead_email
+// exist. Fires only on the transition INTO 'cliente' (never re-fires on later
+// saves of an already-won deal), and only for a deal that isn't already
+// linked to a real contact. Dedupes on contacts' own UNIQUE(workspace_id,
+// phone) — an existing contact with that phone is reused, never duplicated.
+// ──────────────────────────────────────────────────────────────────────────────
+async function promoteDealToContactIfWon(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  deal: {
+    id: string;
+    workspace_id: string;
+    contact_id: string | null;
+    lead_name: string | null;
+    lead_phone: string | null;
+    lead_email: string | null;
+    sector_id: string | null;
+  },
+  previousStage: DealStage,
+  newStage: DealStage,
+): Promise<void> {
+  if (newStage !== "cliente" || previousStage === "cliente") return;
+  if (deal.contact_id) return; // already a real contact — nothing to promote
+  if (!deal.lead_name || !deal.lead_phone) return; // DB CHECK guarantees this never happens, but stay defensive
+
+  const { data: existingContact } = await supabase
+    .from("contacts")
+    .select("id")
+    .eq("workspace_id", deal.workspace_id)
+    .eq("phone", deal.lead_phone)
+    .maybeSingle();
+
+  let contactId = existingContact?.id as string | undefined;
+
+  if (!contactId) {
+    const { data: createdContact, error } = await supabase
+      .from("contacts")
+      .insert({
+        workspace_id: deal.workspace_id,
+        name: deal.lead_name,
+        phone: deal.lead_phone,
+        email: deal.lead_email,
+        sector_id: deal.sector_id,
+        client_status: "activo",
+      })
+      .select("id")
+      .single();
+
+    if (error || !createdContact) {
+      console.error("[promoteDealToContactIfWon] Supabase error:", error?.message);
+      return;
+    }
+    contactId = createdContact.id as string;
+  }
+
+  await supabase.from("deals").update({ contact_id: contactId }).eq("id", deal.id);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// listSectors — for the Sector combobox (existing options + "Crear «X»")
+// ──────────────────────────────────────────────────────────────────────────────
+export async function listSectors(
+  workspaceId: string,
+): Promise<{ id: string; name: string }[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("sectors")
+    .select("id, name")
+    .eq("workspace_id", workspaceId)
+    .order("name", { ascending: true });
+
+  if (error || !data) {
+    console.error("[listSectors] Supabase error:", error?.message);
+    return [];
+  }
+
+  return data as { id: string; name: string }[];
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // createDeal
 // ──────────────────────────────────────────────────────────────────────────────
 export async function createDeal(
+  workspaceId: string,
   data: CreateDealInput,
 ): Promise<ActionResult<{ id: string }>> {
   const supabase = await createClient();
@@ -46,29 +177,44 @@ export async function createDeal(
     };
   }
 
-  const { data: contact, error: contactError } = await supabase
-    .from("contacts")
-    .select("workspace_id")
-    .eq("id", parsed.data.contact_id)
-    .single();
-
-  if (contactError || !contact) {
-    return { ok: false, error: "Contacto no encontrado" };
+  // contact_id is only ever set from the "Crear negocio" shortcut on an
+  // existing contact's own page (?createFor=<id>) — re-verify it's a real
+  // contact in THIS workspace rather than trusting a raw uuid at face value.
+  if (parsed.data.contact_id) {
+    const { data: contact } = await supabase
+      .from("contacts")
+      .select("id")
+      .eq("id", parsed.data.contact_id)
+      .eq("workspace_id", workspaceId)
+      .maybeSingle();
+    if (!contact) {
+      return { ok: false, error: "Contacto no encontrado" };
+    }
   }
 
-  // New deal goes to the end of the 'new' column for its workspace.
+  const sectorId = await findOrCreateSectorId(
+    supabase,
+    workspaceId,
+    parsed.data.sector_name,
+  );
+
+  // New deal goes to the end of the 'exploracion' column for its workspace.
   const { count } = await supabase
     .from("deals")
     .select("id", { count: "exact", head: true })
-    .eq("workspace_id", contact.workspace_id)
-    .eq("stage", "new");
+    .eq("workspace_id", workspaceId)
+    .eq("stage", "exploracion");
+
+  const { sector_name: _sectorName, ...dealFields } = parsed.data;
 
   const { data: inserted, error: insertError } = await supabase
     .from("deals")
     .insert({
-      ...parsed.data,
-      workspace_id: contact.workspace_id,
-      stage: "new",
+      ...dealFields,
+      lead_email: dealFields.lead_email || null,
+      workspace_id: workspaceId,
+      sector_id: sectorId,
+      stage: "exploracion",
       position: count ?? 0,
     })
     .select("id")
@@ -122,6 +268,14 @@ export async function updateDeal(
       : null;
   }
 
+  // Read the deal's current stage + lead identity before overwriting it —
+  // both are needed to detect the won transition and promote it below.
+  const { data: before } = await supabase
+    .from("deals")
+    .select("workspace_id, contact_id, stage, lead_name, lead_phone, lead_email, sector_id")
+    .eq("id", dealId)
+    .maybeSingle();
+
   const { data: updated, error: updateError } = await supabase
     .from("deals")
     .update(patch)
@@ -132,6 +286,15 @@ export async function updateDeal(
   if (updateError || !updated) {
     console.error("[updateDeal] Supabase error:", updateError?.message);
     return { ok: false, error: "Error al actualizar el deal" };
+  }
+
+  if (before && parsed.data.stage) {
+    await promoteDealToContactIfWon(
+      supabase,
+      { id: dealId, ...before },
+      before.stage as DealStage,
+      parsed.data.stage,
+    );
   }
 
   return { ok: true, data: { id: updated.id as string } };
@@ -160,6 +323,12 @@ export async function moveDealStage(
     return { ok: false, error: "Etapa inválida" };
   }
 
+  const { data: before } = await supabase
+    .from("deals")
+    .select("workspace_id, contact_id, stage, lead_name, lead_phone, lead_email, sector_id")
+    .eq("id", dealId)
+    .maybeSingle();
+
   const { data: updated, error: updateError } = await supabase
     .from("deals")
     .update({
@@ -177,6 +346,15 @@ export async function moveDealStage(
   if (updateError || !updated) {
     console.error("[moveDealStage] Supabase error:", updateError?.message);
     return { ok: false, error: "Error al mover el deal" };
+  }
+
+  if (before) {
+    await promoteDealToContactIfWon(
+      supabase,
+      { id: dealId, ...before },
+      before.stage as DealStage,
+      parsedStage.data,
+    );
   }
 
   return { ok: true, data: { id: updated.id as string } };
@@ -266,7 +444,7 @@ export async function getDealsForBoard(
   const [{ data: deals, error }, { data: openTasks }] = await Promise.all([
     supabase
       .from("deals")
-      .select("*, contact:contacts(id,name,phone,email,stage)")
+      .select("*, contact:contacts(id,name,phone,email,stage), sector:sectors(id,name)")
       .eq("workspace_id", workspaceId)
       .order("stage", { ascending: true })
       .order("position", { ascending: true }),
@@ -311,7 +489,7 @@ export async function getDeal(
 
   const { data, error } = await supabase
     .from("deals")
-    .select("*, contact:contacts(id,name,phone,email,stage)")
+    .select("*, contact:contacts(id,name,phone,email,stage), sector:sectors(id,name)")
     .eq("id", dealId)
     .single();
 

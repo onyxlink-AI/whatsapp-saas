@@ -9,9 +9,24 @@ import type { DealStage } from "@/features/pipeline/types";
 
 export const DealStageEnum = z.enum(DEAL_STAGES as [DealStage, ...DealStage[]]);
 
-export const DealInputSchema = z.object({
-  contact_id: z.string().uuid(),
+// Kept as a plain (non-refined) object so UpdateDealSchema below can still
+// call .partial() on it — ZodEffects (the result of .refine()) doesn't
+// support .partial(), so the "must have an identity" rule is layered on
+// top only for the create schema, not reused for partial updates.
+const DealBaseSchema = z.object({
   title: z.string().min(1, "El título es requerido"),
+  // Set when creating a deal from an existing contact (e.g. the "Crear
+  // negocio" shortcut from a contact's CRM panel, ?createFor=<id>) — links
+  // directly instead of going through the inline-lead/promotion dance.
+  contact_id: z.string().uuid().optional(),
+  // Inline lead identity — lets an opportunity be logged with no existing
+  // Contact at all. Required together only when contact_id isn't given (see
+  // DealInputSchema's refine below); email/sector stay optional either way.
+  lead_name: z.string().optional(),
+  lead_phone: z.string().optional(),
+  lead_email: z.string().email("Email inválido").optional().or(z.literal("")),
+  // Raw typed text — createDeal() finds-or-creates the matching `sectors` row.
+  sector_name: z.string().optional().or(z.literal("")),
   value: z.number().min(0, "El valor no puede ser negativo").optional(),
   currency: z.string().length(3, "Moneda inválida").optional(),
   owner_id: z.string().uuid().optional(),
@@ -22,9 +37,14 @@ export const DealInputSchema = z.object({
   notes: z.string().optional(),
 });
 
+export const DealInputSchema = DealBaseSchema.refine(
+  (data) => Boolean(data.contact_id) || Boolean(data.lead_name?.trim() && data.lead_phone?.trim()),
+  { message: "Indica un contacto existente o al menos nombre y teléfono", path: ["lead_name"] },
+);
+
 export type CreateDealInput = z.infer<typeof DealInputSchema>;
 
-export const UpdateDealSchema = DealInputSchema.partial().extend({
+export const UpdateDealSchema = DealBaseSchema.partial().extend({
   stage: DealStageEnum.optional(),
   lost_reason: z.string().optional(),
 });

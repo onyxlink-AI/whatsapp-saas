@@ -4,12 +4,62 @@ import { DealInputSchema, UpdateDealSchema, ReorderSchema } from "./deal-schemas
 const validContactId = "11111111-1111-4111-8111-111111111111";
 
 describe("DealInputSchema", () => {
-  it("accepts a minimal valid deal", () => {
+  it("accepts a deal linked to an existing contact_id, no lead fields needed", () => {
     const result = DealInputSchema.safeParse({
       contact_id: validContactId,
       title: "Plan Agent AI Max",
     });
     expect(result.success).toBe(true);
+  });
+
+  it("accepts an inline lead with just name + phone, no contact_id", () => {
+    const result = DealInputSchema.safeParse({
+      lead_name: "Antonio Fernández",
+      lead_phone: "+34600000000",
+      title: "Plan Agent AI Max",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts an inline lead with email and sector_name too", () => {
+    const result = DealInputSchema.safeParse({
+      lead_name: "Antonio Fernández",
+      lead_phone: "+34600000000",
+      lead_email: "antonio@example.com",
+      sector_name: "Dentistas",
+      title: "Plan Agent AI Max",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a deal with neither contact_id nor a full inline lead identity", () => {
+    const result = DealInputSchema.safeParse({ title: "Plan" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an inline lead missing the phone", () => {
+    const result = DealInputSchema.safeParse({
+      lead_name: "Antonio Fernández",
+      title: "Plan",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an inline lead missing the name", () => {
+    const result = DealInputSchema.safeParse({
+      lead_phone: "+34600000000",
+      title: "Plan",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a malformed lead_email", () => {
+    const result = DealInputSchema.safeParse({
+      contact_id: validContactId,
+      title: "Plan",
+      lead_email: "not-an-email",
+    });
+    expect(result.success).toBe(false);
   });
 
   it("rejects a negative value", () => {
@@ -41,6 +91,8 @@ describe("DealInputSchema", () => {
   it("rejects a non-uuid contact_id", () => {
     const result = DealInputSchema.safeParse({
       contact_id: "not-a-uuid",
+      lead_name: "Antonio",
+      lead_phone: "+34600000000",
       title: "Plan",
     });
     expect(result.success).toBe(false);
@@ -60,6 +112,11 @@ describe("UpdateDealSchema", () => {
 
   it("allows an empty partial update (caller guards against no-op separately)", () => {
     const result = UpdateDealSchema.safeParse({});
+    expect(result.success).toBe(true);
+  });
+
+  it("allows a partial update with only sector_name, no identity fields required", () => {
+    const result = UpdateDealSchema.safeParse({ sector_name: "Gimnasios" });
     expect(result.success).toBe(true);
   });
 });
