@@ -195,8 +195,8 @@ describe('office configuration — reset specialist', () => {
   });
 });
 
-describe('office configuration — the 8 specialist templates', () => {
-  it('has exactly the 8 required business-role templates', () => {
+describe('office configuration — the 9 specialist templates', () => {
+  it('has exactly the 9 required business-role templates', () => {
     const ids = SPECIALIST_TEMPLATES.map((t) => t.id).sort();
     expect(ids).toEqual(
       [
@@ -208,6 +208,7 @@ describe('office configuration — the 8 specialist templates', () => {
         'personas-rrhh',
         'datos-bi',
         'ciberseguridad-cumplimiento',
+        'creador-contenido',
       ].sort(),
     );
   });
