@@ -5,6 +5,7 @@ import { Send, Sparkles } from "lucide-react";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -38,6 +39,9 @@ export function HelpAssistantPanel({ workspaceId, open, onOpenChange }: HelpAssi
             <Sparkles className="h-4 w-4 text-[hsl(var(--electric-lime))]" aria-hidden="true" />
             Asistente de Ayuda
           </SheetTitle>
+          <SheetDescription>
+            Pregúntame cómo usar el panel de Onyxlink.
+          </SheetDescription>
           {quota && (
             <p className="text-xs text-muted-foreground">
               {quota.used}/{quota.limit} preguntas esta semana
