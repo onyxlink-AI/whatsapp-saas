@@ -3,7 +3,7 @@ import { resolveHelpAssistantTier } from "./tier";
 import { checkHelpAssistantQuota, recordHelpAssistantQuestion } from "./quota";
 import { buildHelpAssistantSystemPrompt } from "./system-prompt";
 import { generateHelpAssistantReply } from "./openrouter-client";
-import type { ChatTurn, WorkspacePlanFlags } from "../types";
+import type { ChatTurn, HelpAssistantPlanContext, WorkspacePlanFlags } from "../types";
 
 function svc() {
   return createSbClient(
@@ -25,27 +25,35 @@ export async function askHelpAssistant(opts: {
 }): Promise<AskHelpAssistantResult> {
   const { data: workspace } = await svc()
     .from("workspaces")
-    .select("gestion_enabled, whatsapp_agent_enabled, office_virtual_enabled")
+    .select("gestion_enabled, whatsapp_agent_enabled, office_virtual_enabled, vapi_assistant_id")
     .eq("id", opts.workspaceId)
     .maybeSingle();
 
-  const tierInfo = resolveHelpAssistantTier(
-    (workspace as WorkspacePlanFlags | null) ?? {
-      gestion_enabled: false,
-      whatsapp_agent_enabled: true,
-      office_virtual_enabled: false,
-    },
-  );
+  const flags = (workspace as (WorkspacePlanFlags & { vapi_assistant_id: string | null }) | null) ?? {
+    gestion_enabled: false,
+    whatsapp_agent_enabled: true,
+    office_virtual_enabled: false,
+    vapi_assistant_id: null,
+  };
+
+  const tierInfo = resolveHelpAssistantTier(flags);
 
   const quota = await checkHelpAssistantQuota(opts.workspaceId, tierInfo.weeklyLimit);
   if (!quota.allowed) {
     return { ok: false, code: "quota_exceeded", used: quota.used, limit: quota.limit };
   }
 
+  const planContext: HelpAssistantPlanContext = {
+    gestionEnabled: flags.gestion_enabled === true,
+    whatsappAgentEnabled: flags.whatsapp_agent_enabled !== false,
+    officeVirtualEnabled: flags.office_virtual_enabled === true,
+    hasVoiceAgent: Boolean(flags.vapi_assistant_id),
+  };
+
   let reply;
   try {
     reply = await generateHelpAssistantReply({
-      systemPrompt: buildHelpAssistantSystemPrompt(),
+      systemPrompt: buildHelpAssistantSystemPrompt(planContext),
       messages: [...opts.history, { role: "user", content: opts.message }],
     });
   } catch (error) {

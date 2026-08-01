@@ -13,6 +13,19 @@ export interface WorkspacePlanFlags {
   office_virtual_enabled: boolean | null;
 }
 
+/**
+ * What the system prompt needs to know about THIS workspace's plan, so it
+ * only describes features the client actually has — and briefly declines
+ * (never explains in detail) anything they don't, instead of assuming every
+ * client has every module.
+ */
+export interface HelpAssistantPlanContext {
+  gestionEnabled: boolean;
+  whatsappAgentEnabled: boolean;
+  officeVirtualEnabled: boolean;
+  hasVoiceAgent: boolean;
+}
+
 export interface ChatTurn {
   role: "user" | "assistant";
   content: string;
