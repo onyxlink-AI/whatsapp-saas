@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Mic, MicOff, Send, Sparkles } from "lucide-react";
 import {
   Sheet,
@@ -25,7 +26,10 @@ interface HelpAssistantPanelProps {
 export function HelpAssistantPanel({ workspaceId, open, onOpenChange }: HelpAssistantPanelProps) {
   const { messages, quota, blocked, isPending, sendMessage } = useHelpAssistantChat(workspaceId);
   const [draft, setDraft] = useState("");
-  const { isSupported: speechSupported, isListening, start, stop } = useSpeechInput(setDraft);
+  const { isSupported: speechSupported, isListening, start, stop } = useSpeechInput(
+    setDraft,
+    (message) => toast.error(message),
+  );
 
   function handleSend() {
     if (blocked) return;

@@ -8,6 +8,10 @@ import { useEffect, useRef, useState } from "react";
  * Firefox doesn't implement it at all and Safari's support is inconsistent,
  * so callers must check `isSupported` and hide the mic entirely when false.
  * Only transcribes to text — the assistant still replies in text, never audio.
+ *
+ * Also requires a secure context (HTTPS, or exactly "localhost") — the API
+ * is unavailable (falls through to isSupported=false) on plain-HTTP hosts
+ * like a LAN IP, matching the same constraint as crypto.randomUUID.
  */
 
 interface SpeechRecognitionResultLike {
@@ -18,6 +22,10 @@ interface SpeechRecognitionEventLike extends Event {
   results: ArrayLike<SpeechRecognitionResultLike>;
 }
 
+interface SpeechRecognitionErrorEventLike extends Event {
+  error: string;
+}
+
 interface SpeechRecognitionLike extends EventTarget {
   lang: string;
   continuous: boolean;
@@ -26,7 +34,7 @@ interface SpeechRecognitionLike extends EventTarget {
   stop: () => void;
   onresult: ((event: SpeechRecognitionEventLike) => void) | null;
   onend: (() => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
 }
 
 type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
@@ -40,7 +48,20 @@ function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
-export function useSpeechInput(onTranscript: (text: string) => void) {
+const ERROR_MESSAGES: Record<string, string> = {
+  "not-allowed": "Debes dar permiso de micrófono en tu navegador para poder hablar la pregunta.",
+  "permission-denied": "Debes dar permiso de micrófono en tu navegador para poder hablar la pregunta.",
+  "no-speech": "No se detectó voz, inténtalo de nuevo.",
+  "audio-capture": "No se encontró un micrófono en este dispositivo.",
+  network: "Error de red al reconocer la voz, inténtalo de nuevo.",
+  aborted: "",
+};
+
+function errorMessageFor(code: string): string {
+  return ERROR_MESSAGES[code] ?? "No se pudo usar el micrófono, inténtalo de nuevo.";
+}
+
+export function useSpeechInput(onTranscript: (text: string) => void, onError?: (message: string) => void) {
   const [isSupported, setIsSupported] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
@@ -66,11 +87,19 @@ export function useSpeechInput(onTranscript: (text: string) => void) {
       onTranscript(transcript);
     };
     recognition.onend = () => setIsListening(false);
-    recognition.onerror = () => setIsListening(false);
+    recognition.onerror = (event) => {
+      setIsListening(false);
+      const message = errorMessageFor(event.error);
+      if (message) onError?.(message);
+    };
 
     recognitionRef.current = recognition;
-    recognition.start();
-    setIsListening(true);
+    try {
+      recognition.start();
+      setIsListening(true);
+    } catch {
+      onError?.(errorMessageFor(""));
+    }
   }
 
   function stop() {
