@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
-import { Mic, MicOff, Send, Sparkles } from "lucide-react";
+import { Send, Sparkles } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -15,7 +14,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useHelpAssistantChat } from "@/features/help-assistant/hooks/use-help-assistant-chat";
-import { useSpeechInput } from "@/features/help-assistant/hooks/use-speech-input";
 
 interface HelpAssistantPanelProps {
   workspaceId: string;
@@ -26,24 +24,11 @@ interface HelpAssistantPanelProps {
 export function HelpAssistantPanel({ workspaceId, open, onOpenChange }: HelpAssistantPanelProps) {
   const { messages, quota, blocked, isPending, sendMessage } = useHelpAssistantChat(workspaceId);
   const [draft, setDraft] = useState("");
-  const { isSupported: speechSupported, isListening, start, stop } = useSpeechInput(
-    setDraft,
-    (message) => toast.error(message),
-  );
 
   function handleSend() {
     if (blocked) return;
     sendMessage(draft);
     setDraft("");
-  }
-
-  function handleMicClick() {
-    if (isListening) {
-      stop();
-    } else {
-      setDraft("");
-      start();
-    }
   }
 
   return (
@@ -107,29 +92,10 @@ export function HelpAssistantPanel({ workspaceId, open, onOpenChange }: HelpAssi
                 handleSend();
               }
             }}
-            placeholder={
-              blocked
-                ? "Límite semanal alcanzado"
-                : isListening
-                  ? "Escuchando..."
-                  : "Escribe o habla tu pregunta..."
-            }
+            placeholder={blocked ? "Límite semanal alcanzado" : "Escribe tu pregunta..."}
             disabled={blocked || isPending}
             className="h-9 text-sm"
           />
-          {speechSupported && (
-            <Button
-              type="button"
-              size="icon"
-              variant={isListening ? "default" : "outline"}
-              className="h-9 w-9 shrink-0"
-              onClick={handleMicClick}
-              disabled={blocked || isPending}
-              aria-label={isListening ? "Detener dictado por voz" : "Hablar la pregunta"}
-            >
-              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-            </Button>
-          )}
           <Button
             size="icon"
             className="h-9 w-9 shrink-0"
