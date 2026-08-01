@@ -14,7 +14,7 @@ function isTransientError(err: unknown): boolean {
   return false;
 }
 
-async function withTransientRetry<T>(
+export async function withTransientRetry<T>(
   fn: () => Promise<T>,
   {
     retries = 2,

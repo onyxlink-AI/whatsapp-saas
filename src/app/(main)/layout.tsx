@@ -13,6 +13,7 @@ import { isOfficeVirtualEnabled } from "@/features/office-virtual/access";
 import { canSeeChatbotNav } from "@/features/chatbot/access";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { GlobalSearchLauncher } from "@/features/search/components/global-search-launcher";
+import { HelpAssistantLauncher } from "@/features/help-assistant/components/help-assistant-launcher";
 import { Button } from "@/components/ui/button";
 import {
   AppMobileNavigation,
@@ -272,6 +273,8 @@ export default async function MainLayout({
       </div>
 
       <AppMobileNavigation items={navItems} />
+
+      {activeId && <HelpAssistantLauncher workspaceId={activeId} />}
     </div>
   );
 }
