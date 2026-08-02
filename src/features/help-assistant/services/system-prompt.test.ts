@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildHelpAssistantSystemPrompt, REFUSAL_MESSAGE } from "./system-prompt";
+import { buildHelpAssistantSystemPrompt, REFUSAL_MESSAGE, NO_DELETE_MESSAGE } from "./system-prompt";
 import type { HelpAssistantPlanContext } from "../types";
 
 const fullPlan: HelpAssistantPlanContext = {
@@ -16,8 +16,8 @@ const gestionOnlyPlan: HelpAssistantPlanContext = {
   hasVoiceAgent: false,
 };
 
-describe("buildHelpAssistantSystemPrompt", () => {
-  const prompt = buildHelpAssistantSystemPrompt(fullPlan);
+describe("buildHelpAssistantSystemPrompt (actions disabled — the default for every workspace)", () => {
+  const prompt = buildHelpAssistantSystemPrompt(fullPlan, false);
 
   it("contains the exact refusal message", () => {
     expect(prompt).toContain(REFUSAL_MESSAGE);
@@ -56,16 +56,59 @@ describe("buildHelpAssistantSystemPrompt", () => {
   it("never mentions the superadmin-only Chatbot module", () => {
     expect(prompt).not.toMatch(/chatbot/i);
   });
+
+  it("says explicitly it has no tools and must never claim to have acted", () => {
+    expect(prompt).toMatch(/No tienes ninguna tool/);
+    expect(prompt).not.toContain(NO_DELETE_MESSAGE);
+  });
+});
+
+describe("buildHelpAssistantSystemPrompt (actions enabled — superadmin opted this workspace in)", () => {
+  const prompt = buildHelpAssistantSystemPrompt(fullPlan, true);
+
+  it("describes itself as able to create/edit via tools", () => {
+    expect(prompt).toMatch(/puedes crear\/editar clientes/);
+  });
+
+  it("instructs searching before creating/editing to avoid duplicates or invented ids", () => {
+    expect(prompt).toMatch(/Busca primero con la tool search_\*/);
+  });
+
+  it("includes the never-delete rule and its exact refusal message", () => {
+    expect(prompt).toContain(NO_DELETE_MESSAGE);
+    expect(prompt).toMatch(/NUNCA borres nada/);
+  });
+
+  it("instructs asking whether a new client is already signed or should go through Pipeline first", () => {
+    expect(prompt).toMatch(/ya es cliente firmado, o es un lead nuevo/);
+    expect(prompt).toMatch(/NO lo crees en Clientes/);
+  });
+
+  it("instructs retaining earlier-turn data and asking for all missing fields at once", () => {
+    expect(prompt).toMatch(/NUNCA olvides datos que el usuario ya dio/);
+    expect(prompt).toMatch(/pregúntalos TODOS de una sola vez/);
+  });
+
+  it("instructs summarizing mixed/ambiguous multi-field messages before calling a tool", () => {
+    expect(prompt).toMatch(/resume en una frase lo que entendiste/);
+  });
+
+  it('never refuses "crear una empresa/negocio" as off-topic — it means create_deal', () => {
+    expect(prompt).toMatch(/SIEMPRE significa crear una Oportunidad/);
+  });
 });
 
 describe("buildHelpAssistantSystemPrompt plan-gating", () => {
   it("omits Clientes/Pipeline/Integraciones knowledge when the client has neither Gestión nor the WhatsApp agent", () => {
-    const prompt = buildHelpAssistantSystemPrompt({
-      gestionEnabled: false,
-      whatsappAgentEnabled: false,
-      officeVirtualEnabled: false,
-      hasVoiceAgent: false,
-    });
+    const prompt = buildHelpAssistantSystemPrompt(
+      {
+        gestionEnabled: false,
+        whatsappAgentEnabled: false,
+        officeVirtualEnabled: false,
+        hasVoiceAgent: false,
+      },
+      false,
+    );
     expect(prompt).not.toContain("Nuevo cliente");
     expect(prompt).not.toContain("Nuevo negocio");
     expect(prompt).not.toContain("conectar YCloud");
@@ -73,13 +116,13 @@ describe("buildHelpAssistantSystemPrompt plan-gating", () => {
   });
 
   it("lists Gestión-only features as contracted and the rest as not contracted", () => {
-    const prompt = buildHelpAssistantSystemPrompt(gestionOnlyPlan);
+    const prompt = buildHelpAssistantSystemPrompt(gestionOnlyPlan, false);
     expect(prompt).toMatch(/Tiene contratado:.*Onyxlink Gestión/);
     expect(prompt).toMatch(/NO tiene contratado:.*Agente de WhatsApp/);
   });
 
   it("instructs never explaining in detail a feature the client doesn't have", () => {
-    const prompt = buildHelpAssistantSystemPrompt(gestionOnlyPlan);
+    const prompt = buildHelpAssistantSystemPrompt(gestionOnlyPlan, false);
     expect(prompt).toMatch(/NO expliques el paso a paso/);
   });
 });

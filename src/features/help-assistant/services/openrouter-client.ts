@@ -1,5 +1,6 @@
 import { createOpenAI } from "@ai-sdk/openai";
-import { generateText } from "ai";
+import { generateText, stepCountIs } from "ai";
+import type { ToolSet } from "ai";
 import { withTransientRetry } from "@/features/inbox/services/openrouter";
 import type { ChatTurn } from "../types";
 
@@ -24,6 +25,8 @@ export async function generateHelpAssistantReply(params: {
   systemPrompt: string;
   messages: ChatTurn[];
   maxOutputTokens?: number;
+  /** Action tools (create/update client, deal, project, task) — see action-tools/. Omit for a plain text-only reply. */
+  tools?: ToolSet;
 }): Promise<HelpAssistantReplyResult> {
   const apiKey = process.env.HELP_ASSISTANT_OPENROUTER_API_KEY;
   if (!apiKey) {
@@ -41,6 +44,8 @@ export async function generateHelpAssistantReply(params: {
     },
   });
 
+  const hasTools = Boolean(params.tools && Object.keys(params.tools).length > 0);
+
   const result = await withTransientRetry(() =>
     generateText({
       model: openrouter.chat(MODEL),
@@ -48,7 +53,14 @@ export async function generateHelpAssistantReply(params: {
         { role: "system", content: params.systemPrompt },
         ...params.messages,
       ],
-      maxOutputTokens: params.maxOutputTokens ?? 300,
+      tools: hasTools ? params.tools : undefined,
+      // Same step cap as generateWithTools (src/features/inbox/services/openrouter.ts)
+      // — enough for search-then-act, low enough to bound cost/latency per question.
+      stopWhen: hasTools ? stepCountIs(5) : undefined,
+      // Tool-calling needs headroom for intermediate tool-call steps, not
+      // just the final reply — default higher than the plain-text case when
+      // tools are in play, still small enough to keep answers brief.
+      maxOutputTokens: params.maxOutputTokens ?? (hasTools ? 600 : 300),
     }),
   );
 

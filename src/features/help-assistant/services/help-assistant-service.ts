@@ -3,7 +3,13 @@ import { resolveHelpAssistantTier } from "./tier";
 import { checkHelpAssistantQuota, recordHelpAssistantQuestion } from "./quota";
 import { buildHelpAssistantSystemPrompt } from "./system-prompt";
 import { generateHelpAssistantReply } from "./openrouter-client";
-import type { ChatTurn, HelpAssistantPlanContext, WorkspacePlanFlags } from "../types";
+import { buildActionTools } from "./action-tools";
+import type {
+  ChatTurn,
+  HelpActionContext,
+  HelpAssistantPlanContext,
+  WorkspacePlanFlags,
+} from "../types";
 
 function svc() {
   return createSbClient(
@@ -25,16 +31,29 @@ export async function askHelpAssistant(opts: {
 }): Promise<AskHelpAssistantResult> {
   const { data: workspace } = await svc()
     .from("workspaces")
-    .select("gestion_enabled, whatsapp_agent_enabled, office_virtual_enabled, vapi_assistant_id")
+    .select(
+      "gestion_enabled, whatsapp_agent_enabled, office_virtual_enabled, vapi_assistant_id, help_assistant_actions_enabled",
+    )
     .eq("id", opts.workspaceId)
     .maybeSingle();
 
-  const flags = (workspace as (WorkspacePlanFlags & { vapi_assistant_id: string | null }) | null) ?? {
+  const flags = (workspace as
+    | (WorkspacePlanFlags & {
+        vapi_assistant_id: string | null;
+        help_assistant_actions_enabled: boolean | null;
+      })
+    | null) ?? {
     gestion_enabled: false,
     whatsapp_agent_enabled: true,
     office_virtual_enabled: false,
     vapi_assistant_id: null,
+    help_assistant_actions_enabled: false,
   };
+
+  // Off by default for every workspace — only Onyxlink (superadmin, from
+  // Ajustes → Negocio) turns this on per client. Until then the assistant
+  // stays text-only, matching the original behavior exactly.
+  const actionsEnabled = flags.help_assistant_actions_enabled === true;
 
   const tierInfo = resolveHelpAssistantTier(flags);
 
@@ -50,11 +69,14 @@ export async function askHelpAssistant(opts: {
     hasVoiceAgent: Boolean(flags.vapi_assistant_id),
   };
 
+  const actionCtx: HelpActionContext = { workspaceId: opts.workspaceId, actorUserId: opts.userId };
+
   let reply;
   try {
     reply = await generateHelpAssistantReply({
-      systemPrompt: buildHelpAssistantSystemPrompt(planContext),
+      systemPrompt: buildHelpAssistantSystemPrompt(planContext, actionsEnabled),
       messages: [...opts.history, { role: "user", content: opts.message }],
+      tools: actionsEnabled ? buildActionTools(actionCtx, planContext) : undefined,
     });
   } catch (error) {
     console.error("[help-assistant] generateHelpAssistantReply error:", error);

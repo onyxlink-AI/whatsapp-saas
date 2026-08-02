@@ -30,3 +30,15 @@ export interface ChatTurn {
   role: "user" | "assistant";
   content: string;
 }
+
+/**
+ * Server-anchored identity for action tools — mirrors the "SEC-01" property
+ * of the shared Forge Tool system's ToolContext (src/features/tools/core/tool.ts):
+ * built once from the already-authenticated request, never from the LLM's
+ * own tool-call arguments, so a tool can never be tricked into writing to a
+ * different workspace or attributing an action to a different user.
+ */
+export interface HelpActionContext {
+  workspaceId: string;
+  actorUserId: string;
+}

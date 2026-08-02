@@ -25,6 +25,7 @@ import { CrossChannelMemoryToggle } from "./cross-channel-memory-toggle";
 import { GestionToggle } from "./gestion-toggle";
 import { OfficeVirtualToggle } from "./office-virtual-toggle";
 import { ChatbotToggle } from "./chatbot-toggle";
+import { HelpAssistantActionsToggle } from "./help-assistant-actions-toggle";
 import { ToolsCatalog } from "./tools-catalog";
 import { IntegrationsTab } from "./integrations-tab";
 import { TeamTab } from "./team-tab";
@@ -68,6 +69,7 @@ interface Props {
   initialGestionEnabled?: boolean;
   initialOfficeVirtualEnabled?: boolean;
   initialChatbotEnabled?: boolean;
+  initialHelpAssistantActionsEnabled?: boolean;
 }
 
 export function SettingsShell({
@@ -89,6 +91,7 @@ export function SettingsShell({
   initialGestionEnabled = false,
   initialOfficeVirtualEnabled = false,
   initialChatbotEnabled = false,
+  initialHelpAssistantActionsEnabled = false,
 }: Props) {
   const biForForm = initialBusinessInfo as {
     structured: Record<string, unknown>;
@@ -240,6 +243,12 @@ export function SettingsShell({
               <ChatbotToggle
                 workspaceId={workspaceId}
                 initialEnabled={initialChatbotEnabled}
+              />
+            )}
+            {isSuperAdmin && (
+              <HelpAssistantActionsToggle
+                workspaceId={workspaceId}
+                initialEnabled={initialHelpAssistantActionsEnabled}
               />
             )}
             <GestionToggle
