@@ -26,6 +26,7 @@ import { GestionToggle } from "./gestion-toggle";
 import { OfficeVirtualToggle } from "./office-virtual-toggle";
 import { ChatbotToggle } from "./chatbot-toggle";
 import { HelpAssistantActionsToggle } from "./help-assistant-actions-toggle";
+import { WhiteboardToggle } from "./whiteboard-toggle";
 import { ToolsCatalog } from "./tools-catalog";
 import { IntegrationsTab } from "./integrations-tab";
 import { TeamTab } from "./team-tab";
@@ -70,6 +71,7 @@ interface Props {
   initialOfficeVirtualEnabled?: boolean;
   initialChatbotEnabled?: boolean;
   initialHelpAssistantActionsEnabled?: boolean;
+  initialWhiteboardEnabled?: boolean;
 }
 
 export function SettingsShell({
@@ -92,6 +94,7 @@ export function SettingsShell({
   initialOfficeVirtualEnabled = false,
   initialChatbotEnabled = false,
   initialHelpAssistantActionsEnabled = false,
+  initialWhiteboardEnabled = false,
 }: Props) {
   const biForForm = initialBusinessInfo as {
     structured: Record<string, unknown>;
@@ -249,6 +252,12 @@ export function SettingsShell({
               <HelpAssistantActionsToggle
                 workspaceId={workspaceId}
                 initialEnabled={initialHelpAssistantActionsEnabled}
+              />
+            )}
+            {isSuperAdmin && (
+              <WhiteboardToggle
+                workspaceId={workspaceId}
+                initialEnabled={initialWhiteboardEnabled}
               />
             )}
             <GestionToggle

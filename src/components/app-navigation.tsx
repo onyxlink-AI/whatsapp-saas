@@ -11,6 +11,7 @@ import {
   Menu,
   MessageCircle,
   Network,
+  PenTool,
   Phone,
   Settings,
   Users,
@@ -33,6 +34,7 @@ export type AppNavIcon =
   | "clients"
   | "pipeline"
   | "projects"
+  | "whiteboard"
   | "voice"
   | "office"
   | "chatbot"
@@ -54,6 +56,7 @@ const ICONS: Record<AppNavIcon, LucideIcon> = {
   clients: Users,
   pipeline: Kanban,
   projects: FolderKanban,
+  whiteboard: PenTool,
   voice: Phone,
   office: Network,
   chatbot: Bot,
