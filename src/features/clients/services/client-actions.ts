@@ -16,8 +16,10 @@ export type ActionResult<T> =
 
 const ClientInputSchema = z.object({
   name: z.string().min(1, "El nombre es requerido"),
-  phone: z.string().min(1, "El teléfono es requerido"),
+  phone: z.string().optional().or(z.literal("")),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
+  social_media: z.string().optional().or(z.literal("")),
+  contact_method: z.string().optional().or(z.literal("")),
   company_name: z.string().optional().or(z.literal("")),
   client_status: z.enum(["activo", "potencial", "archivado"]).optional(),
   notes: z.string().optional().or(z.literal("")),
@@ -184,8 +186,10 @@ export async function createClientRecord(
     .insert({
       workspace_id: workspaceId,
       name: parsed.data.name,
-      phone: parsed.data.phone,
+      phone: parsed.data.phone || null,
       email: parsed.data.email || null,
+      social_media: parsed.data.social_media || null,
+      contact_method: parsed.data.contact_method || null,
       company_id: companyId,
       client_status: parsed.data.client_status ?? "potencial",
       notes: parsed.data.notes || null,
@@ -251,8 +255,10 @@ export async function updateClientRecord(
     .from("contacts")
     .update({
       name: parsed.data.name,
-      phone: parsed.data.phone,
+      phone: parsed.data.phone || null,
       email: parsed.data.email || null,
+      social_media: parsed.data.social_media || null,
+      contact_method: parsed.data.contact_method || null,
       company_id: companyId,
       client_status: parsed.data.client_status ?? "potencial",
       notes: parsed.data.notes || null,

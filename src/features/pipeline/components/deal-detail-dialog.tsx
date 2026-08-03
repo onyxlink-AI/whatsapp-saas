@@ -20,8 +20,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, UserPlus } from "lucide-react";
 import {
+  convertDealToContact,
   deleteDeal,
   getDeal,
   updateDeal,
@@ -108,6 +109,22 @@ export function DealDetailDialog({
       const updated = await getDeal(dealId);
       if (updated) onSaved(updated);
       toast.success("Negocio actualizado");
+    });
+  }
+
+  function handleAddToCrm() {
+    startTransition(async () => {
+      const result = await convertDealToContact(dealId);
+      if (!result.ok) {
+        toast.error(result.error ?? "Error al agregar el cliente al CRM");
+        return;
+      }
+      const updated = await getDeal(dealId);
+      if (updated) {
+        setDeal(updated);
+        onSaved(updated);
+      }
+      toast.success("Cliente agregado al CRM");
     });
   }
 
@@ -261,16 +278,30 @@ export function DealDetailDialog({
         )}
 
         <DialogFooter className="sm:justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-destructive gap-1.5"
-            onClick={handleDelete}
-            disabled={isPending}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Eliminar
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive gap-1.5"
+              onClick={handleDelete}
+              disabled={isPending}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Eliminar
+            </Button>
+            {deal && !deal.contact_id && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={handleAddToCrm}
+                disabled={isPending}
+              >
+                <UserPlus className="h-3.5 w-3.5" />
+                Agregar a CRM
+              </Button>
+            )}
+          </div>
           <Button size="sm" onClick={handleSave} disabled={isPending}>
             {isPending ? "Guardando..." : "Guardar cambios"}
           </Button>

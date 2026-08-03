@@ -50,6 +50,8 @@ export function ClientFormDialog({
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [socialMedia, setSocialMedia] = useState("");
+  const [contactMethod, setContactMethod] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [status, setStatus] = useState<ClientStatus>("potencial");
   const [notes, setNotes] = useState("");
@@ -61,6 +63,8 @@ export function ClientFormDialog({
     setName(client?.name ?? "");
     setPhone(client?.phone ?? "");
     setEmail(client?.email ?? "");
+    setSocialMedia(client?.social_media ?? "");
+    setContactMethod(client?.contact_method ?? "");
     setCompanyName(client?.company?.name ?? "");
     setStatus(client?.client_status ?? "potencial");
     setNotes(client?.notes ?? "");
@@ -72,6 +76,8 @@ export function ClientFormDialog({
         name: name.trim(),
         phone: phone.trim(),
         email: email.trim(),
+        social_media: socialMedia.trim(),
+        contact_method: contactMethod.trim(),
         company_name: companyName.trim(),
         client_status: status,
         notes: notes.trim(),
@@ -139,6 +145,27 @@ export function ClientFormDialog({
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Red social</Label>
+              <Input
+                value={socialMedia}
+                onChange={(e) => setSocialMedia(e.target.value)}
+                placeholder="@usuario en Instagram..."
+                className="h-8 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Método de contacto</Label>
+              <Input
+                value={contactMethod}
+                onChange={(e) => setContactMethod(e.target.value)}
+                placeholder="Ej. prefiere WhatsApp..."
+                className="h-8 text-sm"
+              />
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <Label className="text-xs">Estado</Label>
             <Select value={status} onValueChange={(v) => setStatus(v as ClientStatus)}>
@@ -172,7 +199,7 @@ export function ClientFormDialog({
           <Button
             size="sm"
             onClick={handleSave}
-            disabled={isPending || !name.trim() || !phone.trim()}
+            disabled={isPending || !name.trim()}
             aria-busy={isPending}
           >
             {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />}

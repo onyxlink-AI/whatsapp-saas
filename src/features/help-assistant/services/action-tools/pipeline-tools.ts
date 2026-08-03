@@ -25,9 +25,11 @@ export const CreateDealSchema = z
   .object({
     title: z.enum(DEAL_PRODUCTS).describe("Producto: Herramienta, Panel completo, u Oficina Virtual"),
     contact_id: z.string().uuid().optional(),
-    lead_name: z.string().optional().describe("Nombre del negocio/persona — OBLIGATORIO junto a lead_phone si no das contact_id"),
-    lead_phone: z.string().optional().describe("Teléfono del lead — OBLIGATORIO junto a lead_name si no das contact_id"),
+    lead_name: z.string().optional().describe("Nombre del negocio/persona — OBLIGATORIO si no das contact_id"),
+    lead_phone: z.string().optional().describe("Teléfono del lead, opcional"),
     lead_email: z.string().email().optional(),
+    lead_social: z.string().optional().describe("Red social del lead (ej. Instagram), opcional"),
+    lead_contact_method: z.string().optional().describe("Método de contacto preferido del lead, opcional"),
     sector_name: z.string().optional(),
     value: z.number().min(0).optional(),
     expected_close_date: z
@@ -35,9 +37,9 @@ export const CreateDealSchema = z
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .optional(),
   })
-  .refine((data) => Boolean(data.contact_id) || Boolean(data.lead_name?.trim() && data.lead_phone?.trim()), {
+  .refine((data) => Boolean(data.contact_id) || Boolean(data.lead_name?.trim()), {
     message:
-      "Falta el nombre (lead_name) y/o el teléfono (lead_phone) del negocio — indica un contact_id existente o ambos datos.",
+      "Falta el nombre (lead_name) del negocio — indica un contact_id existente o al menos el nombre.",
     path: ["lead_name"],
   });
 
@@ -85,7 +87,7 @@ export function buildPipelineTools(ctx: HelpActionContext) {
 
     create_deal: tool({
       description:
-        "Crea una oportunidad nueva en el Pipeline. Necesitas identificar al cliente/lead de una de estas dos formas: (a) si ya existe como cliente, búscalo con search_clients y pasa su client_id como contact_id, o (b) si no existe, da lead_name (el NOMBRE del negocio o persona) Y lead_phone juntos — el teléfono solo no basta, siempre pregunta también el nombre antes de llamar a esta tool. El campo 'title' (Producto) es obligatorio — pregunta cuál de los tres si no lo dieron. Pregunta también el sector si no lo dieron.",
+        "Crea una oportunidad nueva en el Pipeline. Necesitas identificar al cliente/lead de una de estas dos formas: (a) si ya existe como cliente, búscalo con search_clients y pasa su client_id como contact_id, o (b) si no existe, da al menos lead_name (el NOMBRE del negocio o persona) — teléfono, correo, red social y método de contacto son todos opcionales, usa los que el usuario te dé. El campo 'title' (Producto) es obligatorio — pregunta cuál de los tres si no lo dieron. Pregunta también el sector si no lo dieron.",
       inputSchema: zodSchema(CreateDealSchema),
       execute: async (args: z.infer<typeof CreateDealSchema>) => {
         const result = await createDeal(ctx.workspaceId, args);

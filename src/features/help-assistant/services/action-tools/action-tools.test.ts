@@ -118,6 +118,22 @@ describe("client-tools", () => {
     expect(logAudit).not.toHaveBeenCalled();
   });
 
+  it("create_client succeeds with only a name — phone is no longer required", async () => {
+    createClientRecord.mockResolvedValue({ ok: true, data: { id: "c2" } });
+    const tools = buildClientTools(ctx);
+
+    const result = await tools.create_client.execute!(
+      { name: "Cliente sin teléfono" },
+      { toolCallId: "t1", messages: [] } as never,
+    );
+
+    expect(result).toEqual({ ok: true, client_id: "c2" });
+    expect(createClientRecord).toHaveBeenCalledWith(
+      "ws1",
+      expect.objectContaining({ name: "Cliente sin teléfono", phone: "" }),
+    );
+  });
+
   it("search_clients maps results to a minimal shape", async () => {
     listClients.mockResolvedValue([
       { id: "c1", name: "Ana", phone: "+34600000111", email: null, client_status: "potencial" },
@@ -145,6 +161,14 @@ describe("pipeline-tools", () => {
       title: "Panel completo",
       lead_name: "Scape Room Sevilla",
       lead_phone: "+34600000111",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("CreateDealSchema accepts a deal with only lead_name — phone is no longer required", () => {
+    const result = CreateDealSchema.safeParse({
+      title: "Panel completo",
+      lead_name: "Scape Room Sevilla",
     });
     expect(result.success).toBe(true);
   });

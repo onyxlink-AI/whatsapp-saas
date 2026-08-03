@@ -5,14 +5,16 @@
  * kanban stage moves, and within-column reordering.
  *
  * Creating a deal no longer requires an existing Contact — the admin types
- * the lead's name/phone/email/sector directly on the deal (lead_name/
- * lead_phone/lead_email/sector_id on `deals`). The Contact only gets
- * created — never duplicated — when the deal is actually won; see
- * promoteDealToContactIfWon() below, called from every place a deal's stage
- * can become 'cliente' through this file (updateDeal, moveDealStage). The
- * AI auto-mover in pipeline-suggestion.ts never needs this: every deal it
- * touches already has a real contact_id (it only ever acts on deals tied to
- * an actual WhatsApp/voice conversation with an existing contact).
+ * the lead's name/phone/email/social/sector directly on the deal (lead_name/
+ * lead_phone/lead_email/lead_social/lead_contact_method/sector_id on
+ * `deals`). The Contact gets created — never duplicated — either
+ * automatically when the deal is won (promoteDealToContact(), called from
+ * every place a deal's stage can become 'cliente' through this file:
+ * updateDeal, moveDealStage) or manually at any stage via the "Agregar a
+ * CRM" button (convertDealToContact()). The AI auto-mover in
+ * pipeline-suggestion.ts never needs this: every deal it touches already
+ * has a real contact_id (it only ever acts on deals tied to an actual
+ * WhatsApp/voice conversation with an existing contact).
  */
 
 import { z } from "zod";
@@ -67,39 +69,46 @@ async function findOrCreateSectorId(
   return created.id as string;
 }
 
+interface PromotableDeal {
+  id: string;
+  workspace_id: string;
+  contact_id: string | null;
+  lead_name: string | null;
+  lead_phone: string | null;
+  lead_email: string | null;
+  lead_social: string | null;
+  lead_contact_method: string | null;
+  sector_id: string | null;
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
-// promoteDealToContactIfWon — the whole reason lead_name/lead_phone/lead_email
-// exist. Fires only on the transition INTO 'cliente' (never re-fires on later
-// saves of an already-won deal), and only for a deal that isn't already
+// promoteDealToContact — the whole reason lead_name/lead_phone/lead_email/
+// lead_social/lead_contact_method exist. No-op for a deal that's already
 // linked to a real contact. Dedupes on contacts' own UNIQUE(workspace_id,
-// phone) — an existing contact with that phone is reused, never duplicated.
+// phone) when the lead has a phone — an existing contact with that phone is
+// reused, never duplicated; without a phone there's nothing to dedupe on,
+// so a new contact is created directly. Called both automatically (won
+// transition, see promoteDealToContactIfWon below) and manually from the
+// "Agregar a CRM" button (convertDealToContact).
 // ──────────────────────────────────────────────────────────────────────────────
-async function promoteDealToContactIfWon(
+async function promoteDealToContact(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  deal: {
-    id: string;
-    workspace_id: string;
-    contact_id: string | null;
-    lead_name: string | null;
-    lead_phone: string | null;
-    lead_email: string | null;
-    sector_id: string | null;
-  },
-  previousStage: DealStage,
-  newStage: DealStage,
-): Promise<void> {
-  if (newStage !== "cliente" || previousStage === "cliente") return;
-  if (deal.contact_id) return; // already a real contact — nothing to promote
-  if (!deal.lead_name || !deal.lead_phone) return; // DB CHECK guarantees this never happens, but stay defensive
+  deal: PromotableDeal,
+): Promise<string | null> {
+  if (deal.contact_id) return deal.contact_id; // already a real contact
+  if (!deal.lead_name) return null; // DB CHECK guarantees this never happens, but stay defensive
 
-  const { data: existingContact } = await supabase
-    .from("contacts")
-    .select("id")
-    .eq("workspace_id", deal.workspace_id)
-    .eq("phone", deal.lead_phone)
-    .maybeSingle();
+  let contactId: string | undefined;
 
-  let contactId = existingContact?.id as string | undefined;
+  if (deal.lead_phone) {
+    const { data: existingContact } = await supabase
+      .from("contacts")
+      .select("id")
+      .eq("workspace_id", deal.workspace_id)
+      .eq("phone", deal.lead_phone)
+      .maybeSingle();
+    contactId = existingContact?.id as string | undefined;
+  }
 
   if (!contactId) {
     const { data: createdContact, error } = await supabase
@@ -107,8 +116,10 @@ async function promoteDealToContactIfWon(
       .insert({
         workspace_id: deal.workspace_id,
         name: deal.lead_name,
-        phone: deal.lead_phone,
-        email: deal.lead_email,
+        phone: deal.lead_phone || null,
+        email: deal.lead_email || null,
+        social_media: deal.lead_social || null,
+        contact_method: deal.lead_contact_method || null,
         sector_id: deal.sector_id,
         client_status: "activo",
       })
@@ -116,13 +127,29 @@ async function promoteDealToContactIfWon(
       .single();
 
     if (error || !createdContact) {
-      console.error("[promoteDealToContactIfWon] Supabase error:", error?.message);
-      return;
+      console.error("[promoteDealToContact] Supabase error:", error?.message);
+      return null;
     }
     contactId = createdContact.id as string;
   }
 
   await supabase.from("deals").update({ contact_id: contactId }).eq("id", deal.id);
+  return contactId;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// promoteDealToContactIfWon — gates promoteDealToContact() to only fire on
+// the transition INTO 'cliente' (never re-fires on later saves of an
+// already-won deal). Called from updateDeal/moveDealStage.
+// ──────────────────────────────────────────────────────────────────────────────
+async function promoteDealToContactIfWon(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  deal: PromotableDeal,
+  previousStage: DealStage,
+  newStage: DealStage,
+): Promise<void> {
+  if (newStage !== "cliente" || previousStage === "cliente") return;
+  await promoteDealToContact(supabase, deal);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -272,7 +299,9 @@ export async function updateDeal(
   // both are needed to detect the won transition and promote it below.
   const { data: before } = await supabase
     .from("deals")
-    .select("workspace_id, contact_id, stage, lead_name, lead_phone, lead_email, sector_id")
+    .select(
+      "workspace_id, contact_id, stage, lead_name, lead_phone, lead_email, lead_social, lead_contact_method, sector_id",
+    )
     .eq("id", dealId)
     .maybeSingle();
 
@@ -325,7 +354,9 @@ export async function moveDealStage(
 
   const { data: before } = await supabase
     .from("deals")
-    .select("workspace_id, contact_id, stage, lead_name, lead_phone, lead_email, sector_id")
+    .select(
+      "workspace_id, contact_id, stage, lead_name, lead_phone, lead_email, lead_social, lead_contact_method, sector_id",
+    )
     .eq("id", dealId)
     .maybeSingle();
 
@@ -358,6 +389,44 @@ export async function moveDealStage(
   }
 
   return { ok: true, data: { id: updated.id as string } };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// convertDealToContact — backend for the "Agregar a CRM" button: promotes a
+// deal to a real Cliente at any stage, not just on win. Idempotent — a deal
+// already linked to a contact just returns that contact's id.
+// ──────────────────────────────────────────────────────────────────────────────
+export async function convertDealToContact(
+  dealId: string,
+): Promise<ActionResult<{ id: string }>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { ok: false, error: "No autorizado" };
+  }
+
+  const { data: deal, error: lookupError } = await supabase
+    .from("deals")
+    .select(
+      "id, workspace_id, contact_id, lead_name, lead_phone, lead_email, lead_social, lead_contact_method, sector_id",
+    )
+    .eq("id", dealId)
+    .maybeSingle();
+
+  if (lookupError || !deal) {
+    return { ok: false, error: "Negocio no encontrado" };
+  }
+
+  const contactId = await promoteDealToContact(supabase, deal as PromotableDeal);
+  if (!contactId) {
+    return { ok: false, error: "Error al crear el cliente" };
+  }
+
+  return { ok: true, data: { id: contactId } };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

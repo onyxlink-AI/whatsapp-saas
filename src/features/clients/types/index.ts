@@ -19,8 +19,10 @@ export interface ClientRow {
   id: string;
   workspace_id: string;
   name: string | null;
-  phone: string;
+  phone: string | null;
   email: string | null;
+  social_media: string | null;
+  contact_method: string | null;
   company_id: string | null;
   company: CompanyRow | null;
   client_status: ClientStatus;

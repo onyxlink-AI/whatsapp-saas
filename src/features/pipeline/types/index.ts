@@ -19,7 +19,7 @@ export type TaskType =
 export interface ContactSummary {
   id: string;
   name: string | null;
-  phone: string;
+  phone: string | null;
   email: string | null;
   stage: string | null;
 }
@@ -50,6 +50,8 @@ export interface DealRow {
   lead_name: string | null;
   lead_phone: string | null;
   lead_email: string | null;
+  lead_social: string | null;
+  lead_contact_method: string | null;
   sector_id: string | null;
   created_at: string;
   updated_at: string;

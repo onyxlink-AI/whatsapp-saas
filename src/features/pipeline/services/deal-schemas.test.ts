@@ -37,12 +37,22 @@ describe("DealInputSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects an inline lead missing the phone", () => {
+  it("accepts an inline lead missing the phone — only the name is required", () => {
     const result = DealInputSchema.safeParse({
       lead_name: "Antonio Fernández",
       title: "Plan",
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts an inline lead with social/contact_method and no phone", () => {
+    const result = DealInputSchema.safeParse({
+      lead_name: "Antonio Fernández",
+      lead_social: "@antonio.ig",
+      lead_contact_method: "Prefiere Instagram",
+      title: "Plan",
+    });
+    expect(result.success).toBe(true);
   });
 
   it("rejects an inline lead missing the name", () => {

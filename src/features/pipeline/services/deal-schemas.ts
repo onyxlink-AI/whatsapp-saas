@@ -25,6 +25,8 @@ const DealBaseSchema = z.object({
   lead_name: z.string().optional(),
   lead_phone: z.string().optional(),
   lead_email: z.string().email("Email inválido").optional().or(z.literal("")),
+  lead_social: z.string().optional(),
+  lead_contact_method: z.string().optional(),
   // Raw typed text — createDeal() finds-or-creates the matching `sectors` row.
   sector_name: z.string().optional().or(z.literal("")),
   value: z.number().min(0, "El valor no puede ser negativo").optional(),
@@ -38,8 +40,8 @@ const DealBaseSchema = z.object({
 });
 
 export const DealInputSchema = DealBaseSchema.refine(
-  (data) => Boolean(data.contact_id) || Boolean(data.lead_name?.trim() && data.lead_phone?.trim()),
-  { message: "Indica un contacto existente o al menos nombre y teléfono", path: ["lead_name"] },
+  (data) => Boolean(data.contact_id) || Boolean(data.lead_name?.trim()),
+  { message: "Indica un contacto existente o al menos el nombre del negocio/lead", path: ["lead_name"] },
 );
 
 export type CreateDealInput = z.infer<typeof DealInputSchema>;

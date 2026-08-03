@@ -45,6 +45,12 @@ function formatDate(date: string) {
   }).format(new Date(date));
 }
 
+// Phone is no longer guaranteed — fall back through whatever contact info
+// the client actually has, down to a generic label.
+function clientLabel(client: ClientRow): string {
+  return client.name || client.phone || client.email || client.social_media || "este cliente";
+}
+
 interface ClientsTableProps {
   workspaceId: string;
   initialClients: ClientRow[];
@@ -125,7 +131,7 @@ export function ClientsTable({
 
   function handleDelete(client: ClientRow) {
     const ok = window.confirm(
-      `¿Eliminar a ${client.name || client.phone}? También se borran sus mensajes, negocios y tareas. No se puede deshacer.`,
+      `¿Eliminar a ${clientLabel(client)}? También se borran sus mensajes, negocios y tareas. No se puede deshacer.`,
     );
     if (!ok) return;
 
@@ -274,7 +280,7 @@ export function ClientsTable({
                   <Checkbox
                     checked={selectedIds.has(client.id)}
                     onCheckedChange={() => toggleOne(client.id)}
-                    aria-label={`Seleccionar ${client.name ?? client.phone}`}
+                    aria-label={`Seleccionar ${clientLabel(client)}`}
                   />
                 </TableCell>
                 <TableCell className="font-medium text-sm">
@@ -283,7 +289,7 @@ export function ClientsTable({
                 <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
                   {client.company?.name ?? "—"}
                 </TableCell>
-                <TableCell className="text-sm font-mono">{client.phone}</TableCell>
+                <TableCell className="text-sm font-mono">{client.phone ?? "—"}</TableCell>
                 <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                   {client.email ?? "—"}
                 </TableCell>
@@ -301,7 +307,7 @@ export function ClientsTable({
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7"
-                      aria-label={`Editar ${client.name || client.phone}`}
+                      aria-label={`Editar ${clientLabel(client)}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleEdit(client);
@@ -313,7 +319,7 @@ export function ClientsTable({
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 text-destructive"
-                      aria-label={`Eliminar ${client.name || client.phone}`}
+                      aria-label={`Eliminar ${clientLabel(client)}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDelete(client);
