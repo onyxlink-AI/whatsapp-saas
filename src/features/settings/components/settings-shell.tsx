@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Bot,
@@ -131,6 +132,11 @@ export function SettingsShell({
     structured: Record<string, unknown>;
     free_text: string | null;
   } | null;
+
+  // Tracked separately (not just the `hasWhatsappAgent` prop) so flipping
+  // the WhatsApp toggle live updates the Gestión toggle below it — WhatsApp
+  // always includes Gestión — without needing a page reload.
+  const [whatsappLive, setWhatsappLive] = useState(hasWhatsappAgent);
 
   const isFullMode = hasWhatsappAgent;
   // OnyxLink must be able to build and test an agent before enabling the paid
@@ -302,12 +308,17 @@ export function SettingsShell({
               </div>
               <div className="grid gap-3 xl:grid-cols-2">
                 {isSuperAdmin && (
-                  <WhatsappAgentToggle workspaceId={workspaceId} initialEnabled={hasWhatsappAgent} />
+                  <WhatsappAgentToggle
+                    workspaceId={workspaceId}
+                    initialEnabled={hasWhatsappAgent}
+                    onEnabledChange={setWhatsappLive}
+                  />
                 )}
                 <GestionToggle
                   workspaceId={workspaceId}
                   initialEnabled={initialGestionEnabled}
                   isSuperAdmin={isSuperAdmin}
+                  whatsappEnabled={whatsappLive}
                 />
                 {isSuperAdmin && (
                   <OfficeVirtualToggle

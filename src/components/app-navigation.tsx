@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Bot,
   Building2,
+  Clapperboard,
   FolderKanban,
   Kanban,
   LayoutDashboard,
@@ -15,6 +16,7 @@ import {
   Phone,
   Settings,
   Users,
+  Users2,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -35,6 +37,8 @@ export type AppNavIcon =
   | "pipeline"
   | "projects"
   | "whiteboard"
+  | "team"
+  | "content"
   | "voice"
   | "office"
   | "chatbot"
@@ -57,6 +61,8 @@ const ICONS: Record<AppNavIcon, LucideIcon> = {
   pipeline: Kanban,
   projects: FolderKanban,
   whiteboard: PenTool,
+  team: Users2,
+  content: Clapperboard,
   voice: Phone,
   office: Network,
   chatbot: Bot,

@@ -62,7 +62,7 @@ export function WhiteboardToggle({ workspaceId, initialEnabled }: Props) {
         />
         <div>
           <Label className="text-sm font-medium text-foreground">
-            Pizarra
+            Board
           </Label>
           <p className="mt-1 text-xs text-muted-foreground max-w-md">
             Tableros con dibujo libre y diagramas (como Miro), guardados por
@@ -75,7 +75,7 @@ export function WhiteboardToggle({ workspaceId, initialEnabled }: Props) {
         checked={enabled}
         onCheckedChange={handleToggle}
         disabled={saving}
-        aria-label="Activar Pizarra"
+        aria-label="Activar Board"
       />
     </div>
   );

@@ -67,7 +67,7 @@ export async function PATCH(
     action: enabled ? "whiteboard.enable" : "whiteboard.disable",
     targetType: "workspace",
     targetId: workspaceId,
-    summary: `${enabled ? "Activó" : "Desactivó"} la Pizarra`,
+    summary: `${enabled ? "Activó" : "Desactivó"} Board`,
   });
 
   return NextResponse.json({ enabled });

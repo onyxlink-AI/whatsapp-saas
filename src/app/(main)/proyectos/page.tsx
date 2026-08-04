@@ -3,29 +3,35 @@ import { createClient } from "@/lib/supabase/server";
 import { getActiveWorkspace } from "@/features/workspace/services/active-workspace";
 import {
   getProjectsForBoard,
+  getProjectsProgress,
   listWorkspaceMembers,
 } from "@/features/projects/services/project-actions";
 import { listTasks } from "@/features/projects/services/task-actions";
-import { ProjectsBoard } from "@/features/projects/components/projects-board";
-import { TasksTab } from "@/features/projects/components/tasks-tab";
-import { AgendaView } from "@/features/projects/components/agenda-view";
+import { listNotes } from "@/features/notes/services/note-actions";
 import { listWhiteboards } from "@/features/whiteboard/services/whiteboard-actions";
-import { WhiteboardList } from "@/features/whiteboard/components/whiteboard-list";
 import { isWhiteboardEnabled } from "@/features/whiteboard/access";
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+  getDealsForBoard,
+  listWorkspaceMembers as listPipelineMembers,
+} from "@/features/pipeline/services/deal-actions";
+import { getContactSummary } from "@/features/pipeline/services/contact-lookup";
+import { ProyectosHub } from "@/features/projects/components/proyectos-hub";
 import { PageHeader } from "@/components/page-header";
 
 export const dynamic = "force-dynamic";
 
+const VALID_VIEWS = ["projects", "tasks", "agenda", "board", "notes", "pipeline"] as const;
+type View = (typeof VALID_VIEWS)[number];
+
 export default async function ProyectosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ open?: string }>;
+  searchParams: Promise<{
+    view?: string;
+    open?: string;
+    openDeal?: string;
+    createFor?: string;
+  }>;
 }) {
   const supabase = await createClient();
 
@@ -56,7 +62,7 @@ export default async function ProyectosPage({
 
   const { data: workspaceFlagsRow } = await supabase
     .from("workspaces")
-    .select("gestion_enabled, whiteboard_enabled")
+    .select("gestion_enabled, whatsapp_agent_enabled, whiteboard_enabled")
     .eq("id", membership.workspace_id)
     .maybeSingle();
 
@@ -70,62 +76,56 @@ export default async function ProyectosPage({
     );
   }
 
-  const { open } = await searchParams;
+  const { view, open, openDeal, createFor } = await searchParams;
 
   const hasWhiteboard = isWhiteboardEnabled(workspaceFlagsRow);
+  // Gestión ya implica el agente de WhatsApp o no (chk_whatsapp_requires_gestion
+  // exige lo contrario: WhatsApp siempre implica Gestión) — Oportunidades se
+  // muestra con cualquiera de los dos productos, igual que antes en /pipeline.
+  const hasPipeline =
+    workspaceFlagsRow?.whatsapp_agent_enabled !== false ||
+    workspaceFlagsRow?.gestion_enabled === true;
 
-  const [projects, members, tasks, whiteboards] = await Promise.all([
-    getProjectsForBoard(membership.workspace_id),
-    listWorkspaceMembers(membership.workspace_id),
-    listTasks(membership.workspace_id),
-    hasWhiteboard ? listWhiteboards(membership.workspace_id) : Promise.resolve([]),
-  ]);
+  const defaultView: View =
+    view && (VALID_VIEWS as readonly string[]).includes(view) ? (view as View) : "projects";
+
+  const [projects, members, tasks, progressMap, notes, whiteboards, deals, pipelineMembers, initialContact] =
+    await Promise.all([
+      getProjectsForBoard(membership.workspace_id),
+      listWorkspaceMembers(membership.workspace_id),
+      listTasks(membership.workspace_id),
+      getProjectsProgress(membership.workspace_id),
+      listNotes(membership.workspace_id),
+      hasWhiteboard ? listWhiteboards(membership.workspace_id) : Promise.resolve([]),
+      hasPipeline ? getDealsForBoard(membership.workspace_id) : Promise.resolve([]),
+      hasPipeline ? listPipelineMembers(membership.workspace_id) : Promise.resolve([]),
+      hasPipeline && createFor ? getContactSummary(createFor) : Promise.resolve(null),
+    ]);
 
   return (
     <div className="page-shell flex min-h-[calc(100vh-4rem)] max-w-none flex-col gap-6">
       <PageHeader
         eyebrow="Operaciones"
         title="Proyectos"
-        description="Organiza entregas, tareas y agenda sin perder de vista el avance del equipo."
+        description="Organiza entregas, tareas, agenda y oportunidades sin perder de vista el avance del equipo."
       />
-      <Tabs defaultValue="tablero" className="flex flex-col h-full">
-        <TabsList className="surface-card h-11 max-w-full justify-start overflow-x-auto bg-card p-1">
-          <TabsTrigger value="tablero">📋 Tablero</TabsTrigger>
-          <TabsTrigger value="tareas">✅ Tareas</TabsTrigger>
-          <TabsTrigger value="agenda">📅 Agenda</TabsTrigger>
-          {hasWhiteboard && <TabsTrigger value="pizarra">✏️ Pizarra</TabsTrigger>}
-        </TabsList>
-
-        <TabsContent value="tablero" className="flex-1 mt-3">
-          <ProjectsBoard
-            workspaceId={membership.workspace_id}
-            initialProjects={projects}
-            members={members}
-            initialSelectedProjectId={open ?? null}
-          />
-        </TabsContent>
-
-        <TabsContent value="tareas" className="flex-1 mt-3">
-          <TasksTab
-            workspaceId={membership.workspace_id}
-            initialTasks={tasks}
-            members={members}
-          />
-        </TabsContent>
-
-        <TabsContent value="agenda" className="flex-1 mt-3">
-          <AgendaView workspaceId={membership.workspace_id} />
-        </TabsContent>
-
-        {hasWhiteboard && (
-          <TabsContent value="pizarra" className="flex-1 mt-3">
-            <WhiteboardList
-              workspaceId={membership.workspace_id}
-              initialBoards={whiteboards}
-            />
-          </TabsContent>
-        )}
-      </Tabs>
+      <ProyectosHub
+        workspaceId={membership.workspace_id}
+        defaultView={defaultView}
+        initialProjects={projects}
+        members={members}
+        initialSelectedProjectId={open ?? null}
+        initialTasks={tasks}
+        progressMap={progressMap}
+        initialNotes={notes}
+        hasWhiteboard={hasWhiteboard}
+        whiteboards={whiteboards}
+        hasPipeline={hasPipeline}
+        initialDeals={deals}
+        pipelineMembers={pipelineMembers}
+        initialContact={initialContact}
+        initialSelectedDealId={openDeal ?? null}
+      />
     </div>
   );
 }

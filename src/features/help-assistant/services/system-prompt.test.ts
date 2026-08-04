@@ -33,7 +33,7 @@ describe("buildHelpAssistantSystemPrompt (actions disabled — the default for e
 
   it("documents plan-gated routes when the feature is enabled", () => {
     expect(prompt).toContain("/clientes");
-    expect(prompt).toContain("/pipeline");
+    expect(prompt).toContain("/proyectos?view=pipeline");
     expect(prompt).toContain("/settings?tab=integraciones");
     expect(prompt).toContain("Oficina Virtual");
   });
@@ -127,5 +127,24 @@ describe("buildHelpAssistantSystemPrompt plan-gating", () => {
   it("instructs never explaining in detail a feature the client doesn't have", () => {
     const prompt = buildHelpAssistantSystemPrompt(gestionOnlyPlan, false);
     expect(prompt).toMatch(/NO expliques el paso a paso/);
+  });
+});
+
+describe("buildHelpAssistantSystemPrompt — Fase 1: informativo (Paquete 1) vs gestión (Paquete 2+)", () => {
+  it("Paquete 1 (Gestión sin WhatsApp) stays informational even if superadmin turned actions on — no ACTION_RULES leak into the prompt", () => {
+    const prompt = buildHelpAssistantSystemPrompt(gestionOnlyPlan, true);
+    expect(prompt).toMatch(/No tienes ninguna tool/);
+    expect(prompt).not.toMatch(/puedes crear\/editar clientes/);
+    expect(prompt).not.toContain(NO_DELETE_MESSAGE);
+  });
+
+  it("Paquete 2 (Gestión + WhatsApp) with actions enabled describes itself as able to act", () => {
+    const prompt = buildHelpAssistantSystemPrompt(fullPlan, true);
+    expect(prompt).toMatch(/puedes crear\/editar clientes/);
+  });
+
+  it("Paquete 2 with actions disabled by superadmin stays informational too", () => {
+    const prompt = buildHelpAssistantSystemPrompt(fullPlan, false);
+    expect(prompt).toMatch(/No tienes ninguna tool/);
   });
 });

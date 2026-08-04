@@ -9,12 +9,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, ListPlus } from "lucide-react";
 import { listTasks } from "@/features/projects/services/task-actions";
 import type { WorkspaceMember } from "@/features/projects/services/project-actions";
 import { TASK_STATUS_LABELS, type TaskRow as TaskRowType, type TaskStatus } from "@/features/projects/types";
 import { TaskRow } from "./task-row";
 import { TaskFormDialog } from "./task-form-dialog";
+import { TaskBatchCreateDialog } from "./task-batch-create-dialog";
 
 interface TasksTabProps {
   workspaceId: string;
@@ -28,6 +29,7 @@ export function TasksTab({ workspaceId, initialTasks, members }: TasksTabProps) 
   const [tasks, setTasks] = useState(initialTasks);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [createOpen, setCreateOpen] = useState(false);
+  const [batchOpen, setBatchOpen] = useState(false);
 
   async function refresh(filter: StatusFilter = statusFilter) {
     const filters =
@@ -65,7 +67,17 @@ export function TasksTab({ workspaceId, initialTasks, members }: TasksTabProps) 
 
         <Button
           size="sm"
+          variant="outline"
           className="h-8 text-xs gap-1.5 ml-auto"
+          onClick={() => setBatchOpen(true)}
+        >
+          <ListPlus className="h-3.5 w-3.5" />
+          Crear en lote
+        </Button>
+
+        <Button
+          size="sm"
+          className="h-8 text-xs gap-1.5"
           onClick={() => setCreateOpen(true)}
         >
           <Plus className="h-3.5 w-3.5" />
@@ -83,6 +95,7 @@ export function TasksTab({ workspaceId, initialTasks, members }: TasksTabProps) 
           <TaskRow
             key={task.id}
             task={task}
+            workspaceId={workspaceId}
             members={members}
             onChanged={() => refresh()}
           />
@@ -93,6 +106,14 @@ export function TasksTab({ workspaceId, initialTasks, members }: TasksTabProps) 
         open={createOpen}
         workspaceId={workspaceId}
         onClose={() => setCreateOpen(false)}
+        onCreated={() => refresh()}
+      />
+
+      <TaskBatchCreateDialog
+        open={batchOpen}
+        workspaceId={workspaceId}
+        members={members}
+        onClose={() => setBatchOpen(false)}
         onCreated={() => refresh()}
       />
     </div>

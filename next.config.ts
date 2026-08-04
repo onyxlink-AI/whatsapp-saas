@@ -49,7 +49,13 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: *.supabase.co",
       "media-src 'self' blob: *.supabase.co",
-      "font-src 'self' data:",
+      // esm.sh: Excalidraw (Board) fetches its canvas drawing fonts
+      // (Excalifont/Cascadia/ComicShanns) from this CDN at runtime — without
+      // it, switching font family in Board silently does nothing (confirmed
+      // via browser console: the woff2 requests were blocked by CSP, not
+      // missing/404). Fase 2 del roadmap comercial: "corregir el cambio de
+      // fuente" en Board.
+      "font-src 'self' data: https://esm.sh",
       `connect-src ${connectSrc}`,
       "frame-ancestors 'none'",
     ].join("; "),
@@ -70,6 +76,15 @@ const nextConfig: NextConfig = {
   ],
   // Serve the app icon for legacy /favicon.ico probes (avoids a 404).
   rewrites: async () => [{ source: "/favicon.ico", destination: "/icon.png" }],
+  // Fase 1 del roadmap comercial: Pipeline y Board (Pizarra) dejan de ser
+  // páginas propias — viven como vistas dentro de Proyectos. Solo la ruta
+  // exacta /pizarra (la lista) redirige; /pizarra/[id] (editor de un board
+  // concreto) se conserva intacta. Next.js reenvía automáticamente los demás
+  // query params (ej. ?createFor=) a la nueva URL.
+  redirects: async () => [
+    { source: "/pipeline", destination: "/proyectos?view=pipeline", permanent: false },
+    { source: "/pizarra", destination: "/proyectos?view=board", permanent: false },
+  ],
 };
 
 export default nextConfig;

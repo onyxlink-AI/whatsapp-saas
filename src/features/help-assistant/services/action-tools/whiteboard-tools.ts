@@ -34,7 +34,7 @@ export function buildWhiteboardTools(ctx: HelpActionContext) {
   return {
     search_whiteboards: tool({
       description:
-        "Busca tableros de Pizarra por nombre. Úsalo antes de renombrar uno para obtener su whiteboard_id.",
+        "Busca tableros de Board por nombre. Úsalo antes de renombrar uno para obtener su whiteboard_id.",
       inputSchema: zodSchema(SearchWhiteboardsSchema),
       execute: async ({ query }: z.infer<typeof SearchWhiteboardsSchema>) => {
         const boards = await listWhiteboards(ctx.workspaceId);
@@ -48,7 +48,7 @@ export function buildWhiteboardTools(ctx: HelpActionContext) {
 
     create_whiteboard: tool({
       description:
-        "Crea un tablero nuevo y vacío en Pizarra. El dibujo (formas, notas, flechas) lo hace el cliente después en el navegador — tú solo creas el tablero con un nombre, nunca dibujas contenido dentro.",
+        "Crea un tablero nuevo y vacío en Board. El dibujo (formas, notas, flechas) lo hace el cliente después en el navegador — tú solo creas el tablero con un nombre, nunca dibujas contenido dentro.",
       inputSchema: zodSchema(CreateWhiteboardSchema),
       execute: async ({ name }: z.infer<typeof CreateWhiteboardSchema>) => {
         const result = await createWhiteboard(ctx.workspaceId, name);
@@ -69,7 +69,7 @@ export function buildWhiteboardTools(ctx: HelpActionContext) {
 
     rename_whiteboard: tool({
       description:
-        "Renombra un tablero existente de Pizarra. Necesitas su whiteboard_id — búscalo antes con search_whiteboards si no lo tienes.",
+        "Renombra un tablero existente de Board. Necesitas su whiteboard_id — búscalo antes con search_whiteboards si no lo tienes.",
       inputSchema: zodSchema(RenameWhiteboardSchema),
       execute: async ({ whiteboard_id, name }: z.infer<typeof RenameWhiteboardSchema>) => {
         const result = await renameWhiteboard(whiteboard_id, name);

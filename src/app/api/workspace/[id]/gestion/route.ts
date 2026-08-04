@@ -73,6 +73,27 @@ export async function PATCH(
 
   const { enabled } = parsed.data;
 
+  // Paquete 2 = Gestión + WhatsApp — WhatsApp nunca existe sin Gestión. No
+  // se puede quitar Gestión mientras el agente de WhatsApp siga activo;
+  // primero hay que desactivar WhatsApp (que sí puede vivir sin Gestión).
+  if (!enabled) {
+    const { data: current } = await svc()
+      .from("workspaces")
+      .select("whatsapp_agent_enabled")
+      .eq("id", workspaceId)
+      .maybeSingle();
+
+    if (current?.whatsapp_agent_enabled === true) {
+      return NextResponse.json(
+        {
+          error:
+            "No se puede desactivar Onyxlink Gestión mientras el Agente de WhatsApp esté activo — desactiva primero el Agente de WhatsApp.",
+        },
+        { status: 409 },
+      );
+    }
+  }
+
   const { error } = await svc()
     .from("workspaces")
     .update({ gestion_enabled: enabled })

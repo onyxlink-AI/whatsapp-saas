@@ -178,6 +178,7 @@ export async function POST(
 
   return NextResponse.json({
     ok: true,
+    userId: provisioned.userId,
     credentials: provisioned.password
       ? { email, password: provisioned.password }
       : null,

@@ -50,12 +50,32 @@ export interface ProjectRow {
   notes: string | null;
   status: ProjectStatus;
   position: number;
+  /** Fase 2: activo/inactivo — independiente del status de kanban. */
+  is_active: boolean;
+  /** Fase 2: ruta dentro del bucket público `project-covers`, no una URL. */
+  cover_image_path: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface ProjectWithContact extends ProjectRow {
   contact: ContactOption | null;
+}
+
+/** Filtro de la Fase 2 para las vistas de Proyectos (tablero y Bento grid). */
+export type ProjectActiveFilter = "active" | "inactive" | "all";
+
+export type ProjectViewMode = "board" | "bento";
+
+/** Fila agregada de `project_progress` (vista SQL) — progreso determinista. */
+export interface ProjectProgressRow {
+  project_id: string;
+  workspace_id: string;
+  task_count: number;
+  task_done_count: number;
+  subtask_count: number;
+  subtask_done_count: number;
+  progress_pct: number;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -109,7 +129,9 @@ export type TaskType =
   | "email"
   | "meeting"
   | "follow_up"
-  | "other";
+  | "other"
+  | "deep_work"
+  | "content_creation";
 
 export interface TaskRow {
   id: string;
@@ -143,6 +165,8 @@ export const TASK_TYPE_LABELS: Record<TaskType, string> = {
   meeting: "Reunión",
   follow_up: "Seguimiento",
   other: "Otro",
+  deep_work: "Deep Work",
+  content_creation: "Crear contenido",
 };
 
 /** Minimal project projection for the flat Tareas tab's project picker. */
@@ -158,6 +182,43 @@ export interface SubtaskRow {
   title: string;
   done: boolean;
   position: number;
+  /** Fase 2: responsable y fecha opcionales de la subtarea. */
+  assigned_to: string | null;
+  due_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Anotaciones (Fase 2) — documentos Tiptap por workspace, vista independiente
+// de Board dentro de Proyectos.
+// ──────────────────────────────────────────────────────────────────────────────
+
+/** Documento Tiptap/ProseMirror en formato JSON — nunca HTML libre. */
+export interface NoteContent {
+  type: "doc";
+  content?: unknown[];
+}
+
+export type NoteTemplateId =
+  | "blank"
+  | "meeting"
+  | "brief"
+  | "proposal"
+  | "procedure"
+  | "project_plan"
+  | "quick_notes"
+  | "report";
+
+export interface NoteRow {
+  id: string;
+  workspace_id: string;
+  project_id: string | null;
+  title: string;
+  content: NoteContent;
+  template: NoteTemplateId | null;
+  archived_at: string | null;
+  created_by: string | null;
   created_at: string;
   updated_at: string;
 }

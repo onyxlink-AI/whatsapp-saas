@@ -5,15 +5,19 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { cn } from "@/lib/utils";
 import {
   PROJECT_STATUS_LABELS,
+  type ProjectProgressRow,
   type ProjectStatus,
   type ProjectWithContact,
 } from "@/features/projects/types";
+import type { WorkspaceMember } from "@/features/projects/services/project-actions";
 import { ProjectCard } from "./project-card";
 
 interface ProjectColumnProps {
   status: ProjectStatus;
   projects: ProjectWithContact[];
   onSelectProject: (projectId: string) => void;
+  progressMap: Record<string, ProjectProgressRow>;
+  members: WorkspaceMember[];
 }
 
 const STATUS_COLORS: Record<
@@ -52,7 +56,13 @@ const STATUS_COLORS: Record<
   },
 };
 
-export function ProjectColumn({ status, projects, onSelectProject }: ProjectColumnProps) {
+export function ProjectColumn({
+  status,
+  projects,
+  onSelectProject,
+  progressMap,
+  members,
+}: ProjectColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const colors = STATUS_COLORS[status];
 
@@ -87,6 +97,8 @@ export function ProjectColumn({ status, projects, onSelectProject }: ProjectColu
               project={project}
               index={index}
               onClick={() => onSelectProject(project.id)}
+              progress={progressMap[project.id]}
+              responsible={members.find((m) => m.user_id === project.responsible_id)}
             />
           ))}
         </SortableContext>

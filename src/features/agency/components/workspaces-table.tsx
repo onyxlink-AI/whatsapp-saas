@@ -35,13 +35,41 @@ interface Props {
   googleServiceAccountEmail?: string;
 }
 
+// Fase 1 del roadmap comercial: el paquete efectivo, en un solo lugar —
+// nunca deducido de nuevo aquí, siempre el valor ya calculado en
+// agency-actions.ts a partir de gestion/whatsapp/officeVirtual.
+const PACKAGE_TIER_META: Record<
+  WorkspaceWithStats["package_tier"],
+  { label: string; className: string }
+> = {
+  none: { label: "Sin paquete", className: "border-border bg-muted/40 text-muted-foreground" },
+  gestion: { label: "Paquete 1 · Gestión", className: "border-primary/25 bg-primary/[0.08] text-primary" },
+  whatsapp: { label: "Paquete 2 · Gestión + WhatsApp", className: "border-primary/30 bg-primary/[0.12] text-primary" },
+  suite: { label: "Paquete 3 · Suite completa", className: "border-[hsl(var(--electric-lime))]/40 bg-[hsl(var(--electric-lime))]/10 text-foreground" },
+  inconsistent: { label: "⚠ WhatsApp sin Gestión", className: "border-warning/40 bg-warning/10 text-warning" },
+};
+
+function PackageTierBadge({ tier }: { tier: WorkspaceWithStats["package_tier"] }) {
+  const meta = PACKAGE_TIER_META[tier];
+  return (
+    <span
+      className={cn(
+        "inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+        meta.className,
+      )}
+    >
+      {meta.label}
+    </span>
+  );
+}
+
 const PRODUCT_META = [
   { key: "whatsappAgent", label: "Agente de WhatsApp", Icon: MessageCircle } as const,
   { key: "gestion", label: "Onyxlink Gestión", Icon: Users } as const,
   { key: "voice", label: "Asistente de Voz", Icon: Phone } as const,
   { key: "officeVirtual", label: "Oficina Virtual", Icon: Network } as const,
   { key: "chatbot", label: "Chatbot", Icon: Bot } as const,
-  { key: "whiteboard", label: "Pizarra", Icon: PenTool } as const,
+  { key: "whiteboard", label: "Board", Icon: PenTool } as const,
 ];
 
 /** Compact "what's contracted" row — same 5 product flags every other surface reads, never a separate computation. */
@@ -249,6 +277,9 @@ export function WorkspacesTable({
               <p className="font-mono text-xs text-muted-foreground mt-0.5">
                 {workspace.slug}
               </p>
+              <div className="mt-1.5">
+                <PackageTierBadge tier={workspace.package_tier} />
+              </div>
               <ProductBadges products={workspace.products} />
             </div>
 

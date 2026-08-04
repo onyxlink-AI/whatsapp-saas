@@ -2,8 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -13,13 +11,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
   Users,
   UserPlus,
   UserMinus,
@@ -27,26 +18,10 @@ import {
   AlertCircle,
   Loader2,
   RefreshCw,
-  Copy,
-  CheckCheck,
 } from "lucide-react";
 import { toast } from "sonner";
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Types
-// ──────────────────────────────────────────────────────────────────────────────
-
-type WorkspaceRole = "admin" | "manager" | "agent" | "viewer";
-
-interface TeamMember {
-  id: string;
-  user_id: string;
-  email: string;
-  full_name: string | null;
-  role: WorkspaceRole;
-  is_active: boolean;
-  created_at: string;
-}
+import { InviteMemberDialog } from "@/features/team/components/invite-member-dialog";
+import type { TeamMember, WorkspaceRole } from "@/features/team/types";
 
 interface Props {
   workspaceId: string;
@@ -167,15 +142,6 @@ export function TeamTab({ workspaceId }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<WorkspaceRole>("agent");
-  const [invitePassword, setInvitePassword] = useState("");
-  const [inviting, setInviting] = useState(false);
-  const [createdCreds, setCreatedCreds] = useState<{
-    email: string;
-    password: string;
-  } | null>(null);
-  const [copiedCred, setCopiedCred] = useState(false);
 
   const [updatingRole, setUpdatingRole] = useState<string | null>(null);
   const [togglingActive, setTogglingActive] = useState<string | null>(null);
@@ -200,60 +166,6 @@ export function TeamTab({ workspaceId }: Props) {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: fetchTeam resets loading/error before each (re)fetch
     fetchTeam();
   }, [fetchTeam]);
-
-  // ── Invite ─────────────────────────────────────────────────────────────────
-  function closeInvite() {
-    setInviteOpen(false);
-    setInviteEmail("");
-    setInviteRole("agent");
-    setInvitePassword("");
-    setCreatedCreds(null);
-    setCopiedCred(false);
-  }
-
-  function handleCopyCreds() {
-    if (!createdCreds) return;
-    navigator.clipboard.writeText(
-      `Email: ${createdCreds.email}\nContraseña: ${createdCreds.password}`,
-    );
-    setCopiedCred(true);
-    setTimeout(() => setCopiedCred(false), 2000);
-  }
-
-  async function handleInvite(e: React.FormEvent) {
-    e.preventDefault();
-    setInviting(true);
-    try {
-      const res = await fetch(`/api/workspace/${workspaceId}/team`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: inviteEmail,
-          role: inviteRole,
-          password: invitePassword || undefined,
-        }),
-      });
-      const json = (await res.json()) as {
-        error?: string;
-        credentials?: { email: string; password: string } | null;
-      };
-      if (!res.ok) throw new Error(json.error ?? "Error al crear el usuario");
-      await fetchTeam();
-      if (json.credentials) {
-        // New account — show credentials for the agency to share.
-        setCreatedCreds(json.credentials);
-        toast.success("Cuenta creada");
-      } else {
-        // Existing user added to the workspace.
-        toast.success(`${inviteEmail} agregado a tu equipo`);
-        closeInvite();
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error desconocido");
-    } finally {
-      setInviting(false);
-    }
-  }
 
   // ── Change role ────────────────────────────────────────────────────────────
   async function handleRoleChange(userId: string, role: WorkspaceRole) {
@@ -496,183 +408,15 @@ export function TeamTab({ workspaceId }: Props) {
         </>
       )}
 
-      {/* Invite dialog */}
-      <Dialog
+      <InviteMemberDialog
         open={inviteOpen}
-        onOpenChange={(o) => {
-          if (!o) closeInvite();
+        workspaceId={workspaceId}
+        onClose={() => setInviteOpen(false)}
+        onInvited={() => {
+          setInviteOpen(false);
+          void fetchTeam();
         }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="font-display text-base font-semibold">
-              {createdCreds ? "Datos de acceso" : "Invitar miembro"}
-            </DialogTitle>
-          </DialogHeader>
-          {createdCreds ? (
-            <div className="space-y-4 pt-2">
-              <p className="text-sm text-muted-foreground">
-                Comparte este usuario y contraseña con la persona que
-                invitaste. No los vas a poder ver de nuevo.
-              </p>
-              <div className="space-y-1 rounded-lg border border-warning/30 bg-warning/5 p-3 font-mono text-xs">
-                <p className="text-foreground break-all">
-                  <span className="text-muted-foreground">Email: </span>
-                  {createdCreds.email}
-                </p>
-                <p className="text-foreground break-all">
-                  <span className="text-muted-foreground">Contraseña: </span>
-                  {createdCreds.password}
-                </p>
-              </div>
-              <DialogFooter className="pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={handleCopyCreds}
-                >
-                  {copiedCred ? (
-                    <CheckCheck
-                      className="h-4 w-4 text-primary"
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <Copy className="h-4 w-4" aria-hidden="true" />
-                  )}
-                  Copiar
-                </Button>
-                <Button type="button" size="sm" onClick={closeInvite}>
-                  Listo
-                </Button>
-              </DialogFooter>
-            </div>
-          ) : (
-            <form onSubmit={handleInvite} className="space-y-4 pt-2">
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="invite-email"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Email
-                </Label>
-                <Input
-                  id="invite-email"
-                  type="email"
-                  required
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder="colaborador@empresa.com"
-                  className="font-mono text-sm"
-                  aria-required="true"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="invite-role"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Rol
-                </Label>
-                <Select
-                  value={inviteRole}
-                  onValueChange={(v) => setInviteRole(v as WorkspaceRole)}
-                >
-                  <SelectTrigger id="invite-role" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">
-                      <div>
-                        <span className="font-medium">Admin</span>
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          Acceso completo
-                        </span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="manager">
-                      <div>
-                        <span className="font-medium">Manager</span>
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          Gestiona agentes y reportes
-                        </span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="agent">
-                      <div>
-                        <span className="font-medium">Agente</span>
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          Contesta los mensajes
-                        </span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="viewer">
-                      <div>
-                        <span className="font-medium">Solo ver</span>
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          Puede ver pero no cambiar nada
-                        </span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Se crea su cuenta al instante. No mandamos correos: solo
-                  copia estos datos y compártelos.
-                </p>
-              </div>
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="invite-password"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Contraseña
-                  <span className="ml-1 text-muted-foreground text-xs">
-                    (opcional)
-                  </span>
-                </Label>
-                <Input
-                  id="invite-password"
-                  type="text"
-                  value={invitePassword}
-                  onChange={(e) => setInvitePassword(e.target.value)}
-                  placeholder="Se genera una segura si lo dejas vacío"
-                  className="font-mono text-sm"
-                  autoComplete="off"
-                />
-              </div>
-              <DialogFooter className="pt-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={closeInvite}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={inviting}
-                  aria-busy={inviting}
-                  className="gap-1.5"
-                >
-                  {inviting ? (
-                    <Loader2
-                      className="h-4 w-4 animate-spin"
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <UserPlus className="h-4 w-4" aria-hidden="true" />
-                  )}
-                  {inviting ? "Creando..." : "Crear usuario"}
-                </Button>
-              </DialogFooter>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
+      />
     </div>
   );
 }

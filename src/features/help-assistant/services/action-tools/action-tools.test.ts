@@ -74,20 +74,18 @@ describe("buildActionTools plan gating", () => {
     expect(Object.keys(tools)).toHaveLength(0);
   });
 
-  it("includes client/project/pipeline tools when Gestión is enabled", () => {
+  it("Paquete 1 (Gestión sin WhatsApp) is the informational assistant — no write tools at all", () => {
     const tools = buildActionTools(ctx, {
       gestionEnabled: true,
       whatsappAgentEnabled: false,
       officeVirtualEnabled: false,
       hasVoiceAgent: false,
-      whiteboardEnabled: false,
+      whiteboardEnabled: true,
     });
-    expect(tools).toHaveProperty("create_client");
-    expect(tools).toHaveProperty("create_project");
-    expect(tools).toHaveProperty("create_deal");
+    expect(Object.keys(tools)).toHaveLength(0);
   });
 
-  it("includes only pipeline tools when only the WhatsApp agent is enabled (no Gestión)", () => {
+  it("WhatsApp without Gestión (legacy/inconsistent data) also gets no write tools", () => {
     const tools = buildActionTools(ctx, {
       gestionEnabled: false,
       whatsappAgentEnabled: true,
@@ -95,16 +93,27 @@ describe("buildActionTools plan gating", () => {
       hasVoiceAgent: false,
       whiteboardEnabled: false,
     });
-    expect(tools).not.toHaveProperty("create_client");
-    expect(tools).not.toHaveProperty("create_project");
-    expect(tools).not.toHaveProperty("create_whiteboard");
-    expect(tools).toHaveProperty("create_deal");
+    expect(Object.keys(tools)).toHaveLength(0);
   });
 
-  it("includes whiteboard tools only when Gestión AND Pizarra are both enabled", () => {
+  it("Paquete 2 (Gestión + WhatsApp) is the management assistant — full write tools", () => {
+    const tools = buildActionTools(ctx, {
+      gestionEnabled: true,
+      whatsappAgentEnabled: true,
+      officeVirtualEnabled: false,
+      hasVoiceAgent: false,
+      whiteboardEnabled: false,
+    });
+    expect(tools).toHaveProperty("create_client");
+    expect(tools).toHaveProperty("create_project");
+    expect(tools).toHaveProperty("create_deal");
+    expect(tools).not.toHaveProperty("create_whiteboard");
+  });
+
+  it("includes whiteboard tools only when Gestión, WhatsApp AND Board are all enabled", () => {
     const withoutWhiteboard = buildActionTools(ctx, {
       gestionEnabled: true,
-      whatsappAgentEnabled: false,
+      whatsappAgentEnabled: true,
       officeVirtualEnabled: false,
       hasVoiceAgent: false,
       whiteboardEnabled: false,
@@ -113,7 +122,7 @@ describe("buildActionTools plan gating", () => {
 
     const withWhiteboard = buildActionTools(ctx, {
       gestionEnabled: true,
-      whatsappAgentEnabled: false,
+      whatsappAgentEnabled: true,
       officeVirtualEnabled: false,
       hasVoiceAgent: false,
       whiteboardEnabled: true,
@@ -295,7 +304,7 @@ describe("project-tools", () => {
     );
 
     expect(result).toEqual({ ok: true, task_id: "task1" });
-    expect(createTask).toHaveBeenCalledWith(expect.objectContaining({ project_id: "p1", title: "Enviar propuesta" }));
+    expect(createTask).toHaveBeenCalledWith("ws1", expect.objectContaining({ project_id: "p1", title: "Enviar propuesta" }));
     expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({ action: "help_assistant.create_task" }));
   });
 });

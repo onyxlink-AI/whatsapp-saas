@@ -513,7 +513,25 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
     const whiteboard = w.whiteboard_enabled === true;
     const readinessIssues: string[] = [];
     if (whatsappAgent && !(ycloudMap.get(w.id) ?? false)) readinessIssues.push("Conectar WhatsApp");
-    if (whiteboard && !gestion) readinessIssues.push("Pizarra necesita Gestión");
+    if (whiteboard && !gestion) readinessIssues.push("Board necesita Gestión");
+
+    // Fase 1 del roadmap comercial: paquete efectivo derivado, nunca un flag
+    // propio — WhatsApp siempre incluye Gestión (chk_whatsapp_requires_gestion),
+    // así que whatsapp=true + gestion=false es un estado legado inconsistente,
+    // no un paquete válido.
+    const officeVirtual = w.office_virtual_enabled === true;
+    const packageTier: WorkspaceWithStats["package_tier"] = whatsappAgent && !gestion
+      ? "inconsistent"
+      : whatsappAgent && officeVirtual
+        ? "suite"
+        : whatsappAgent
+          ? "whatsapp"
+          : gestion
+            ? "gestion"
+            : "none";
+    if (packageTier === "inconsistent") {
+      readinessIssues.push("WhatsApp sin Gestión (estado inconsistente, revisar)");
+    }
     if (w.cross_channel_memory_enabled === true && (!voice || w.advanced_memory_enabled !== true)) {
       readinessIssues.push("Completar memoria entre canales");
     }
@@ -533,10 +551,11 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
         whatsappAgent,
         gestion,
         voice,
-        officeVirtual: w.office_virtual_enabled === true,
+        officeVirtual,
         chatbot: w.chatbot_enabled === true,
         whiteboard,
       },
+      package_tier: packageTier,
       addons: {
         advancedMemory: w.advanced_memory_enabled === true,
         pipelineAi: w.pipeline_ai_enabled === true,

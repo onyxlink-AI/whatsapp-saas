@@ -90,35 +90,39 @@ export default async function MainLayout({
     );
   }
 
+  // Fase 1 del roadmap comercial: Pipeline y Pizarra dejan de ser entradas
+  // de menú independientes — viven como vistas dentro de Proyectos
+  // (?view=pipeline / ?view=board). Las rutas antiguas /pipeline y /pizarra
+  // redirigen ahí (ver next.config.ts); /pizarra/[id] se conserva.
   if (hasGestion) {
-    navItems.push({
-      href: "/clientes",
-      label: "Clientes",
-      icon: "clients",
-      section: "Gestión",
-      mobilePrimary: true,
-    });
-  }
-
-  if (hasWhatsappAgent || hasGestion) {
-    navItems.push({
-      href: "/pipeline",
-      label: "Oportunidades",
-      shortLabel: "Ventas",
-      icon: "pipeline",
-      section: "Gestión",
-      mobilePrimary: !hasGestion,
-    });
-  }
-
-  if (hasGestion) {
-    navItems.push({
-      href: "/proyectos",
-      label: "Proyectos",
-      icon: "projects",
-      section: "Gestión",
-      mobilePrimary: true,
-    });
+    navItems.push(
+      {
+        href: "/clientes",
+        label: "Clientes",
+        icon: "clients",
+        section: "Gestión",
+        mobilePrimary: true,
+      },
+      {
+        href: "/proyectos",
+        label: "Proyectos",
+        icon: "projects",
+        section: "Gestión",
+        mobilePrimary: true,
+      },
+      {
+        href: "/mi-equipo",
+        label: "Mi equipo",
+        icon: "team",
+        section: "Gestión",
+      },
+      {
+        href: "/contenido",
+        label: "Contenido",
+        icon: "content",
+        section: "Gestión",
+      },
+    );
   }
 
   if (hasWhatsappAgent && hasVoiceAgent) {
@@ -261,6 +265,7 @@ export default async function MainLayout({
                 hasPipeline={hasWhatsappAgent || hasGestion}
               />
             )}
+            {activeId && <HelpAssistantLauncher workspaceId={activeId} />}
             <SettingsLockToggle />
             <ThemeToggle />
             <form action={logout} className="lg:hidden">
@@ -275,8 +280,6 @@ export default async function MainLayout({
       </div>
 
       <AppMobileNavigation items={navItems} />
-
-      {activeId && <HelpAssistantLauncher workspaceId={activeId} />}
     </div>
   );
 }

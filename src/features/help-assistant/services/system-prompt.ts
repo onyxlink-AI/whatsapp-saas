@@ -62,7 +62,7 @@ const FEATURE_LABELS: Record<keyof HelpAssistantPlanContext, string> = {
   whatsappAgentEnabled: "Agente de WhatsApp (Conversaciones, Oportunidades/Pipeline)",
   officeVirtualEnabled: "Oficina Virtual",
   hasVoiceAgent: "Agente de voz",
-  whiteboardEnabled: "Pizarra",
+  whiteboardEnabled: "Board",
 };
 
 function buildPlanContextBlock(plan: HelpAssistantPlanContext): string {
@@ -92,19 +92,21 @@ function buildProductKnowledge(plan: HelpAssistantPlanContext): string[] {
   if (plan.gestionEnabled) {
     lines.push(
       '- Clientes (/clientes): crear/editar cliente con el botón "Nuevo cliente" — solo el nombre es obligatorio; teléfono, correo, red social, método de contacto, empresa, sector, estado (potencial/activo/archivado) y notas son todos opcionales, se guarda lo que se tenga.',
-      "- Agenda y Proyectos: módulos propios en el menú lateral para citas y proyectos del negocio.",
+      '- Proyectos (/proyectos) es el centro de trabajo de Gestión: agrupa varias vistas con pestañas — Proyectos, Tareas, Agenda, Board, Anotaciones y (si tiene el agente de WhatsApp o Gestión) Oportunidades — cada una con su propia URL (?view=projects|tasks|agenda|board|notes|pipeline), así que un enlace directo abre esa pestaña ya seleccionada.',
+      "- Mi equipo (/settings?tab=equipo): quién tiene acceso al panel de la empresa.",
+      "- Contenido (/contenido): en construcción — todavía no tiene funciones que explicar paso a paso.",
     );
   }
 
   if (plan.whiteboardEnabled) {
     lines.push(
-      '- Pizarra (/pizarra): tableros de dibujo libre y diagramas (Excalidraw) por workspace — varios tableros con nombre, cada uno se guarda solo. El botón "+ Nota adhesiva" añade un post-it listo para escribir en un clic. El dibujo en sí (formas, flechas, colores, texto dentro del lienzo) solo lo hace el cliente en el navegador — tú puedes crear un tablero nuevo o renombrar uno existente, pero nunca dibujar ni escribir contenido dentro de él.',
+      '- Board (pestaña "Board" dentro de Proyectos, /proyectos?view=board): tableros de dibujo libre y diagramas (Excalidraw) por workspace — varios tableros con nombre, cada uno se guarda solo. El botón "+ Nota adhesiva" añade un post-it listo para escribir en un clic. El dibujo en sí (formas, flechas, colores, texto dentro del lienzo) solo lo hace el cliente en el navegador — tú puedes crear un tablero nuevo o renombrar uno existente, pero nunca dibujar ni escribir contenido dentro de él.',
     );
   }
 
   if (plan.gestionEnabled || plan.whatsappAgentEnabled) {
     lines.push(
-      '- Oportunidades / Pipeline (/pipeline): crear un negocio con "Nuevo negocio" — solo el nombre del lead es obligatorio, sin necesitar un contacto ya existente; teléfono, correo, red social, método de contacto y notas son opcionales. Se elige o se crea un "Sector" (etiqueta libre, se guarda para reusarla) y un "Producto" (Herramienta / Panel completo / Oficina Virtual). Al mover un negocio a la etapa "Cliente" (ganado) se crea automáticamente el contacto real en Clientes, o se puede pulsar el botón "Agregar a CRM" en el detalle del negocio para pasarlo antes, en cualquier etapa — usa los datos que ya tenga el negocio, no hace falta que estén completos.',
+      '- Oportunidades (pestaña "Oportunidades" dentro de Proyectos, /proyectos?view=pipeline): crear un negocio con "Nuevo negocio" — solo el nombre del lead es obligatorio, sin necesitar un contacto ya existente; teléfono, correo, red social, método de contacto y notas son opcionales. Se elige o se crea un "Sector" (etiqueta libre, se guarda para reusarla) y un "Producto" (Herramienta / Panel completo / Oficina Virtual). Al mover un negocio a la etapa "Cliente" (ganado) se crea automáticamente el contacto real en Clientes, o se puede pulsar el botón "Agregar a CRM" en el detalle del negocio para pasarlo antes, en cualquier etapa — usa los datos que ya tenga el negocio, no hace falta que estén completos.',
     );
   }
 
@@ -138,13 +140,21 @@ export function buildHelpAssistantSystemPrompt(
   plan: HelpAssistantPlanContext,
   actionsEnabled: boolean,
 ): string {
+  // Fase 1 del roadmap comercial: tener herramientas de escritura de verdad
+  // exige TANTO el interruptor de superadmin (actionsEnabled) COMO Paquete 2+
+  // (Gestión + WhatsApp) — igual que buildActionTools en action-tools/index.ts.
+  // Sin este cálculo aquí, el prompt podría decirle al asistente "tienes
+  // tools reales" en un workspace Paquete 1 (Gestión sin WhatsApp) donde
+  // buildActionTools no le da ninguna.
+  const canWrite = actionsEnabled && plan.gestionEnabled && plan.whatsappAgentEnabled;
+
   return [
-    ...buildScopeRules(actionsEnabled),
+    ...buildScopeRules(canWrite),
     "",
     ...TONE_RULES,
     "",
-    ...(actionsEnabled ? ACTION_RULES : []),
-    ...(actionsEnabled ? [""] : []),
+    ...(canWrite ? ACTION_RULES : []),
+    ...(canWrite ? [""] : []),
     ...ADMIN_BOUNDARY_RULES,
     "",
     buildPlanContextBlock(plan),

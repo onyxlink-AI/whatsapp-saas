@@ -11,19 +11,27 @@ interface Props {
   initialEnabled: boolean;
   /** Only Onyxlink (platform super admin) can toggle this paid add-on. */
   isSuperAdmin?: boolean;
+  /** WhatsApp always includes Gestión — while it's on, Gestión can't be turned off from here. */
+  whatsappEnabled?: boolean;
 }
 
 export function GestionToggle({
   workspaceId,
   initialEnabled,
   isSuperAdmin = false,
+  whatsappEnabled = false,
 }: Props) {
-  const [enabled, setEnabled] = useState(initialEnabled);
+  const [localEnabled, setLocalEnabled] = useState(initialEnabled);
   const [saving, setSaving] = useState(false);
+
+  // WhatsApp always includes Gestión — if the sibling toggle is on, this
+  // reads as enabled regardless of the saved flag, without waiting for a
+  // page reload.
+  const enabled = localEnabled || whatsappEnabled;
 
   async function handleToggle(next: boolean) {
     setSaving(true);
-    setEnabled(next); // optimistic
+    setLocalEnabled(next); // optimistic
 
     try {
       const res = await fetch(`/api/workspace/${workspaceId}/gestion`, {
@@ -37,7 +45,7 @@ export function GestionToggle({
       }
       toast.success(next ? "Onyxlink Gestión activado" : "Onyxlink Gestión desactivado");
     } catch (err) {
-      setEnabled(!next); // rollback
+      setLocalEnabled(!next); // rollback
       toast.error(err instanceof Error ? err.message : "Error al guardar");
     } finally {
       setSaving(false);
@@ -53,10 +61,17 @@ export function GestionToggle({
             Onyxlink Gestión
           </Label>
           <p className="mt-1 text-xs text-muted-foreground max-w-md">
-            Da acceso a Clientes, Agenda y Proyectos — siempre un producto
-            aparte, nunca incluido automáticamente con el agente de WhatsApp.
+            Da acceso a Clientes, Proyectos, Agenda, Board y Oportunidades —
+            la base de Onyxlink. El Agente de WhatsApp siempre la incluye.
           </p>
-          {!isSuperAdmin && (
+          {whatsappEnabled && (
+            <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Lock className="h-3 w-3" aria-hidden="true" />
+              Incluida por tener el Agente de WhatsApp activo — desactívalo
+              primero si quieres quitar Gestión.
+            </p>
+          )}
+          {!whatsappEnabled && !isSuperAdmin && (
             <p className="mt-2 flex items-center gap-1.5 text-[11px] text-[hsl(var(--electric-lime))]">
               <Lock className="h-3 w-3" aria-hidden="true" />
               Función premium — contacta a tu gestor de Onyxlink para activarla.
@@ -67,7 +82,7 @@ export function GestionToggle({
       <Switch
         checked={enabled}
         onCheckedChange={handleToggle}
-        disabled={saving || !isSuperAdmin}
+        disabled={saving || !isSuperAdmin || whatsappEnabled}
         aria-label="Activar Onyxlink Gestión"
       />
     </div>

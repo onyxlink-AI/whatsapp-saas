@@ -9,14 +9,24 @@
 --   - superadmin@onyxlink.local  (is_super_admin=true, admin of both workspaces)
 --   - cliente@empresaa.local    (admin of Empresa A only)
 --   both with password: TestLocal123!
---   - Empresa A (prueba local): whatsapp_agent_enabled, office_virtual_enabled,
---     chatbot_enabled; agents Carlos/Sofía/Andrés (Carlos active); YCloud +
---     OpenRouter + Google Calendar integration rows present but with NO
---     credentials — deliberately "needs attention" until a real developer
---     plugs in their own local key via Settings → Integraciones. Never seed a
---     real/working credential here.
---   - Empresa B (prueba local): whatsapp_agent_enabled=false (Gestión-only
---     plan), used for cross-tenant isolation tests.
+--   - Empresa A (prueba local): whatsapp_agent_enabled, gestion_enabled,
+--     office_virtual_enabled, chatbot_enabled — Paquete 3 (Suite completa);
+--     agents Carlos/Sofía/Andrés (Carlos active); YCloud + OpenRouter +
+--     Google Calendar integration rows present but with NO credentials —
+--     deliberately "needs attention" until a real developer plugs in their
+--     own local key via Settings → Integraciones. Never seed a real/working
+--     credential here.
+--   - Empresa B (prueba local): whatsapp_agent_enabled=false, gestion_enabled=
+--     true — Paquete 1 (Gestión sin WhatsApp), used for cross-tenant
+--     isolation tests.
+--
+-- gestion_enabled=true en ambas desde la Fase 1 del roadmap comercial: el
+-- Agente de WhatsApp ahora incluye siempre Gestión (chk_whatsapp_requires_gestion,
+-- ver 20260805000000_whatsapp_requires_gestion.sql) — Empresa A tenía
+-- whatsapp=true con gestion=false, lo que ya no es un estado válido; Empresa
+-- B decía en este mismo comentario ser "Gestión-only" pero su gestion_enabled
+-- real era false. Ambas quedan corregidas para representar de verdad lo que
+-- dicen ser.
 --
 -- Idempotent: safe to re-run manually (`psql -f supabase/seed.sql`) against a
 -- DB that already has this data — every insert is ON CONFLICT DO NOTHING.
@@ -100,12 +110,12 @@ INSERT INTO public.workspaces (
   (
     '1b807ae9-03a2-4cf5-84af-8b72a7078ad9', 'Empresa A (prueba local)', 'empresa-a-prueba-local',
     '{"timezone": "America/Mexico_City", "language": "es"}'::jsonb, TRUE,
-    TRUE, TRUE, TRUE, FALSE
+    TRUE, TRUE, TRUE, TRUE
   ),
   (
     '9003dc6d-dafa-48b3-be17-71e36e08272d', 'Empresa B (prueba local)', 'empresa-b-prueba-local',
     '{"timezone": "America/Mexico_City", "language": "es"}'::jsonb, TRUE,
-    FALSE, TRUE, TRUE, FALSE
+    FALSE, TRUE, TRUE, TRUE
   )
 ON CONFLICT (id) DO NOTHING;
 

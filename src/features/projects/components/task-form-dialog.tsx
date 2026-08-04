@@ -27,8 +27,8 @@ import { ProjectPicker } from "./project-picker";
 interface TaskFormDialogProps {
   open: boolean;
   projectId?: string;
-  /** Required when projectId isn't given, to show the project picker. */
-  workspaceId?: string;
+  /** Workspace de la tarea — siempre requerido, aunque no se preseleccione proyecto. */
+  workspaceId: string;
   onClose: () => void;
   onCreated: () => void;
 }
@@ -46,6 +46,8 @@ export function TaskFormDialog({
   const [pickedProject, setPickedProject] = useState<ProjectOption | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  // Fase 2: sin proyecto preseleccionado, se puede elegir uno o dejar la
+  // tarea suelta — ya no es obligatorio.
   const needsProjectPick = !projectId;
 
   function reset() {
@@ -65,14 +67,10 @@ export function TaskFormDialog({
       toast.error("El título es requerido");
       return;
     }
-    if (needsProjectPick && !pickedProject) {
-      toast.error("Selecciona un proyecto");
-      return;
-    }
 
     startTransition(async () => {
-      const result = await createTask({
-        project_id: (projectId ?? pickedProject?.id)!,
+      const result = await createTask(workspaceId, {
+        project_id: projectId ?? pickedProject?.id ?? null,
         title: title.trim(),
         task_type: taskType,
         due_at: dueAt ? new Date(dueAt).toISOString() : undefined,
@@ -99,7 +97,7 @@ export function TaskFormDialog({
         <div className="space-y-3">
           {needsProjectPick && (
             <div className="space-y-1.5">
-              <Label className="text-xs">Proyecto</Label>
+              <Label className="text-xs">Proyecto (opcional)</Label>
               {pickedProject ? (
                 <div className="flex items-center justify-between rounded-md border border-border/50 px-3 py-2">
                   <span className="text-sm">{pickedProject.name}</span>

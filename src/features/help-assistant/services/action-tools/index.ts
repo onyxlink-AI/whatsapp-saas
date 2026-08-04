@@ -11,10 +11,16 @@ import type { HelpActionContext, HelpAssistantPlanContext } from "../../types";
  * to what the assistant is even ABLE to do, not just what it talks about.
  */
 export function buildActionTools(ctx: HelpActionContext, plan: HelpAssistantPlanContext) {
+  // Fase 1 del roadmap comercial: el "asistente de gestión" (con
+  // herramientas de escritura) es exclusivo de Paquete 2+ (Gestión +
+  // WhatsApp). Paquete 1 (Gestión sin WhatsApp) es el "asistente
+  // informativo": responde preguntas, nunca recibe herramientas de
+  // escritura, sin importar el toggle de superadmin actionsEnabled.
+  const canWrite = plan.gestionEnabled && plan.whatsappAgentEnabled;
   return {
-    ...(plan.gestionEnabled ? buildClientTools(ctx) : {}),
-    ...(plan.gestionEnabled || plan.whatsappAgentEnabled ? buildPipelineTools(ctx) : {}),
-    ...(plan.gestionEnabled ? buildProjectTools(ctx) : {}),
-    ...(plan.gestionEnabled && plan.whiteboardEnabled ? buildWhiteboardTools(ctx) : {}),
+    ...(canWrite ? buildClientTools(ctx) : {}),
+    ...(canWrite ? buildPipelineTools(ctx) : {}),
+    ...(canWrite ? buildProjectTools(ctx) : {}),
+    ...(canWrite && plan.whiteboardEnabled ? buildWhiteboardTools(ctx) : {}),
   };
 }

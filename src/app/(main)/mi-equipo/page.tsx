@@ -1,0 +1,65 @@
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { getActiveWorkspace } from "@/features/workspace/services/active-workspace";
+import { ROLE_RANK, type WorkspaceRole } from "@/lib/auth/workspace-access";
+import { listTeamMembers } from "@/features/team/services/team-actions";
+import { getProjectsForBoard } from "@/features/projects/services/project-actions";
+import { listTasks } from "@/features/projects/services/task-actions";
+import { MiEquipoView } from "@/features/team/components/mi-equipo-view";
+import { PageHeader } from "@/components/page-header";
+
+export const dynamic = "force-dynamic";
+
+export default async function MiEquipoPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const membership = await getActiveWorkspace(supabase, user.id);
+  if (!membership) redirect("/dashboard");
+
+  const { data: workspaceFlagsRow } = await supabase
+    .from("workspaces")
+    .select("gestion_enabled")
+    .eq("id", membership.workspace_id)
+    .maybeSingle();
+
+  if (workspaceFlagsRow?.gestion_enabled !== true) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] px-6 text-center">
+        <p className="text-muted-foreground text-sm max-w-sm">
+          Esta sección no está incluida en tu plan. Pregúntale a tu gestor de Onyxlink.
+        </p>
+      </div>
+    );
+  }
+
+  const [members, projects, tasks] = await Promise.all([
+    listTeamMembers(membership.workspace_id),
+    getProjectsForBoard(membership.workspace_id),
+    listTasks(membership.workspace_id),
+  ]);
+
+  const canManage =
+    ROLE_RANK[membership.role as WorkspaceRole] >= ROLE_RANK.manager;
+
+  return (
+    <div className="page-shell flex min-h-[calc(100vh-4rem)] max-w-none flex-col gap-6">
+      <PageHeader
+        eyebrow="Empresa"
+        title="Mi equipo"
+        description="Quién forma parte del panel, sus roles y en qué proyectos y tareas participan."
+      />
+      <MiEquipoView
+        workspaceId={membership.workspace_id}
+        initialMembers={members}
+        projects={projects.map((p) => ({ id: p.id, name: p.name, responsible_id: p.responsible_id }))}
+        tasks={tasks.map((t) => ({ id: t.id, title: t.title, status: t.status, assigned_to: t.assigned_to }))}
+        canManage={canManage}
+      />
+    </div>
+  );
+}

@@ -153,7 +153,7 @@ export function buildProjectTools(ctx: HelpActionContext) {
         "Crea una tarea dentro de un proyecto. Necesitas el project_id — búscalo antes con search_projects si no lo tienes.",
       inputSchema: zodSchema(CreateTaskSchema),
       execute: async (args: z.infer<typeof CreateTaskSchema>) => {
-        const result = await createTask(args);
+        const result = await createTask(ctx.workspaceId, args);
         if (!result.ok) return { ok: false, error: result.error };
 
         void logAudit({

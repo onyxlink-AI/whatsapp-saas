@@ -30,6 +30,16 @@ export interface WorkspaceWithStats {
   };
   /** Human-readable commercial/configuration issues for the agency overview. */
   readiness_issues: string[];
+  /**
+   * Fase 1 del roadmap comercial — el paquete efectivo, derivado de
+   * products.gestion/whatsappAgent/officeVirtual (nunca un flag propio):
+   * "none" (ni Gestión ni WhatsApp), "gestion" (Paquete 1), "whatsapp"
+   * (Paquete 2 = Gestión + WhatsApp) o "suite" (Paquete 3 = + Oficina
+   * Virtual). WhatsApp sin Gestión no debería poder ocurrir
+   * (chk_whatsapp_requires_gestion), pero si una fila legada lo tiene, cae
+   * en "inconsistent" para que el panel lo señale en vez de ocultarlo.
+   */
+  package_tier: "none" | "gestion" | "whatsapp" | "suite" | "inconsistent";
 }
 
 export type UseCase = "setter" | "soporte" | "agendamiento" | "general";

@@ -157,3 +157,86 @@ export async function deleteSubtask(
 
   return { ok: true, data: null };
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// updateSubtask — Fase 2: título, responsable y fecha opcionales.
+// ──────────────────────────────────────────────────────────────────────────────
+const UpdateSubtaskSchema = z.object({
+  title: z.string().min(1).optional(),
+  assigned_to: z.string().uuid().nullable().optional(),
+  due_at: z.string().nullable().optional(),
+});
+
+export async function updateSubtask(
+  subtaskId: string,
+  input: z.infer<typeof UpdateSubtaskSchema>,
+): Promise<ActionResult<null>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { ok: false, error: "No autorizado" };
+  }
+
+  const parsed = UpdateSubtaskSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+
+  const { error } = await supabase
+    .from("subtasks")
+    .update({ ...parsed.data, updated_at: new Date().toISOString() })
+    .eq("id", subtaskId);
+
+  if (error) {
+    console.error("[updateSubtask] Supabase error:", error.message);
+    return { ok: false, error: "Error al actualizar la subtarea" };
+  }
+
+  return { ok: true, data: null };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// reorderSubtasks — persist a full order after a drag settles, same pattern
+// as reorderProjects in project-actions.ts.
+// ──────────────────────────────────────────────────────────────────────────────
+const ReorderSubtasksSchema = z.object({
+  task_id: z.string().uuid(),
+  ordered_ids: z.array(z.string().uuid()),
+});
+
+export async function reorderSubtasks(
+  input: z.infer<typeof ReorderSubtasksSchema>,
+): Promise<ActionResult<null>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { ok: false, error: "No autorizado" };
+  }
+
+  const parsed = ReorderSubtasksSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+
+  const results = await Promise.all(
+    parsed.data.ordered_ids.map((id, index) =>
+      supabase.from("subtasks").update({ position: index }).eq("id", id).eq("task_id", parsed.data.task_id),
+    ),
+  );
+
+  const failed = results.find((r) => r.error);
+  if (failed?.error) {
+    console.error("[reorderSubtasks] Supabase error:", failed.error.message);
+    return { ok: false, error: "Error al reordenar las subtareas" };
+  }
+
+  return { ok: true, data: null };
+}

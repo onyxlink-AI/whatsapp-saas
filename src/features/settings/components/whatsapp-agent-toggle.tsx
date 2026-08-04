@@ -9,15 +9,20 @@ import { Switch } from "@/components/ui/switch";
 interface Props {
   workspaceId: string;
   initialEnabled: boolean;
+  /** Notified with the new value on every successful/rolled-back change, so
+   * a parent can keep a sibling toggle (Gestión, always included) in sync
+   * without a page reload. */
+  onEnabledChange?: (enabled: boolean) => void;
 }
 
-export function WhatsappAgentToggle({ workspaceId, initialEnabled }: Props) {
+export function WhatsappAgentToggle({ workspaceId, initialEnabled, onEnabledChange }: Props) {
   const [enabled, setEnabled] = useState(initialEnabled);
   const [saving, setSaving] = useState(false);
 
   async function handleToggle(next: boolean) {
     setSaving(true);
     setEnabled(next);
+    onEnabledChange?.(next);
     try {
       const response = await fetch(`/api/workspace/${workspaceId}/whatsapp-agent`, {
         method: "PATCH",
@@ -28,9 +33,14 @@ export function WhatsappAgentToggle({ workspaceId, initialEnabled }: Props) {
         const body = (await response.json().catch(() => ({}))) as { error?: string };
         throw new Error(typeof body.error === "string" ? body.error : "Error al guardar");
       }
-      toast.success(next ? "Agente de WhatsApp activado" : "Agente de WhatsApp desactivado");
+      toast.success(
+        next
+          ? "Agente de WhatsApp activado (incluye Onyxlink Gestión)"
+          : "Agente de WhatsApp desactivado",
+      );
     } catch (error) {
       setEnabled(!next);
+      onEnabledChange?.(!next);
       toast.error(error instanceof Error ? error.message : "Error al guardar");
     } finally {
       setSaving(false);
@@ -44,7 +54,8 @@ export function WhatsappAgentToggle({ workspaceId, initialEnabled }: Props) {
         <div>
           <Label className="text-sm font-medium text-foreground">Agente de WhatsApp</Label>
           <p className="mt-1 max-w-md text-xs text-muted-foreground">
-            Activa Inicio, Conversaciones y Oportunidades, junto con la configuración del agente.
+            Activa Inicio, Conversaciones y la configuración del agente — e
+            incluye Onyxlink Gestión automáticamente (no puede existir sin ella).
           </p>
         </div>
       </div>

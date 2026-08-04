@@ -10,19 +10,31 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronRight, MoreVertical } from "lucide-react";
+import { ChevronDown, ChevronRight, MoreVertical, FolderInput, FolderMinus, UserPlus } from "lucide-react";
 import {
   completeTask,
   deleteTask,
   reassignTask,
+  updateTask,
 } from "@/features/projects/services/task-actions";
-import type { WorkspaceMember } from "@/features/projects/services/project-actions";
-import { TASK_TYPE_LABELS, type TaskRow as TaskRowType } from "@/features/projects/types";
+import {
+  listWorkspaceMembers,
+  type WorkspaceMember,
+} from "@/features/projects/services/project-actions";
+import { InviteMemberDialog } from "@/features/team/components/invite-member-dialog";
+import {
+  TASK_TYPE_LABELS,
+  type ProjectOption,
+  type TaskRow as TaskRowType,
+} from "@/features/projects/types";
 import { SubtaskList } from "./subtask-list";
+import { ProjectPicker } from "./project-picker";
 
 interface TaskRowProps {
-  task: TaskRowType;
+  task: TaskRowType & { project?: ProjectOption | null };
+  workspaceId: string;
   members: WorkspaceMember[];
   onChanged: () => void;
 }
@@ -33,9 +45,38 @@ function isOverdue(task: TaskRowType) {
   return new Date(task.due_at) < new Date();
 }
 
-export function TaskRow({ task, members, onChanged }: TaskRowProps) {
+export function TaskRow({ task, workspaceId, members, onChanged }: TaskRowProps) {
   const [isPending, startTransition] = useTransition();
   const [expanded, setExpanded] = useState(false);
+  const [associateOpen, setAssociateOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  // Miembros invitados desde este mismo menú, hasta que la próxima carga de
+  // la página los traiga ya incluidos en `members`.
+  const [extraMembers, setExtraMembers] = useState<WorkspaceMember[]>([]);
+  const allMembers = [...members, ...extraMembers.filter((e) => !members.some((m) => m.user_id === e.user_id))];
+
+  function handleAssociate(project: ProjectOption) {
+    startTransition(async () => {
+      const result = await updateTask(task.id, { project_id: project.id });
+      if (!result.ok) {
+        toast.error(result.error ?? "Error al asociar el proyecto");
+        return;
+      }
+      setAssociateOpen(false);
+      onChanged();
+    });
+  }
+
+  function handleDisassociate() {
+    startTransition(async () => {
+      const result = await updateTask(task.id, { project_id: null });
+      if (!result.ok) {
+        toast.error(result.error ?? "Error al desasociar el proyecto");
+        return;
+      }
+      onChanged();
+    });
+  }
 
   function handleToggle() {
     startTransition(async () => {
@@ -118,6 +159,7 @@ export function TaskRow({ task, members, onChanged }: TaskRowProps) {
               </span>
             )}
             {assignee && <span>{assignee.full_name}</span>}
+            {task.project && <span>· {task.project.name}</span>}
           </div>
         </div>
         {isOverdue(task) && (
@@ -132,11 +174,25 @@ export function TaskRow({ task, members, onChanged }: TaskRowProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {members.map((m) => (
+            {allMembers.map((m) => (
               <DropdownMenuItem key={m.user_id} onClick={() => handleReassign(m.user_id)}>
                 Asignar a {m.full_name}
               </DropdownMenuItem>
             ))}
+            <DropdownMenuItem onClick={() => setInviteOpen(true)}>
+              <UserPlus className="h-3.5 w-3.5" aria-hidden />
+              Añadir miembro
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setAssociateOpen(true)}>
+              <FolderInput className="h-3.5 w-3.5" aria-hidden />
+              {task.project_id ? "Cambiar de proyecto" : "Asociar a proyecto"}
+            </DropdownMenuItem>
+            {task.project_id && (
+              <DropdownMenuItem onClick={handleDisassociate}>
+                <FolderMinus className="h-3.5 w-3.5" aria-hidden />
+                Quitar del proyecto
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={handleDelete} className="text-destructive">
               Eliminar
             </DropdownMenuItem>
@@ -144,7 +200,28 @@ export function TaskRow({ task, members, onChanged }: TaskRowProps) {
         </DropdownMenu>
       </div>
 
-      {expanded && <SubtaskList taskId={task.id} />}
+      {expanded && <SubtaskList taskId={task.id} members={members} />}
+
+      <Dialog open={associateOpen} onOpenChange={setAssociateOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Asociar a un proyecto</DialogTitle>
+          </DialogHeader>
+          <ProjectPicker workspaceId={workspaceId} onSelect={handleAssociate} />
+        </DialogContent>
+      </Dialog>
+
+      <InviteMemberDialog
+        open={inviteOpen}
+        workspaceId={workspaceId}
+        onClose={() => setInviteOpen(false)}
+        onInvited={async (userId) => {
+          setInviteOpen(false);
+          const fresh = await listWorkspaceMembers(workspaceId);
+          setExtraMembers(fresh);
+          handleReassign(userId);
+        }}
+      />
     </div>
   );
 }

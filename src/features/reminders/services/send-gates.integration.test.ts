@@ -58,9 +58,11 @@ beforeAll(async () => {
   });
   if (!reachable) return;
 
+  // gestion_enabled: true — ver comentario equivalente en
+  // reminders-engine.integration.test.ts (chk_whatsapp_requires_gestion).
   const { data: ws } = await db
     .from("workspaces")
-    .insert({ name: RUN_TAG, slug: RUN_TAG })
+    .insert({ name: RUN_TAG, slug: RUN_TAG, gestion_enabled: true })
     .select("id")
     .single();
   workspaceId = ws!.id as string;
@@ -329,7 +331,7 @@ describe("evaluateSendGates — real DB, no external calls", () => {
     if (!reachable) return ctx.skip();
     const { data: otherWs } = await db
       .from("workspaces")
-      .insert({ name: `${RUN_TAG}-other`, slug: `${RUN_TAG}-other` })
+      .insert({ name: `${RUN_TAG}-other`, slug: `${RUN_TAG}-other`, gestion_enabled: true })
       .select("id")
       .single();
     const otherWorkspaceId = otherWs!.id as string;

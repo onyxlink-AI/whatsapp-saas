@@ -8,9 +8,18 @@
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import type {
+  ProjectProgressRow,
   ProjectStatus,
   ProjectWithContact,
 } from "@/features/projects/types";
+
+const COVER_MAX_BYTES = 5 * 1024 * 1024;
+const COVER_MIME_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
 
 export type ActionResult<T> =
   | { ok: true; data: T; error?: never }
@@ -344,7 +353,8 @@ export async function listWorkspaceMembers(
   const { data, error } = await supabase
     .from("memberships")
     .select("user_id, users(full_name)")
-    .eq("workspace_id", workspaceId);
+    .eq("workspace_id", workspaceId)
+    .eq("is_active", true);
 
   if (error || !data) {
     console.error("[listWorkspaceMembers] Supabase error:", error?.message);
@@ -361,4 +371,199 @@ export async function listWorkspaceMembers(
     user_id: row.user_id,
     full_name: row.users?.full_name ?? "Sin nombre",
   }));
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// toggleProjectActive — Fase 2: activo/inactivo, independiente del status de
+// kanban (un proyecto "finalizado" puede seguir activo; uno "en_proceso"
+// puede archivarse si se pausó).
+// ──────────────────────────────────────────────────────────────────────────────
+export async function toggleProjectActive(
+  projectId: string,
+  isActive: boolean,
+): Promise<ActionResult<{ id: string }>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { ok: false, error: "No autorizado" };
+  }
+
+  const { data: updated, error: updateError } = await supabase
+    .from("projects")
+    .update({ is_active: isActive, updated_at: new Date().toISOString() })
+    .eq("id", projectId)
+    .select("id")
+    .single();
+
+  if (updateError || !updated) {
+    console.error("[toggleProjectActive] Supabase error:", updateError?.message);
+    return { ok: false, error: "Error al cambiar el estado del proyecto" };
+  }
+
+  return { ok: true, data: { id: updated.id as string } };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// uploadProjectCover / removeProjectCover — bucket público `project-covers`,
+// path {workspaceId}/{projectId}/{timestamp}-{safeName}.{ext}. Sube con la
+// sesión del usuario (no service role): la política RLS del bucket exige
+// admin/manager/agent en ese workspace, así que un `viewer` o un usuario de
+// otro workspace ya queda bloqueado por Postgres, no solo por este código.
+// ──────────────────────────────────────────────────────────────────────────────
+export async function uploadProjectCover(
+  workspaceId: string,
+  projectId: string,
+  formData: FormData,
+): Promise<ActionResult<{ path: string }>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { ok: false, error: "No autorizado" };
+  }
+
+  const file = formData.get("file");
+  if (!(file instanceof File)) {
+    return { ok: false, error: "Archivo inválido" };
+  }
+
+  const ext = COVER_MIME_EXT[file.type];
+  if (!ext) {
+    return { ok: false, error: "Formato de imagen no soportado" };
+  }
+  if (file.size > COVER_MAX_BYTES) {
+    return { ok: false, error: "La imagen supera el límite de 5 MB" };
+  }
+
+  const { data: current } = await supabase
+    .from("projects")
+    .select("cover_image_path")
+    .eq("id", projectId)
+    .maybeSingle();
+
+  const path = `${workspaceId}/${projectId}/${Date.now()}.${ext}`;
+  const buffer = new Uint8Array(await file.arrayBuffer());
+
+  const { error: uploadError } = await supabase.storage
+    .from("project-covers")
+    .upload(path, buffer, { contentType: file.type, upsert: false });
+
+  if (uploadError) {
+    console.error("[uploadProjectCover] Storage error:", uploadError.message);
+    return { ok: false, error: "Error al subir la imagen" };
+  }
+
+  const { error: updateError } = await supabase
+    .from("projects")
+    .update({ cover_image_path: path, updated_at: new Date().toISOString() })
+    .eq("id", projectId);
+
+  if (updateError) {
+    console.error("[uploadProjectCover] Supabase error:", updateError.message);
+    await supabase.storage.from("project-covers").remove([path]);
+    return { ok: false, error: "Error al guardar la imagen del proyecto" };
+  }
+
+  const previousPath = (current as { cover_image_path: string | null } | null)
+    ?.cover_image_path;
+  if (previousPath && previousPath !== path) {
+    await supabase.storage.from("project-covers").remove([previousPath]);
+  }
+
+  return { ok: true, data: { path } };
+}
+
+export async function removeProjectCover(
+  projectId: string,
+): Promise<ActionResult<null>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { ok: false, error: "No autorizado" };
+  }
+
+  const { data: current } = await supabase
+    .from("projects")
+    .select("cover_image_path")
+    .eq("id", projectId)
+    .maybeSingle();
+
+  const { error: updateError } = await supabase
+    .from("projects")
+    .update({ cover_image_path: null, updated_at: new Date().toISOString() })
+    .eq("id", projectId);
+
+  if (updateError) {
+    console.error("[removeProjectCover] Supabase error:", updateError.message);
+    return { ok: false, error: "Error al quitar la imagen" };
+  }
+
+  const previousPath = (current as { cover_image_path: string | null } | null)
+    ?.cover_image_path;
+  if (previousPath) {
+    await supabase.storage.from("project-covers").remove([previousPath]);
+  }
+
+  return { ok: true, data: null };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// getProjectsProgress — lee la vista `project_progress` (fórmula determinista
+// documentada en la migración 20260806000003_project_progress_view.sql) y la
+// entrega como mapa por project_id para que las tarjetas la consuman O(1).
+// ──────────────────────────────────────────────────────────────────────────────
+export async function getProjectsProgress(
+  workspaceId: string,
+): Promise<Record<string, ProjectProgressRow>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return {};
+
+  const { data, error } = await supabase
+    .from("project_progress")
+    .select("*")
+    .eq("workspace_id", workspaceId);
+
+  if (error || !data) {
+    console.error("[getProjectsProgress] Supabase error:", error?.message);
+    return {};
+  }
+
+  const rows = data as unknown as ProjectProgressRow[];
+  return Object.fromEntries(rows.map((row) => [row.project_id, row]));
+}
+
+export async function getProjectProgress(
+  projectId: string,
+): Promise<ProjectProgressRow | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from("project_progress")
+    .select("*")
+    .eq("project_id", projectId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  return data as unknown as ProjectProgressRow;
 }

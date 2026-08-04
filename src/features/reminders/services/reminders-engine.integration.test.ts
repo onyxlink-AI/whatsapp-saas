@@ -67,9 +67,13 @@ beforeAll(async () => {
   });
   if (!reachable) return;
 
+  // gestion_enabled: true — chk_whatsapp_requires_gestion (Fase 1 del roadmap
+  // comercial) prohíbe whatsapp_agent_enabled=true (el default) con
+  // gestion_enabled=false (también el default); este fixture no ejercita
+  // Gestión, solo necesita pasar el constraint.
   const { data: wsA, error: wsAErr } = await db
     .from("workspaces")
-    .insert({ name: `${RUN_TAG}-A`, slug: `${RUN_TAG}-a` })
+    .insert({ name: `${RUN_TAG}-A`, slug: `${RUN_TAG}-a`, gestion_enabled: true })
     .select("id")
     .single();
   if (wsAErr || !wsA) throw new Error(`fixture workspace A failed: ${wsAErr?.message}`);
@@ -77,7 +81,7 @@ beforeAll(async () => {
 
   const { data: wsB, error: wsBErr } = await db
     .from("workspaces")
-    .insert({ name: `${RUN_TAG}-B`, slug: `${RUN_TAG}-b` })
+    .insert({ name: `${RUN_TAG}-B`, slug: `${RUN_TAG}-b`, gestion_enabled: true })
     .select("id")
     .single();
   if (wsBErr || !wsB) throw new Error(`fixture workspace B failed: ${wsBErr?.message}`);
@@ -366,7 +370,7 @@ describe("reminders engine — real DB integration", () => {
     // one lost with "duplicate key value violates unique constraint").
     const { data: freshWs } = await db
       .from("workspaces")
-      .insert({ name: `${RUN_TAG}-race`, slug: `${RUN_TAG}-race` })
+      .insert({ name: `${RUN_TAG}-race`, slug: `${RUN_TAG}-race`, gestion_enabled: true })
       .select("id")
       .single();
     const freshWsId = freshWs!.id as string;

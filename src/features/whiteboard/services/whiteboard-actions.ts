@@ -150,6 +150,52 @@ export async function renameWhiteboard(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// duplicateWhiteboard — Fase 2: "Duplicar" en el editor. Copia scene_data tal
+// cual (mismo formato JSON que ya persiste el autosave), nunca la comparte.
+// ──────────────────────────────────────────────────────────────────────────────
+export async function duplicateWhiteboard(
+  whiteboardId: string,
+): Promise<ActionResult<{ id: string }>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { ok: false, error: "No autorizado" };
+  }
+
+  const { data: source, error: sourceError } = await supabase
+    .from("whiteboards")
+    .select("workspace_id, name, scene_data")
+    .eq("id", whiteboardId)
+    .maybeSingle();
+
+  if (sourceError || !source) {
+    return { ok: false, error: "Tablero no encontrado" };
+  }
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("whiteboards")
+    .insert({
+      workspace_id: (source as { workspace_id: string }).workspace_id,
+      name: `${(source as { name: string }).name} (copia)`,
+      scene_data: (source as { scene_data: WhiteboardSceneData }).scene_data,
+      created_by: user.id,
+    })
+    .select("id")
+    .single();
+
+  if (insertError || !inserted) {
+    console.error("[duplicateWhiteboard] Supabase error:", insertError?.message);
+    return { ok: false, error: "Error al duplicar el tablero" };
+  }
+
+  return { ok: true, data: { id: inserted.id as string } };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // updateWhiteboardScene — called from the editor's debounced autosave.
 // ──────────────────────────────────────────────────────────────────────────────
 export async function updateWhiteboardScene(

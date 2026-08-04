@@ -11,8 +11,10 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import type { TaskRow, TaskStatus } from "@/features/projects/types";
 import {
+  BatchTaskRowSchema,
   CreateTaskSchema,
   UpdateTaskSchema,
+  type BatchTaskRow,
   type CreateTaskInput,
   type UpdateTaskInput,
 } from "./task-schemas";
@@ -29,9 +31,12 @@ export interface TaskFilters {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// createTask
+// createTask — Fase 2: ya no exige project_id. workspaceId llega explícito
+// del caller (igual que createProject), no se deriva del proyecto — así una
+// tarea puede crearse suelta, sin ningún proyecto.
 // ──────────────────────────────────────────────────────────────────────────────
 export async function createTask(
+  workspaceId: string,
   data: CreateTaskInput,
 ): Promise<ActionResult<{ id: string }>> {
   const supabase = await createClient();
@@ -52,21 +57,24 @@ export async function createTask(
     };
   }
 
-  const { data: project, error: projectError } = await supabase
-    .from("projects")
-    .select("workspace_id")
-    .eq("id", parsed.data.project_id)
-    .single();
+  if (parsed.data.project_id) {
+    const { data: project, error: projectError } = await supabase
+      .from("projects")
+      .select("workspace_id")
+      .eq("id", parsed.data.project_id)
+      .single();
 
-  if (projectError || !project) {
-    return { ok: false, error: "Proyecto no encontrado" };
+    if (projectError || !project || (project as { workspace_id: string }).workspace_id !== workspaceId) {
+      return { ok: false, error: "Proyecto no encontrado" };
+    }
   }
 
   const { data: inserted, error: insertError } = await supabase
     .from("tasks")
     .insert({
       ...parsed.data,
-      workspace_id: (project as { workspace_id: string }).workspace_id,
+      project_id: parsed.data.project_id ?? null,
+      workspace_id: workspaceId,
       created_by: user.id,
     })
     .select("id")
@@ -78,6 +86,92 @@ export async function createTask(
   }
 
   return { ok: true, data: { id: inserted.id as string } };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// createTasksBatch — Fase 2: creación en lote. Cada fila se valida por
+// separado (BatchTaskRowSchema) para poder reportar fallos parciales de
+// validación con su índice; las filas válidas se insertan en una sola
+// sentencia. Un fallo a nivel de base de datos (p.ej. FK inexistente que
+// pasó la validación de forma) afecta al lote completo — Postgres no
+// permite commitear un INSERT multi-fila a medias — así que ese caso se
+// reporta como un único error de lote, no fila por fila.
+// ──────────────────────────────────────────────────────────────────────────────
+export interface BatchTaskResult {
+  created: number;
+  failed: { index: number; error: string }[];
+}
+
+export async function createTasksBatch(
+  workspaceId: string,
+  rows: BatchTaskRow[],
+): Promise<ActionResult<BatchTaskResult>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { ok: false, error: "No autorizado" };
+  }
+
+  if (rows.length === 0) {
+    return { ok: false, error: "No hay filas para crear" };
+  }
+  if (rows.length > 200) {
+    return { ok: false, error: "Máximo 200 tareas por lote" };
+  }
+
+  const valid: { index: number; row: BatchTaskRow }[] = [];
+  const failed: { index: number; error: string }[] = [];
+
+  rows.forEach((row, index) => {
+    const parsed = BatchTaskRowSchema.safeParse(row);
+    if (!parsed.success) {
+      failed.push({
+        index,
+        error: parsed.error.issues[0]?.message ?? "Datos inválidos",
+      });
+      return;
+    }
+    valid.push({ index, row: parsed.data });
+  });
+
+  if (valid.length === 0) {
+    return { ok: true, data: { created: 0, failed } };
+  }
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("tasks")
+    .insert(
+      valid.map(({ row }) => ({
+        title: row.title,
+        project_id: row.project_id ?? null,
+        assigned_to: row.assigned_to ?? null,
+        task_type: row.task_type ?? "follow_up",
+        due_at: row.due_at ?? null,
+        workspace_id: workspaceId,
+        created_by: user.id,
+      })),
+    )
+    .select("id");
+
+  if (insertError || !inserted) {
+    console.error("[createTasksBatch] Supabase error:", insertError?.message);
+    return {
+      ok: true,
+      data: {
+        created: 0,
+        failed: [
+          ...failed,
+          ...valid.map(({ index }) => ({ index, error: "Error al guardar en el lote" })),
+        ],
+      },
+    };
+  }
+
+  return { ok: true, data: { created: inserted.length, failed } };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -211,10 +305,12 @@ export async function deleteTask(taskId: string): Promise<ActionResult<null>> {
 // ──────────────────────────────────────────────────────────────────────────────
 // listTasks — workspace-wide (flat Tareas tab) or scoped to one project
 // ──────────────────────────────────────────────────────────────────────────────
+const TASK_SELECT = "*, project:projects(id,name)";
+
 export async function listTasks(
   workspaceId: string,
   filters: TaskFilters = {},
-): Promise<TaskRow[]> {
+): Promise<(TaskRow & { project: { id: string; name: string } | null })[]> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -224,7 +320,7 @@ export async function listTasks(
 
   let query = supabase
     .from("tasks")
-    .select("*")
+    .select(TASK_SELECT)
     .eq("workspace_id", workspaceId)
     .order("due_at", { ascending: true, nullsFirst: false });
 
@@ -244,5 +340,7 @@ export async function listTasks(
     return [];
   }
 
-  return data as TaskRow[];
+  // Same nested-select type-sync caveat as project-actions.ts: keep this
+  // cast aligned with TASK_SELECT by hand.
+  return data as unknown as (TaskRow & { project: { id: string; name: string } | null })[];
 }
