@@ -36,6 +36,15 @@ vi.mock("@/features/projects/services/task-actions", () => ({
   listTasks: (...args: unknown[]) => listTasks(...args),
 }));
 
+const createWhiteboard = vi.fn();
+const renameWhiteboard = vi.fn();
+const listWhiteboards = vi.fn();
+vi.mock("@/features/whiteboard/services/whiteboard-actions", () => ({
+  createWhiteboard: (...args: unknown[]) => createWhiteboard(...args),
+  renameWhiteboard: (...args: unknown[]) => renameWhiteboard(...args),
+  listWhiteboards: (...args: unknown[]) => listWhiteboards(...args),
+}));
+
 const logAudit = vi.fn();
 vi.mock("@/features/audit/services/audit-log", () => ({
   logAudit: (...args: unknown[]) => logAudit(...args),
@@ -44,6 +53,7 @@ vi.mock("@/features/audit/services/audit-log", () => ({
 const { buildClientTools } = await import("./client-tools");
 const { buildPipelineTools, CreateDealSchema } = await import("./pipeline-tools");
 const { buildProjectTools } = await import("./project-tools");
+const { buildWhiteboardTools } = await import("./whiteboard-tools");
 const { buildActionTools } = await import("./index");
 
 const ctx = { workspaceId: "ws1", actorUserId: "user1" };
@@ -59,6 +69,7 @@ describe("buildActionTools plan gating", () => {
       whatsappAgentEnabled: false,
       officeVirtualEnabled: false,
       hasVoiceAgent: false,
+      whiteboardEnabled: false,
     });
     expect(Object.keys(tools)).toHaveLength(0);
   });
@@ -69,6 +80,7 @@ describe("buildActionTools plan gating", () => {
       whatsappAgentEnabled: false,
       officeVirtualEnabled: false,
       hasVoiceAgent: false,
+      whiteboardEnabled: false,
     });
     expect(tools).toHaveProperty("create_client");
     expect(tools).toHaveProperty("create_project");
@@ -81,10 +93,82 @@ describe("buildActionTools plan gating", () => {
       whatsappAgentEnabled: true,
       officeVirtualEnabled: false,
       hasVoiceAgent: false,
+      whiteboardEnabled: false,
     });
     expect(tools).not.toHaveProperty("create_client");
     expect(tools).not.toHaveProperty("create_project");
+    expect(tools).not.toHaveProperty("create_whiteboard");
     expect(tools).toHaveProperty("create_deal");
+  });
+
+  it("includes whiteboard tools only when Gestión AND Pizarra are both enabled", () => {
+    const withoutWhiteboard = buildActionTools(ctx, {
+      gestionEnabled: true,
+      whatsappAgentEnabled: false,
+      officeVirtualEnabled: false,
+      hasVoiceAgent: false,
+      whiteboardEnabled: false,
+    });
+    expect(withoutWhiteboard).not.toHaveProperty("create_whiteboard");
+
+    const withWhiteboard = buildActionTools(ctx, {
+      gestionEnabled: true,
+      whatsappAgentEnabled: false,
+      officeVirtualEnabled: false,
+      hasVoiceAgent: false,
+      whiteboardEnabled: true,
+    });
+    expect(withWhiteboard).toHaveProperty("create_whiteboard");
+    expect(withWhiteboard).toHaveProperty("rename_whiteboard");
+    expect(withWhiteboard).toHaveProperty("search_whiteboards");
+  });
+});
+
+describe("whiteboard-tools", () => {
+  it("create_whiteboard succeeds and logs an audit entry", async () => {
+    createWhiteboard.mockResolvedValue({ ok: true, data: { id: "wb1" } });
+    const tools = buildWhiteboardTools(ctx);
+
+    const result = await tools.create_whiteboard.execute!(
+      { name: "Lluvia de ideas" },
+      { toolCallId: "t1", messages: [] } as never,
+    );
+
+    expect(result).toEqual({ ok: true, whiteboard_id: "wb1" });
+    expect(createWhiteboard).toHaveBeenCalledWith("ws1", "Lluvia de ideas");
+    expect(logAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "help_assistant.create_whiteboard", targetId: "wb1" }),
+    );
+  });
+
+  it("rename_whiteboard succeeds and logs an audit entry", async () => {
+    renameWhiteboard.mockResolvedValue({ ok: true, data: null });
+    const tools = buildWhiteboardTools(ctx);
+
+    const result = await tools.rename_whiteboard.execute!(
+      { whiteboard_id: "11111111-1111-4111-8111-111111111111", name: "Roadmap Q1" },
+      { toolCallId: "t1", messages: [] } as never,
+    );
+
+    expect(result).toEqual({ ok: true, whiteboard_id: "11111111-1111-4111-8111-111111111111" });
+    expect(logAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "help_assistant.rename_whiteboard" }),
+    );
+  });
+
+  it("search_whiteboards filters by name", async () => {
+    listWhiteboards.mockResolvedValue([
+      { id: "wb1", name: "Roadmap Q1", updated_at: "2026-08-01" },
+      { id: "wb2", name: "Notas reunión", updated_at: "2026-08-02" },
+    ]);
+    const tools = buildWhiteboardTools(ctx);
+
+    const result = await tools.search_whiteboards.execute!(
+      { query: "roadmap" },
+      { toolCallId: "t1", messages: [] } as never,
+    );
+
+    expect(result).toEqual([{ whiteboard_id: "wb1", name: "Roadmap Q1", updated_at: "2026-08-01" }]);
   });
 });
 

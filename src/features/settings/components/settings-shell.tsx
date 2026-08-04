@@ -7,12 +7,14 @@ import {
   Building2,
   CalendarClock,
   ClipboardList,
+  Lock,
   MessageSquareText,
   Plug,
   Users,
   Wrench,
   Zap,
 } from "lucide-react";
+import { useSettingsLockStore } from "@/features/settings/store/settings-lock-store";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/page-header";
 import { BusinessInfoForm } from "./business-info-form";
@@ -130,6 +132,27 @@ export function SettingsShell({
       : canConfigureAgents
         ? "agentes"
         : "negocio";
+
+  const settingsLocked = useSettingsLockStore((s) => s.locked);
+
+  if (settingsLocked) {
+    return (
+      <div className="page-shell max-w-[88rem] space-y-7">
+        <PageHeader
+          eyebrow="Configuración"
+          title="Ajustes de tu empresa"
+          description="Configura tus agentes, conecta herramientas y decide cómo trabaja OnyxLink para tu negocio."
+        />
+        <div className="surface-card flex flex-col items-center gap-3 py-20 text-center">
+          <Lock className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
+          <p className="max-w-sm text-sm text-muted-foreground">
+            Ajustes está bloqueado en este navegador. Pulsa el candado de
+            arriba para desbloquearlo y poder editar esta sección.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-shell max-w-[88rem] space-y-7">

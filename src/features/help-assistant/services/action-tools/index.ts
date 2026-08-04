@@ -1,6 +1,7 @@
 import { buildClientTools } from "./client-tools";
 import { buildPipelineTools } from "./pipeline-tools";
 import { buildProjectTools } from "./project-tools";
+import { buildWhiteboardTools } from "./whiteboard-tools";
 import type { HelpActionContext, HelpAssistantPlanContext } from "../../types";
 
 /**
@@ -14,5 +15,6 @@ export function buildActionTools(ctx: HelpActionContext, plan: HelpAssistantPlan
     ...(plan.gestionEnabled ? buildClientTools(ctx) : {}),
     ...(plan.gestionEnabled || plan.whatsappAgentEnabled ? buildPipelineTools(ctx) : {}),
     ...(plan.gestionEnabled ? buildProjectTools(ctx) : {}),
+    ...(plan.gestionEnabled && plan.whiteboardEnabled ? buildWhiteboardTools(ctx) : {}),
   };
 }

@@ -32,7 +32,7 @@ export async function askHelpAssistant(opts: {
   const { data: workspace } = await svc()
     .from("workspaces")
     .select(
-      "gestion_enabled, whatsapp_agent_enabled, office_virtual_enabled, vapi_assistant_id, help_assistant_actions_enabled",
+      "gestion_enabled, whatsapp_agent_enabled, office_virtual_enabled, vapi_assistant_id, help_assistant_actions_enabled, whiteboard_enabled",
     )
     .eq("id", opts.workspaceId)
     .maybeSingle();
@@ -41,6 +41,7 @@ export async function askHelpAssistant(opts: {
     | (WorkspacePlanFlags & {
         vapi_assistant_id: string | null;
         help_assistant_actions_enabled: boolean | null;
+        whiteboard_enabled: boolean | null;
       })
     | null) ?? {
     gestion_enabled: false,
@@ -48,6 +49,7 @@ export async function askHelpAssistant(opts: {
     office_virtual_enabled: false,
     vapi_assistant_id: null,
     help_assistant_actions_enabled: false,
+    whiteboard_enabled: false,
   };
 
   // Off by default for every workspace — only Onyxlink (superadmin, from
@@ -67,6 +69,7 @@ export async function askHelpAssistant(opts: {
     whatsappAgentEnabled: flags.whatsapp_agent_enabled !== false,
     officeVirtualEnabled: flags.office_virtual_enabled === true,
     hasVoiceAgent: Boolean(flags.vapi_assistant_id),
+    whiteboardEnabled: flags.whiteboard_enabled === true,
   };
 
   const actionCtx: HelpActionContext = { workspaceId: opts.workspaceId, actorUserId: opts.userId };

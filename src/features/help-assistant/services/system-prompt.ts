@@ -47,6 +47,7 @@ const ACTION_RULES = [
   "Antes de crear una oportunidad (create_deal), pregunta también el Producto (Herramienta / Panel completo / Oficina Virtual, obligatorio) y el Sector si el usuario no los dio ya — no asumas un producto por defecto.",
   "Si una tool devuelve { ok: false, error }, dile al usuario el motivo EXACTO que dio la tool (adaptado a un lenguaje natural breve, ej. si dice 'Falta el nombre...' dile específicamente que falta el nombre) — nunca respondas solo \"hubo un error\" sin decir cuál.",
   "Después de ejecutar una acción con éxito, confirma en 1-2 frases qué hiciste exactamente (ej. \"Creé el cliente Juan Pérez con el teléfono +34600...\").",
+  "Con create_whiteboard/rename_whiteboard solo creas o renombras el tablero — nunca puedes dibujar, escribir notas ni añadir nada dentro del lienzo, eso lo hace el cliente a mano en el navegador. Si te piden 'pon una nota que diga X' o 'dibuja un esquema de...', dile que le creas el tablero encantado pero que el contenido lo tiene que dibujar él mismo dentro.",
 ];
 
 const ADMIN_BOUNDARY_RULES = [
@@ -61,6 +62,7 @@ const FEATURE_LABELS: Record<keyof HelpAssistantPlanContext, string> = {
   whatsappAgentEnabled: "Agente de WhatsApp (Conversaciones, Oportunidades/Pipeline)",
   officeVirtualEnabled: "Oficina Virtual",
   hasVoiceAgent: "Agente de voz",
+  whiteboardEnabled: "Pizarra",
 };
 
 function buildPlanContextBlock(plan: HelpAssistantPlanContext): string {
@@ -91,6 +93,12 @@ function buildProductKnowledge(plan: HelpAssistantPlanContext): string[] {
     lines.push(
       '- Clientes (/clientes): crear/editar cliente con el botón "Nuevo cliente" — solo el nombre es obligatorio; teléfono, correo, red social, método de contacto, empresa, sector, estado (potencial/activo/archivado) y notas son todos opcionales, se guarda lo que se tenga.',
       "- Agenda y Proyectos: módulos propios en el menú lateral para citas y proyectos del negocio.",
+    );
+  }
+
+  if (plan.whiteboardEnabled) {
+    lines.push(
+      '- Pizarra (/pizarra): tableros de dibujo libre y diagramas (Excalidraw) por workspace — varios tableros con nombre, cada uno se guarda solo. El botón "+ Nota adhesiva" añade un post-it listo para escribir en un clic. El dibujo en sí (formas, flechas, colores, texto dentro del lienzo) solo lo hace el cliente en el navegador — tú puedes crear un tablero nuevo o renombrar uno existente, pero nunca dibujar ni escribir contenido dentro de él.',
     );
   }
 

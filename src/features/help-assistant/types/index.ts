@@ -24,6 +24,7 @@ export interface HelpAssistantPlanContext {
   whatsappAgentEnabled: boolean;
   officeVirtualEnabled: boolean;
   hasVoiceAgent: boolean;
+  whiteboardEnabled: boolean;
 }
 
 export interface ChatTurn {

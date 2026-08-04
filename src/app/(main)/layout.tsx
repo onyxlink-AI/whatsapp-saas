@@ -13,6 +13,7 @@ import { isOfficeVirtualEnabled } from "@/features/office-virtual/access";
 import { isWhiteboardEnabled } from "@/features/whiteboard/access";
 import { canSeeChatbotNav } from "@/features/chatbot/access";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { SettingsLockToggle } from "@/features/settings/components/settings-lock-toggle";
 import { GlobalSearchLauncher } from "@/features/search/components/global-search-launcher";
 import { HelpAssistantLauncher } from "@/features/help-assistant/components/help-assistant-launcher";
 import { Button } from "@/components/ui/button";
@@ -271,6 +272,7 @@ export default async function MainLayout({
                 hasPipeline={hasWhatsappAgent || hasGestion}
               />
             )}
+            <SettingsLockToggle />
             <ThemeToggle />
             <form action={logout} className="lg:hidden">
               <Button type="submit" variant="ghost" size="icon" aria-label="Cerrar sesión">

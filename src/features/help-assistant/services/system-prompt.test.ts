@@ -7,6 +7,7 @@ const fullPlan: HelpAssistantPlanContext = {
   whatsappAgentEnabled: true,
   officeVirtualEnabled: true,
   hasVoiceAgent: true,
+  whiteboardEnabled: true,
 };
 
 const gestionOnlyPlan: HelpAssistantPlanContext = {
@@ -14,6 +15,7 @@ const gestionOnlyPlan: HelpAssistantPlanContext = {
   whatsappAgentEnabled: false,
   officeVirtualEnabled: false,
   hasVoiceAgent: false,
+  whiteboardEnabled: false,
 };
 
 describe("buildHelpAssistantSystemPrompt (actions disabled — the default for every workspace)", () => {
@@ -106,6 +108,7 @@ describe("buildHelpAssistantSystemPrompt plan-gating", () => {
         whatsappAgentEnabled: false,
         officeVirtualEnabled: false,
         hasVoiceAgent: false,
+        whiteboardEnabled: false,
       },
       false,
     );
