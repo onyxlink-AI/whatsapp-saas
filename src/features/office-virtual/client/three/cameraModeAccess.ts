@@ -1,17 +1,16 @@
 import type { CameraMode } from './OfficeCanvas';
 
 export function resolveCameraModeForViewer(
-  isSuperAdmin: boolean,
+  _isSuperAdmin: boolean,
   savedMode: string | null,
 ): CameraMode {
-  if (savedMode === 'iso' || savedMode === '2d') return savedMode;
-  if (isSuperAdmin && savedMode === 'showcase') return 'showcase';
-  return isSuperAdmin ? 'showcase' : 'iso';
+  if (savedMode === 'showcase' || savedMode === 'iso' || savedMode === '2d') return savedMode;
+  return 'showcase';
 }
 
 export function allowCameraModeForViewer(
-  isSuperAdmin: boolean,
+  _isSuperAdmin: boolean,
   requestedMode: CameraMode,
 ): CameraMode {
-  return requestedMode === 'showcase' && !isSuperAdmin ? 'iso' : requestedMode;
+  return requestedMode;
 }

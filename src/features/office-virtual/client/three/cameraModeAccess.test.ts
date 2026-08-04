@@ -2,15 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { allowCameraModeForViewer, resolveCameraModeForViewer } from './cameraModeAccess';
 
 describe('camera mode access', () => {
-  it('starts superadministration in Presentation and lets it restore that view', () => {
+  it('starts every role in Presentation and lets it restore that view', () => {
     expect(resolveCameraModeForViewer(true, null)).toBe('showcase');
     expect(resolveCameraModeForViewer(true, 'showcase')).toBe('showcase');
-  });
-
-  it('never exposes Presentation to a client, even when localStorage remembers it', () => {
-    expect(resolveCameraModeForViewer(false, null)).toBe('iso');
-    expect(resolveCameraModeForViewer(false, 'showcase')).toBe('iso');
-    expect(allowCameraModeForViewer(false, 'showcase')).toBe('iso');
+    expect(resolveCameraModeForViewer(false, null)).toBe('showcase');
+    expect(resolveCameraModeForViewer(false, 'showcase')).toBe('showcase');
+    expect(allowCameraModeForViewer(false, 'showcase')).toBe('showcase');
   });
 
   it('keeps Operative and 2D available to both roles', () => {

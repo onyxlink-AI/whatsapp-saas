@@ -81,7 +81,7 @@ export function AuthHeroMotion() {
           }}
         >
           <Image
-            src="/brand/onyxlink-robot-integrated-v2.png"
+            src="/brand/onyxlink-robot-integrated-v3.png"
             alt=""
             fill
             sizes="(min-width: 1024px) 58vw, 0px"

@@ -115,7 +115,7 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, isDemoPresen
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem('onyxlink-office-camera-mode');
+    const saved = window.localStorage.getItem('onyxlink-office-camera-mode-v2');
     if (saved === 'showcase' || saved === 'iso' || saved === '2d') {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-only: localStorage does not exist during SSR; the saved preference is sanitized by role before it can update the camera.
       setCameraMode(resolveCameraModeForViewer(isSuperAdmin, saved));
@@ -125,7 +125,7 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, isDemoPresen
   const changeCameraMode = (mode: CameraMode) => {
     const allowedMode = allowCameraModeForViewer(isSuperAdmin, mode);
     setCameraMode(allowedMode);
-    window.localStorage.setItem('onyxlink-office-camera-mode', allowedMode);
+    window.localStorage.setItem('onyxlink-office-camera-mode-v2', allowedMode);
   };
 
   // Same actor identity (real user, real role, real workspace) threaded into
@@ -302,7 +302,7 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, isDemoPresen
           isOfficeView={activeView === 'oficina'}
           cameraMode={cameraMode}
           onCameraModeChange={changeCameraMode}
-          canUsePresentation={isSuperAdmin}
+          canUsePresentation
           isDemoMode={isDemoPresentation}
           onOpenSearch={() => setActiveView('buscar')}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
@@ -327,11 +327,9 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, isDemoPresen
                 Arrastra · pellizca para acercar
               </div>
               <div className="onyx-mobile-camera-controls" role="group" aria-label="Vista de la oficina">
-                {isSuperAdmin && (
-                  <button onClick={() => changeCameraMode('showcase')} aria-pressed={cameraMode === 'showcase'} aria-label="Vista Presentación" className={cameraMode === 'showcase' ? 'is-active' : ''}>
-                    <Sparkles aria-hidden="true" />
-                  </button>
-                )}
+                <button onClick={() => changeCameraMode('showcase')} aria-pressed={cameraMode === 'showcase'} aria-label="Vista Presentación" className={cameraMode === 'showcase' ? 'is-active' : ''}>
+                  <Sparkles aria-hidden="true" />
+                </button>
                 <button onClick={() => changeCameraMode('iso')} aria-pressed={cameraMode === 'iso'} aria-label="Vista operativa" className={cameraMode === 'iso' ? 'is-active' : ''}>
                   <Box aria-hidden="true" />
                 </button>
