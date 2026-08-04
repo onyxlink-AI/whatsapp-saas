@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   Building2,
   Plus,
-  Wifi,
-  WifiOff,
   ExternalLink,
   Settings,
   Trash2,
@@ -16,6 +14,9 @@ import {
   Phone,
   Network,
   Bot,
+  PenTool,
+  Sparkles,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -40,30 +41,55 @@ const PRODUCT_META = [
   { key: "voice", label: "Asistente de Voz", Icon: Phone } as const,
   { key: "officeVirtual", label: "Oficina Virtual", Icon: Network } as const,
   { key: "chatbot", label: "Chatbot", Icon: Bot } as const,
+  { key: "whiteboard", label: "Pizarra", Icon: PenTool } as const,
 ];
 
 /** Compact "what's contracted" row — same 5 product flags every other surface reads, never a separate computation. */
 function ProductBadges({ products }: { products: WorkspaceWithStats["products"] }) {
+  const activeProducts = PRODUCT_META.filter(({ key }) => products[key]);
   return (
-    <div className="mt-1.5 flex flex-wrap items-center gap-1">
-      {PRODUCT_META.map(({ key, label, Icon }) => {
-        const active = products[key];
-        return (
-          <span
-            key={key}
-            title={active ? `${label}: contratado` : `${label}: no contratado`}
-            className={cn(
-              "inline-flex h-5 w-5 items-center justify-center rounded-full border",
-              active
-                ? "border-success/30 bg-success/10 text-success"
-                : "border-border/60 text-muted-foreground/40",
-            )}
-          >
-            <Icon className="h-3 w-3" aria-hidden="true" />
-            <span className="sr-only">{label}: {active ? "contratado" : "no contratado"}</span>
-          </span>
-        );
-      })}
+    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      {activeProducts.length === 0 && (
+        <span className="text-[11px] text-muted-foreground">Sin productos activos</span>
+      )}
+      {activeProducts.map(({ key, label, Icon }) => (
+        <span
+          key={key}
+          className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/[0.07] px-2 py-0.5 text-[10px] font-medium text-foreground"
+        >
+          <Icon className="h-3 w-3 text-primary" aria-hidden="true" />
+          {label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function AccountStatus({ workspace }: { workspace: WorkspaceWithStats }) {
+  const activeAddons = Object.values(workspace.addons).filter(Boolean).length;
+  const ready = workspace.readiness_issues.length === 0;
+  return (
+    <div className="space-y-1.5">
+      <Badge
+        variant="outline"
+        className={cn(
+          "w-fit gap-1",
+          ready
+            ? "border-success/30 bg-success/10 text-success"
+            : "border-warning/30 bg-warning/10 text-warning",
+        )}
+      >
+        {ready ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+        {ready ? "Preparado" : `${workspace.readiness_issues.length} pendiente${workspace.readiness_issues.length > 1 ? "s" : ""}`}
+      </Badge>
+      {workspace.readiness_issues.map((issue) => (
+        <p key={issue} className="max-w-40 text-[10px] leading-tight text-muted-foreground">{issue}</p>
+      ))}
+      {activeAddons > 0 && (
+        <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
+          <Sparkles className="h-3 w-3 text-primary" /> {activeAddons} mejora{activeAddons > 1 ? "s" : ""} IA
+        </p>
+      )}
     </div>
   );
 }
@@ -163,7 +189,7 @@ export function WorkspacesTable({
             "Empresa",
             "Miembros",
             "Conversaciones",
-            "YCloud",
+            "Estado",
             "Tokens IA (30d)",
             "Creado",
             "",
@@ -246,28 +272,12 @@ export function WorkspacesTable({
               </p>
             </div>
 
-            {/* YCloud badge */}
+            {/* Commercial/configuration readiness */}
             <div className="flex items-center gap-2 md:block">
               <span className="text-xs text-muted-foreground md:hidden">
-                YCloud:
+                Estado:
               </span>
-              {workspace.ycloud_connected ? (
-                <Badge
-                  variant="outline"
-                  className="border-success/30 bg-success/10 text-success gap-1 w-fit"
-                >
-                  <Wifi className="h-3 w-3" aria-hidden="true" />
-                  Conectado
-                </Badge>
-              ) : (
-                <Badge
-                  variant="outline"
-                  className="border-border text-muted-foreground gap-1 w-fit"
-                >
-                  <WifiOff className="h-3 w-3" aria-hidden="true" />
-                  No conectado
-                </Badge>
-              )}
+              <AccountStatus workspace={workspace} />
             </div>
 
             {/* Tokens IA (30d) */}

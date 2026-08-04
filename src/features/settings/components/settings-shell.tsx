@@ -13,6 +13,10 @@ import {
   Users,
   Wrench,
   Zap,
+  Boxes,
+  Sparkles,
+  CheckCircle2,
+  CircleAlert,
 } from "lucide-react";
 import { useSettingsLockStore } from "@/features/settings/store/settings-lock-store";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -29,6 +33,7 @@ import { OfficeVirtualToggle } from "./office-virtual-toggle";
 import { ChatbotToggle } from "./chatbot-toggle";
 import { HelpAssistantActionsToggle } from "./help-assistant-actions-toggle";
 import { WhiteboardToggle } from "./whiteboard-toggle";
+import { WhatsappAgentToggle } from "./whatsapp-agent-toggle";
 import { ToolsCatalog } from "./tools-catalog";
 import { IntegrationsTab } from "./integrations-tab";
 import { TeamTab } from "./team-tab";
@@ -74,6 +79,30 @@ interface Props {
   initialChatbotEnabled?: boolean;
   initialHelpAssistantActionsEnabled?: boolean;
   initialWhiteboardEnabled?: boolean;
+}
+
+function ReadinessItem({
+  ready,
+  label,
+  detail,
+}: {
+  ready: boolean;
+  label: string;
+  detail: string;
+}) {
+  return (
+    <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
+      {ready ? (
+        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+      ) : (
+        <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+      )}
+      <div>
+        <p className="text-xs font-semibold text-foreground">{label}: {ready ? "listo" : "pendiente"}</p>
+        <p className="text-[11px] leading-snug text-muted-foreground">{detail}</p>
+      </div>
+    </div>
+  );
 }
 
 export function SettingsShell({
@@ -259,37 +288,73 @@ export function SettingsShell({
 
           <TabsContent value="negocio" className="mt-0">
             <div className="surface-card space-y-6 p-5 sm:p-6">
-            {isSuperAdmin && (
-              <OfficeVirtualToggle
-                workspaceId={workspaceId}
-                initialEnabled={initialOfficeVirtualEnabled}
-              />
-            )}
-            {isSuperAdmin && (
-              <ChatbotToggle
-                workspaceId={workspaceId}
-                initialEnabled={initialChatbotEnabled}
-              />
-            )}
-            {isSuperAdmin && (
-              <HelpAssistantActionsToggle
-                workspaceId={workspaceId}
-                initialEnabled={initialHelpAssistantActionsEnabled}
-              />
-            )}
-            {isSuperAdmin && (
-              <WhiteboardToggle
-                workspaceId={workspaceId}
-                initialEnabled={initialWhiteboardEnabled}
-              />
-            )}
-            <GestionToggle
-              workspaceId={workspaceId}
-              initialEnabled={initialGestionEnabled}
-              isSuperAdmin={isSuperAdmin}
-            />
+            <section className="space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                  <Boxes className="h-4 w-4" aria-hidden="true" />
+                </div>
+                <div>
+                  <h2 className="font-display text-base font-semibold">Productos del cliente</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Define qué áreas forman parte de su panel. Solo OnyxLink puede cambiar estos productos.
+                  </p>
+                </div>
+              </div>
+              <div className="grid gap-3 xl:grid-cols-2">
+                {isSuperAdmin && (
+                  <WhatsappAgentToggle workspaceId={workspaceId} initialEnabled={hasWhatsappAgent} />
+                )}
+                <GestionToggle
+                  workspaceId={workspaceId}
+                  initialEnabled={initialGestionEnabled}
+                  isSuperAdmin={isSuperAdmin}
+                />
+                {isSuperAdmin && (
+                  <OfficeVirtualToggle
+                    workspaceId={workspaceId}
+                    initialEnabled={initialOfficeVirtualEnabled}
+                  />
+                )}
+                {isSuperAdmin && (
+                  <ChatbotToggle
+                    workspaceId={workspaceId}
+                    initialEnabled={initialChatbotEnabled}
+                  />
+                )}
+                {isSuperAdmin && (
+                  <WhiteboardToggle
+                    workspaceId={workspaceId}
+                    initialEnabled={initialWhiteboardEnabled}
+                  />
+                )}
+                <VapiAssistantField
+                  workspaceId={workspaceId}
+                  initialAssistantId={initialVapiAssistantId}
+                  initialStatus={initialVapiStatus}
+                  isSuperAdmin={isSuperAdmin}
+                />
+              </div>
+              {isSuperAdmin && initialWhiteboardEnabled && !initialGestionEnabled && (
+                <div className="flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
+                  <CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  Pizarra necesita OnyxLink Gestión porque ahora se encuentra dentro de Proyectos.
+                </div>
+              )}
+            </section>
             {isFullMode && (
-              <>
+              <section className="space-y-4 border-t border-border/60 pt-6">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                    <Sparkles className="h-4 w-4" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h2 className="font-display text-base font-semibold">Mejoras inteligentes</h2>
+                    <p className="text-xs text-muted-foreground">
+                      Capacidades adicionales del agente y su estado de preparación.
+                    </p>
+                  </div>
+                </div>
+                <div className="grid gap-3 xl:grid-cols-2">
                 <AdvancedMemoryToggle
                   workspaceId={workspaceId}
                   initialEnabled={initialAdvancedMemoryEnabled}
@@ -305,20 +370,37 @@ export function SettingsShell({
                   initialEnabled={initialColdLeadRecoveryEnabled}
                   isSuperAdmin={isSuperAdmin}
                 />
-                <VapiAssistantField
-                  workspaceId={workspaceId}
-                  initialAssistantId={initialVapiAssistantId}
-                  initialStatus={initialVapiStatus}
-                  isSuperAdmin={isSuperAdmin}
-                />
                 <CrossChannelMemoryToggle
                   workspaceId={workspaceId}
                   initialEnabled={initialCrossChannelMemoryEnabled}
                   isSuperAdmin={isSuperAdmin}
                 />
-              </>
+                {isSuperAdmin && (
+                  <HelpAssistantActionsToggle
+                    workspaceId={workspaceId}
+                    initialEnabled={initialHelpAssistantActionsEnabled}
+                  />
+                )}
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                  <ReadinessItem ready={hasWhatsappAgent} label="Agente de WhatsApp" detail="Necesario para memoria, pipeline y recuperación" />
+                  <ReadinessItem ready={initialAdvancedMemoryEnabled} label="Memoria avanzada" detail="Necesaria para compartir memoria entre canales" />
+                  <ReadinessItem ready={initialVapiStatus === "verified"} label="Agente de voz" detail="Necesario para memoria entre canales" />
+                </div>
+              </section>
             )}
-            <BusinessInfoForm workspaceId={workspaceId} initial={biForForm} />
+            <section className="space-y-4 border-t border-border/60 pt-6">
+              <div className="flex items-start gap-3">
+                <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                  <Building2 className="h-4 w-4" aria-hidden="true" />
+                </div>
+                <div>
+                  <h2 className="font-display text-base font-semibold">Perfil del negocio</h2>
+                  <p className="text-xs text-muted-foreground">Información que contextualiza el trabajo de OnyxLink y sus agentes.</p>
+                </div>
+              </div>
+              <BusinessInfoForm workspaceId={workspaceId} initial={biForForm} />
+            </section>
             </div>
           </TabsContent>
 

@@ -7,7 +7,7 @@ import {
 import { getAllWorkspacesWithStats } from "@/features/agency/services/agency-actions";
 import { WorkspacesTable } from "@/features/agency/components/workspaces-table";
 import { formatTokens, ESTIMATED_USD_PER_MILLION_TOKENS } from "@/features/agency/lib/cost-format";
-import { Building2, Users, MessageCircle, Wifi, Zap, DollarSign } from "lucide-react";
+import { Building2, Users, MessageCircle, Wifi, Zap, DollarSign, PackageCheck, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
 
@@ -48,6 +48,13 @@ export default async function AgencyWorkspacesPage() {
     0,
   );
   const connectedCount = workspaces.filter((w) => w.ycloud_connected).length;
+  const activeProducts = workspaces.reduce(
+    (sum, workspace) => sum + Object.values(workspace.products).filter(Boolean).length,
+    0,
+  );
+  const accountsRequiringAttention = workspaces.filter(
+    (workspace) => workspace.readiness_issues.length > 0,
+  ).length;
   const totalTokensToday = workspaces.reduce((sum, w) => sum + w.tokens_today, 0);
   const totalTokens30d = workspaces.reduce((sum, w) => sum + w.tokens_30d, 0);
   const estimatedCost30d = (totalTokens30d / 1_000_000) * ESTIMATED_USD_PER_MILLION_TOKENS;
@@ -69,6 +76,19 @@ export default async function AgencyWorkspacesPage() {
       label: "Personas con acceso",
       value: String(totalMembers),
       icon: Users,
+    },
+    {
+      label: "Productos activos",
+      value: String(activeProducts),
+      icon: PackageCheck,
+      caption: "Suma de servicios contratados",
+    },
+    {
+      label: "Requieren atención",
+      value: String(accountsRequiringAttention),
+      icon: TriangleAlert,
+      caption: accountsRequiringAttention === 0 ? "Todas las cuentas están preparadas" : "Configuraciones pendientes",
+      accent: accountsRequiringAttention > 0,
     },
     {
       label: "Conversaciones totales",
@@ -104,7 +124,7 @@ export default async function AgencyWorkspacesPage() {
       />
 
       {/* KPI cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {kpis.map(({ label, value, icon: Icon, caption, accent }) => (
           <div
             key={label}

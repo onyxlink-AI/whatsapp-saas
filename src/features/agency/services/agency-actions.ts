@@ -390,7 +390,7 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
   const { data: workspaces, error: wsError } = await service
     .from("workspaces")
     .select(
-      "id, name, slug, created_at, whatsapp_agent_enabled, gestion_enabled, office_virtual_enabled, chatbot_enabled, vapi_assistant_id",
+      "id, name, slug, created_at, whatsapp_agent_enabled, gestion_enabled, office_virtual_enabled, chatbot_enabled, whiteboard_enabled, vapi_assistant_id, advanced_memory_enabled, pipeline_ai_enabled, cold_lead_recovery_enabled, cross_channel_memory_enabled, help_assistant_actions_enabled",
     )
     .order("created_at", { ascending: false });
 
@@ -498,27 +498,55 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
       gestion_enabled: boolean | null;
       office_virtual_enabled: boolean | null;
       chatbot_enabled: boolean | null;
+      whiteboard_enabled: boolean | null;
       vapi_assistant_id: string | null;
+      advanced_memory_enabled: boolean | null;
+      pipeline_ai_enabled: boolean | null;
+      cold_lead_recovery_enabled: boolean | null;
+      cross_channel_memory_enabled: boolean | null;
+      help_assistant_actions_enabled: boolean | null;
     }[]
-  ).map((w) => ({
-    id: w.id,
-    name: w.name,
-    slug: w.slug,
-    created_at: w.created_at,
-    member_count: memberMap.get(w.id) ?? 0,
-    conversation_count: convMap.get(w.id) ?? 0,
-    ycloud_connected: ycloudMap.get(w.id) ?? false,
-    tokens_today: tokensTodayMap.get(w.id) ?? 0,
-    tokens_30d: tokens30dMap.get(w.id) ?? 0,
-    has_recent_cost_alert: alertMap.get(w.id) ?? false,
-    products: {
-      whatsappAgent: w.whatsapp_agent_enabled !== false,
-      gestion: w.gestion_enabled === true,
-      voice: w.vapi_assistant_id !== null,
-      officeVirtual: w.office_virtual_enabled === true,
-      chatbot: w.chatbot_enabled === true,
-    },
-  }));
+  ).map((w) => {
+    const whatsappAgent = w.whatsapp_agent_enabled !== false;
+    const gestion = w.gestion_enabled === true;
+    const voice = w.vapi_assistant_id !== null;
+    const whiteboard = w.whiteboard_enabled === true;
+    const readinessIssues: string[] = [];
+    if (whatsappAgent && !(ycloudMap.get(w.id) ?? false)) readinessIssues.push("Conectar WhatsApp");
+    if (whiteboard && !gestion) readinessIssues.push("Pizarra necesita Gestión");
+    if (w.cross_channel_memory_enabled === true && (!voice || w.advanced_memory_enabled !== true)) {
+      readinessIssues.push("Completar memoria entre canales");
+    }
+
+    return {
+      id: w.id,
+      name: w.name,
+      slug: w.slug,
+      created_at: w.created_at,
+      member_count: memberMap.get(w.id) ?? 0,
+      conversation_count: convMap.get(w.id) ?? 0,
+      ycloud_connected: ycloudMap.get(w.id) ?? false,
+      tokens_today: tokensTodayMap.get(w.id) ?? 0,
+      tokens_30d: tokens30dMap.get(w.id) ?? 0,
+      has_recent_cost_alert: alertMap.get(w.id) ?? false,
+      products: {
+        whatsappAgent,
+        gestion,
+        voice,
+        officeVirtual: w.office_virtual_enabled === true,
+        chatbot: w.chatbot_enabled === true,
+        whiteboard,
+      },
+      addons: {
+        advancedMemory: w.advanced_memory_enabled === true,
+        pipelineAi: w.pipeline_ai_enabled === true,
+        coldLeadRecovery: w.cold_lead_recovery_enabled === true,
+        crossChannelMemory: w.cross_channel_memory_enabled === true,
+        helpAssistantActions: w.help_assistant_actions_enabled === true,
+      },
+      readiness_issues: readinessIssues,
+    };
+  });
 
   return { workspaces: result };
 }

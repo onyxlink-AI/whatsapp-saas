@@ -9,6 +9,9 @@ import { listTasks } from "@/features/projects/services/task-actions";
 import { ProjectsBoard } from "@/features/projects/components/projects-board";
 import { TasksTab } from "@/features/projects/components/tasks-tab";
 import { AgendaView } from "@/features/projects/components/agenda-view";
+import { listWhiteboards } from "@/features/whiteboard/services/whiteboard-actions";
+import { WhiteboardList } from "@/features/whiteboard/components/whiteboard-list";
+import { isWhiteboardEnabled } from "@/features/whiteboard/access";
 import {
   Tabs,
   TabsContent,
@@ -53,7 +56,7 @@ export default async function ProyectosPage({
 
   const { data: workspaceFlagsRow } = await supabase
     .from("workspaces")
-    .select("gestion_enabled")
+    .select("gestion_enabled, whiteboard_enabled")
     .eq("id", membership.workspace_id)
     .maybeSingle();
 
@@ -69,10 +72,13 @@ export default async function ProyectosPage({
 
   const { open } = await searchParams;
 
-  const [projects, members, tasks] = await Promise.all([
+  const hasWhiteboard = isWhiteboardEnabled(workspaceFlagsRow);
+
+  const [projects, members, tasks, whiteboards] = await Promise.all([
     getProjectsForBoard(membership.workspace_id),
     listWorkspaceMembers(membership.workspace_id),
     listTasks(membership.workspace_id),
+    hasWhiteboard ? listWhiteboards(membership.workspace_id) : Promise.resolve([]),
   ]);
 
   return (
@@ -83,10 +89,11 @@ export default async function ProyectosPage({
         description="Organiza entregas, tareas y agenda sin perder de vista el avance del equipo."
       />
       <Tabs defaultValue="tablero" className="flex flex-col h-full">
-        <TabsList className="surface-card h-11 w-fit bg-card p-1">
+        <TabsList className="surface-card h-11 max-w-full justify-start overflow-x-auto bg-card p-1">
           <TabsTrigger value="tablero">📋 Tablero</TabsTrigger>
           <TabsTrigger value="tareas">✅ Tareas</TabsTrigger>
           <TabsTrigger value="agenda">📅 Agenda</TabsTrigger>
+          {hasWhiteboard && <TabsTrigger value="pizarra">✏️ Pizarra</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="tablero" className="flex-1 mt-3">
@@ -109,6 +116,15 @@ export default async function ProyectosPage({
         <TabsContent value="agenda" className="flex-1 mt-3">
           <AgendaView workspaceId={membership.workspace_id} />
         </TabsContent>
+
+        {hasWhiteboard && (
+          <TabsContent value="pizarra" className="flex-1 mt-3">
+            <WhiteboardList
+              workspaceId={membership.workspace_id}
+              initialBoards={whiteboards}
+            />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

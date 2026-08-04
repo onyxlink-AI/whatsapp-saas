@@ -66,7 +66,8 @@ export function WhiteboardToggle({ workspaceId, initialEnabled }: Props) {
           </Label>
           <p className="mt-1 text-xs text-muted-foreground max-w-md">
             Tableros con dibujo libre y diagramas (como Miro), guardados por
-            cliente. Desactivado, la sección no aparece en su menú.
+            cliente. Al activarla aparece como una vista dentro de Proyectos y
+            requiere OnyxLink Gestión.
           </p>
         </div>
       </div>

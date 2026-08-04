@@ -12,14 +12,24 @@ export interface WorkspaceWithStats {
   tokens_30d: number;
   /** true when a cost_alert event fired for this workspace in the last 30 days */
   has_recent_cost_alert: boolean;
-  /** Which of the 5 products this workspace has contracted, straight from the same `workspaces` flags every other surface reads — so the agency table can never disagree with what the client actually sees. */
+  /** Contracted products, read from the same workspace flags that build the client navigation. */
   products: {
     whatsappAgent: boolean;
     gestion: boolean;
     voice: boolean;
     officeVirtual: boolean;
     chatbot: boolean;
+    whiteboard: boolean;
   };
+  addons: {
+    advancedMemory: boolean;
+    pipelineAi: boolean;
+    coldLeadRecovery: boolean;
+    crossChannelMemory: boolean;
+    helpAssistantActions: boolean;
+  };
+  /** Human-readable commercial/configuration issues for the agency overview. */
+  readiness_issues: string[];
 }
 
 export type UseCase = "setter" | "soporte" | "agendamiento" | "general";

@@ -10,7 +10,6 @@ import {
 } from "@/features/workspace/services/active-workspace";
 import { WorkspaceSwitcher } from "@/features/workspace/components/workspace-switcher";
 import { isOfficeVirtualEnabled } from "@/features/office-virtual/access";
-import { isWhiteboardEnabled } from "@/features/whiteboard/access";
 import { canSeeChatbotNav } from "@/features/chatbot/access";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SettingsLockToggle } from "@/features/settings/components/settings-lock-toggle";
@@ -56,7 +55,7 @@ export default async function MainLayout({
         await supabase
           .from("workspaces")
           .select(
-            "vapi_assistant_id, whatsapp_agent_enabled, gestion_enabled, office_virtual_enabled, chatbot_enabled, whiteboard_enabled",
+            "vapi_assistant_id, whatsapp_agent_enabled, gestion_enabled, office_virtual_enabled, chatbot_enabled",
           )
           .eq("id", activeId)
           .maybeSingle()
@@ -67,7 +66,6 @@ export default async function MainLayout({
   const hasWhatsappAgent = activeWorkspaceRow?.whatsapp_agent_enabled !== false;
   const hasGestion = activeWorkspaceRow?.gestion_enabled === true;
   const hasOfficeVirtual = isOfficeVirtualEnabled(activeWorkspaceRow);
-  const hasWhiteboard = isWhiteboardEnabled(activeWorkspaceRow);
   const hasChatbot = canSeeChatbotNav(isSuperAdmin, activeWorkspaceRow);
 
   const navItems: AppNavItem[] = [];
@@ -120,15 +118,6 @@ export default async function MainLayout({
       icon: "projects",
       section: "Gestión",
       mobilePrimary: true,
-    });
-  }
-
-  if (hasWhiteboard) {
-    navItems.push({
-      href: "/pizarra",
-      label: "Pizarra",
-      icon: "whiteboard",
-      section: "Gestión",
     });
   }
 
