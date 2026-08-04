@@ -133,7 +133,8 @@ export default function OfficeCanvas({ rooms, selectedId, onSelect, onHover, cam
           selectedId={selectedId}
           onSelect={onSelect}
           onHover={onHover}
-          presentation={hasPresentationStyle}
+          presentation={isShowcase}
+          presentationStyle={hasPresentationStyle}
         />
         <ContactShadows
           position={[0, -0.12, 4]}

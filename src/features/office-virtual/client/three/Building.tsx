@@ -10,6 +10,7 @@ type Props = {
   onSelect: (id: string) => void;
   onHover: (id: string | null) => void;
   presentation?: boolean;
+  presentationStyle?: boolean;
 };
 
 const DESK_LOCAL_Z = -ROOM_D / 2 + 1.25;
@@ -17,7 +18,7 @@ const WORK_CHAIR_LOCAL_Z = DESK_LOCAL_Z + 1.05;
 const PATROL_LOCAL_Z = 0.8;
 const PATROL_AMPLITUDE = 2.75;
 
-export default function Building({ rooms, selectedId, onSelect, onHover, presentation = false }: Props) {
+export default function Building({ rooms, selectedId, onSelect, onHover, presentation = false, presentationStyle = presentation }: Props) {
   const frontRoomZ = roomCenter(0)[2];
   const corridorZ = frontRoomZ + ROOM_D / 2 + GAP / 2;
   const visibleRooms = presentation ? buildPresentationRoomSlots(rooms) : rooms;
@@ -28,9 +29,9 @@ export default function Building({ rooms, selectedId, onSelect, onHover, present
       <mesh position={[0, -0.2, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[BUILDING_WIDTH + 20, BUILDING_DEPTH + 20]} />
         <meshStandardMaterial
-          color={presentation ? '#020808' : '#d9ddda'}
-          roughness={presentation ? 0.68 : 0.88}
-          metalness={presentation ? 0.22 : 0}
+          color={presentationStyle ? '#020808' : '#d9ddda'}
+          roughness={presentationStyle ? 0.68 : 0.88}
+          metalness={presentationStyle ? 0.22 : 0}
         />
       </mesh>
 
@@ -38,20 +39,20 @@ export default function Building({ rooms, selectedId, onSelect, onHover, present
       <mesh position={[0, -0.115, corridorZ]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[BUILDING_WIDTH + 1.2, 1.15]} />
         <meshStandardMaterial
-          color={presentation ? '#081414' : '#c4cbc8'}
-          metalness={presentation ? 0.3 : 0.06}
+          color={presentationStyle ? '#081414' : '#c4cbc8'}
+          metalness={presentationStyle ? 0.3 : 0.06}
           roughness={0.76}
         />
       </mesh>
       {[-1.5 * SPACING_X, -0.5 * SPACING_X, 0.5 * SPACING_X, 1.5 * SPACING_X].map((x) => (
         <mesh key={x} position={[x, -0.105, corridorZ]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[0.055, 1.05]} />
-          <meshBasicMaterial color={presentation ? '#397C7B' : '#8fa29d'} />
+          <meshBasicMaterial color={presentationStyle ? '#397C7B' : '#8fa29d'} />
         </mesh>
       ))}
       <mesh position={[0, -0.1, corridorZ]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[ROOM_W, 0.035]} />
-        <meshBasicMaterial color={presentation ? '#83CFCE' : '#879995'} />
+        <meshBasicMaterial color={presentationStyle ? '#83CFCE' : '#879995'} />
       </mesh>
 
       {visibleRooms.map((slot, i) => (
@@ -60,7 +61,7 @@ export default function Building({ rooms, selectedId, onSelect, onHover, present
           agent={slot.room}
           center={roomCenter(i)}
           occupied={slot.occupant !== null}
-          presentation={presentation}
+          presentation={presentationStyle}
         />
       ))}
 
@@ -76,7 +77,7 @@ export default function Building({ rooms, selectedId, onSelect, onHover, present
             patrolAmplitude={PATROL_AMPLITUDE}
             phase={i * 1.3}
             seated={isWorking}
-            presentation={presentation}
+            presentation={presentationStyle}
             isSelected={slot.seatId === selectedId}
             onSelect={onSelect}
             onHover={onHover}
