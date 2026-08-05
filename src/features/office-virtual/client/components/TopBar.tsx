@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Bell, Box, Building2, Gauge, ListTodo, Map, Menu, Plus, Search, Sparkles, UsersRound, X } from 'lucide-react';
+import { Activity, Bell, Box, Building2, ListTodo, Map, Menu, Plus, Search, Sparkles, UsersRound, X } from 'lucide-react';
 import type { PendingApproval } from '../hooks/useAgentChat';
 import type { CameraMode } from '../three/OfficeCanvas';
 import type { ViewId } from './Sidebar';
@@ -23,7 +23,7 @@ type Props = {
 
 const PRIMARY_VIEWS = [
   { id: 'oficina', label: 'Oficina', icon: Building2 },
-  { id: 'panel', label: 'Resumen', icon: Gauge },
+  { id: 'actividad', label: 'Actividad', icon: Activity },
   { id: 'agentes', label: 'Equipo', icon: UsersRound },
   { id: 'tareas', label: 'Tareas', icon: ListTodo },
 ] as const;
@@ -78,7 +78,6 @@ export default function TopBar({
         </button>
 
         <div className="min-w-0">
-          <div className="text-[9px] uppercase tracking-[0.14em] text-[#A0DCDB]/55 hidden sm:block">Oficina Virtual</div>
           <h1 className="text-[13px] sm:text-sm font-semibold text-white/90 truncate">{viewTitle}</h1>
         </div>
 
@@ -89,7 +88,7 @@ export default function TopBar({
           </span>
         )}
 
-        <nav className="onyx-primary-nav hidden lg:flex items-center gap-1 ml-3" aria-label="Secciones principales de Oficina Virtual">
+        <nav className="onyx-primary-nav hidden lg:flex items-center gap-1 ml-2" aria-label="Secciones principales de Oficina Virtual">
           {PRIMARY_VIEWS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}

@@ -109,21 +109,22 @@ const VIEW_TITLES: Record<ViewId, string> = {
 };
 
 export default function OfficeVirtualApp({ userEmail, isSuperAdmin, isDemoPresentation, workspaceId }: Props) {
+  const canUsePresentation = isSuperAdmin || isDemoPresentation;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<ViewId>('oficina');
-  const [cameraMode, setCameraMode] = useState<CameraMode>(() => resolveCameraModeForViewer(isSuperAdmin, null));
+  const [cameraMode, setCameraMode] = useState<CameraMode>(() => resolveCameraModeForViewer(canUsePresentation, null));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const saved = window.localStorage.getItem('onyxlink-office-camera-mode-v2');
     if (saved === 'showcase' || saved === 'iso' || saved === '2d') {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-only: localStorage does not exist during SSR; the saved preference is sanitized by role before it can update the camera.
-      setCameraMode(resolveCameraModeForViewer(isSuperAdmin, saved));
+      setCameraMode(resolveCameraModeForViewer(canUsePresentation, saved));
     }
-  }, [isSuperAdmin]);
+  }, [canUsePresentation]);
 
   const changeCameraMode = (mode: CameraMode) => {
-    const allowedMode = allowCameraModeForViewer(isSuperAdmin, mode);
+    const allowedMode = allowCameraModeForViewer(canUsePresentation, mode);
     setCameraMode(allowedMode);
     window.localStorage.setItem('onyxlink-office-camera-mode-v2', allowedMode);
   };
@@ -302,7 +303,7 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, isDemoPresen
           isOfficeView={activeView === 'oficina'}
           cameraMode={cameraMode}
           onCameraModeChange={changeCameraMode}
-          canUsePresentation
+          canUsePresentation={canUsePresentation}
           isDemoMode={isDemoPresentation}
           onOpenSearch={() => setActiveView('buscar')}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
@@ -327,9 +328,11 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, isDemoPresen
                 Arrastra · pellizca para acercar
               </div>
               <div className="onyx-mobile-camera-controls" role="group" aria-label="Vista de la oficina">
-                <button onClick={() => changeCameraMode('showcase')} aria-pressed={cameraMode === 'showcase'} aria-label="Vista Presentación" className={cameraMode === 'showcase' ? 'is-active' : ''}>
-                  <Sparkles aria-hidden="true" />
-                </button>
+                {canUsePresentation && (
+                  <button onClick={() => changeCameraMode('showcase')} aria-pressed={cameraMode === 'showcase'} aria-label="Vista presentación" title="Vista presentación" className={cameraMode === 'showcase' ? 'is-active' : ''}>
+                    <Sparkles aria-hidden="true" />
+                  </button>
+                )}
                 <button onClick={() => changeCameraMode('iso')} aria-pressed={cameraMode === 'iso'} aria-label="Vista operativa" className={cameraMode === 'iso' ? 'is-active' : ''}>
                   <Box aria-hidden="true" />
                 </button>
@@ -342,17 +345,17 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, isDemoPresen
                 <div className="min-w-0">
                   <div className="onyx-office-hud__eyebrow">Tu equipo digital</div>
                   <div className="onyx-office-hud__title">
-                    {activeSeatCount > 0 ? `${activeSeatCount} puestos activos` : 'La oficina está preparada'}
+                    {activeSeatCount > 0 ? `${activeSeatCount} activos · Todo en orden` : 'Tu oficina está lista'}
                   </div>
                   <p>
                     {activeSeatCount > 0
                       ? 'Solo ves a las personas y canales que están conectados ahora.'
-                      : 'Activa tu primer especialista o canal y aparecerá aquí automáticamente.'}
+                      : 'Cada especialista aparecerá aquí cuando lo actives.'}
                   </p>
                 </div>
                 <button onClick={() => setActiveView('agentes')} className="onyx-office-hud__action">
                   <UsersRound size={14} />
-                  <span>{activeSeatCount > 0 ? 'Ver equipo' : 'Consultar equipo'}</span>
+                  <span>{activeSeatCount > 0 ? 'Ver equipo' : 'Configurar equipo'}</span>
                 </button>
               </section>
             </>

@@ -21,19 +21,19 @@ function ResponsiveCamera({ cameraMode }: { cameraMode: CameraMode }) {
   useEffect(() => {
     const portrait = size.width < 640 && size.height > size.width;
     const target: [number, number, number] =
-      cameraMode === 'showcase' ? [0, 0.8, 0] : [0, 1.35, portrait ? 2.4 : 3.2];
+      cameraMode === 'showcase' ? [10, 0.8, 0] : [9, 1.35, portrait ? 2.4 : 3.2];
 
     if (cameraMode === '2d') {
       camera.position.set(0, portrait ? 68 : 54, portrait ? 8 : 12);
     } else if (cameraMode === 'showcase') {
       // Locked cinematic framing inspired by a premium operations dashboard.
       // The original interactive isometric and top-down cameras stay intact.
-      camera.position.set(0, portrait ? 48 : 32, portrait ? 55 : 42);
+      camera.position.set(10, portrait ? 62 : 40, portrait ? 82 : 65);
     } else {
       // Portrait screens need a closer and more vertical profile. The old
       // long-distance framing kept every edge visible but made rooms, desks
       // and people too small to understand on a phone.
-      camera.position.set(0, portrait ? 46 : 20, portrait ? 58 : 32);
+      camera.position.set(9, portrait ? 60 : 28, portrait ? 84 : 54);
     }
     camera.lookAt(...target);
 
@@ -43,7 +43,7 @@ function ResponsiveCamera({ cameraMode }: { cameraMode: CameraMode }) {
       // is the standard r3f pattern, same as the position.set/lookAt calls above.
       // eslint-disable-next-line react-hooks/immutability
       camera.fov =
-        cameraMode === 'showcase' ? (portrait ? 46 : 38) : portrait ? 46 : 40;
+        cameraMode === 'showcase' ? (portrait ? 52 : 47) : portrait ? 52 : 48;
       camera.updateProjectionMatrix();
     }
 
@@ -60,11 +60,13 @@ function ResponsiveCamera({ cameraMode }: { cameraMode: CameraMode }) {
 export default function OfficeCanvas({ rooms, selectedId, onSelect, onHover, cameraMode }: Props) {
   const isIso = cameraMode === 'iso';
   const isShowcase = cameraMode === 'showcase';
-  const hasPresentationStyle = isShowcase || isIso;
-  const background = hasPresentationStyle ? '#041010' : '#dfe3e1';
+  // Every camera shares the same premium dark office. Camera mode changes the
+  // framing and (only in showcase) the fictional roster, never the visual skin.
+  const hasPresentationStyle = true;
+  const background = '#041010';
   const controlsTarget: [number, number, number] = isShowcase
-    ? [0, 0.8, 0]
-    : [0, 1.35, 3.2];
+    ? [10, 0.8, 0]
+    : [9, 1.35, 3.2];
 
   return (
     <Canvas
@@ -82,7 +84,7 @@ export default function OfficeCanvas({ rooms, selectedId, onSelect, onHover, cam
           (real bug, reproduced in the original Agencia IA app too). */}
       <fog
         attach="fog"
-        args={hasPresentationStyle ? ['#041010', 42, 118] : ['#dfe3e1', 48, 170]}
+        args={['#041010', 42, 118]}
       />
 
       <ambientLight

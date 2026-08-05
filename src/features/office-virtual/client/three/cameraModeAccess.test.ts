@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { allowCameraModeForViewer, resolveCameraModeForViewer } from './cameraModeAccess';
 
 describe('camera mode access', () => {
-  it('starts every role in Presentation and lets it restore that view', () => {
+  it('starts presentation viewers in the complete showroom', () => {
     expect(resolveCameraModeForViewer(true, null)).toBe('showcase');
     expect(resolveCameraModeForViewer(true, 'showcase')).toBe('showcase');
-    expect(resolveCameraModeForViewer(false, null)).toBe('showcase');
-    expect(resolveCameraModeForViewer(false, 'showcase')).toBe('showcase');
-    expect(allowCameraModeForViewer(false, 'showcase')).toBe('showcase');
+  });
+
+  it('keeps operational viewers on the real roster', () => {
+    expect(resolveCameraModeForViewer(false, null)).toBe('iso');
+    expect(resolveCameraModeForViewer(false, 'showcase')).toBe('iso');
+    expect(allowCameraModeForViewer(false, 'showcase')).toBe('iso');
   });
 
   it('keeps Operative and 2D available to both roles', () => {

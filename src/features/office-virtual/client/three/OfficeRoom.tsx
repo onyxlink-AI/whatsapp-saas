@@ -1,5 +1,8 @@
 import { Html } from '@react-three/drei';
-import { useThree } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
+import { useRef } from 'react';
+import * as THREE from 'three';
+import { resolveIdleMotion } from './idleMotion';
 import type { CSSProperties } from 'react';
 import type { OfficeSceneAgent } from '../types';
 import { ROOM_D, ROOM_W, WALL_H, WALL_T } from './layout';
@@ -14,7 +17,32 @@ type Props = {
   presentation?: boolean;
   width?: number;
   depth?: number;
+  phase?: number;
+  doorEnabled?: boolean;
+  routeDistance?: number;
 };
+
+function OfficeDoor({ width, depth, presentation, phase, enabled, routeDistance }: { width: number; depth: number; presentation: boolean; phase: number; enabled: boolean; routeDistance: number }) {
+  const pivot = useRef<THREE.Group>(null);
+  useFrame((state) => {
+    const motion = resolveIdleMotion(state.clock.getElapsedTime(), phase, routeDistance);
+    const shouldOpen = enabled && ((motion.phase === 'walking-out' && motion.progress < .16) || (motion.phase === 'walking-back' && motion.progress < .16));
+    if (pivot.current) pivot.current.rotation.y = THREE.MathUtils.lerp(pivot.current.rotation.y, shouldOpen ? -Math.PI * 0.47 : 0, 0.075);
+  });
+  const doorX = width / 2 - 1.15;
+  const frameColor = presentation ? '#3D6463' : '#738382';
+  return (
+    <group position={[0, 0, depth / 2]}>
+      <mesh position={[-1.15, 1.45, 0]} castShadow><boxGeometry args={[width - 2.3, 2.9, 0.12]} /><meshStandardMaterial color={presentation ? '#152525' : '#dce5e2'} transparent opacity={presentation ? .82 : .5} /></mesh>
+      <mesh position={[doorX, 2.66, 0]} castShadow><boxGeometry args={[2.3, .25, .18]} /><meshStandardMaterial color={frameColor} metalness={.48} /></mesh>
+      {[doorX - 1.15, doorX + 1.15].map((x) => <mesh key={x} position={[x, 1.35, 0]} castShadow><boxGeometry args={[.16, 2.7, .18]} /><meshStandardMaterial color={frameColor} metalness={.48} /></mesh>)}
+      <group ref={pivot} position={[doorX - 1.06, 0, .02]}>
+        <mesh position={[1.03, 1.3, 0]} castShadow><boxGeometry args={[2.02, 2.56, .1]} /><meshStandardMaterial color={presentation ? '#173130' : '#bad0ce'} transparent opacity={.58} metalness={.18} roughness={.18} /></mesh>
+        <mesh position={[1.72, 1.28, .08]}><sphereGeometry args={[.07, 12, 8]} /><meshStandardMaterial color="#d6b56d" metalness={.75} roughness={.2} /></mesh>
+      </group>
+    </group>
+  );
+}
 
 function Computer({ color, x = 0, presentation = false }: { color: string; x?: number; presentation?: boolean }) {
   return (
@@ -475,7 +503,7 @@ function NeutralWallArt({ depth }: { depth: number }) {
   );
 }
 
-export default function OfficeRoom({ agent, center, occupied, presentation = false, width = ROOM_W, depth = ROOM_D }: Props) {
+export default function OfficeRoom({ agent, center, occupied, presentation = false, width = ROOM_W, depth = ROOM_D, phase = 0, doorEnabled = false, routeDistance = 12 }: Props) {
   const { size } = useThree();
   const compactSign = size.width < 768 || (size.height <= 600 && size.width < 1024);
   const executive = agent.id === 'coordinator';
@@ -523,6 +551,7 @@ export default function OfficeRoom({ agent, center, occupied, presentation = fal
           </mesh>
         </group>
       ))}
+      <OfficeDoor width={width} depth={depth} presentation={presentation} phase={phase} enabled={doorEnabled} routeDistance={routeDistance} />
 
       <mesh position={[0, 2.84, -0.35]}>
         <boxGeometry args={[1.9, 0.08, 0.9]} />

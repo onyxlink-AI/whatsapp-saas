@@ -3,10 +3,10 @@ import type { OfficeRoomSlot } from './officeRoster';
 
 /**
  * A self-contained showroom roster. Presentation mode demonstrates the product
- * and must never expose a client's inactive draft names or settings. WhatsApp
- * is the exception: it remains empty until that workspace has a real configured
- * and office-activated agent, so the showroom never invents a connected channel.
- * Operative mode continues to consume the real, activation-filtered roster.
+ * and must never expose a client's inactive draft names or settings. Every seat
+ * is intentionally populated with a curated fictional worker so the commercial
+ * presentation always demonstrates the complete office. Operative mode remains
+ * separate and continues to consume only the real, activation-filtered roster.
  */
 const PRESENTATION_AGENTS: Record<string, OfficeSceneAgent> = {
   coordinator: {
@@ -54,7 +54,7 @@ const PRESENTATION_AGENTS: Record<string, OfficeSceneAgent> = {
     name: 'Community Manager',
     department: 'Redes sociales',
     color: '#f472b6',
-    status: 'working',
+    status: 'available',
     appearance: { shirtColor: '#db2777', pantsColor: '#202536', skinColor: '#f1c19b', hairColor: '#151515' },
   },
   'specialist-3': {
@@ -70,7 +70,7 @@ const PRESENTATION_AGENTS: Record<string, OfficeSceneAgent> = {
     name: 'Administrativo',
     department: 'Operaciones',
     color: '#A0DCDB',
-    status: 'working',
+    status: 'available',
     appearance: { shirtColor: '#79CBCA', pantsColor: '#152235', skinColor: '#f2c6a0', hairColor: '#6b3f25' },
   },
   'specialist-5': {
@@ -94,7 +94,7 @@ const PRESENTATION_AGENTS: Record<string, OfficeSceneAgent> = {
     name: 'Gestor de Agenda',
     department: 'Agenda y citas',
     color: '#f59e0b',
-    status: 'working',
+    status: 'available',
     appearance: { shirtColor: '#d97706', pantsColor: '#1e293b', skinColor: '#e3ab7a', hairColor: '#1a1a1a' },
   },
   'specialist-8': {
@@ -109,7 +109,6 @@ const PRESENTATION_AGENTS: Record<string, OfficeSceneAgent> = {
 
 export function buildPresentationRoomSlots(rooms: OfficeRoomSlot[]): OfficeRoomSlot[] {
   return rooms.map((slot) => {
-    if (slot.seatId === 'lead-intake' && slot.occupant === null) return slot;
     const demoAgent = PRESENTATION_AGENTS[slot.seatId];
     if (!demoAgent) return slot;
     return { seatId: slot.seatId, room: demoAgent, occupant: demoAgent };

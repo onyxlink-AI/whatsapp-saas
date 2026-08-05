@@ -28,26 +28,24 @@ type NavItem = { id: ViewId; label: string; icon: LucideIcon };
 type NavGroup = { label: string; items: NavItem[]; adminOnly?: boolean };
 
 const NAV_GROUPS: NavGroup[] = [
-  { label: 'Inicio', items: [
+  { label: 'Operación', items: [
     { id: 'oficina', label: 'Oficina', icon: Building2 },
     { id: 'panel', label: 'Panel', icon: Gauge },
     { id: 'actividad', label: 'Actividad', icon: Activity },
   ] },
-  { label: 'Operación', items: [
+  { label: 'Equipo', items: [
     { id: 'agentes', label: 'Agentes', icon: UsersRound },
     { id: 'contactos', label: 'Contactos', icon: ContactRound },
     { id: 'bandeja', label: 'Bandeja', icon: Inbox },
     { id: 'tareas', label: 'Tareas', icon: CheckSquare2 },
   ] },
-  { label: 'Automatización', items: [
+  { label: 'Conocimiento', items: [
     { id: 'rutinas', label: 'Rutinas', icon: Repeat2 },
     { id: 'skills', label: 'Skills', icon: Sparkles },
-  ] },
-  { label: 'Conocimiento', items: [
     { id: 'memoria', label: 'Memoria', icon: Brain },
     { id: 'archivos', label: 'Archivos', icon: Files },
   ] },
-  { label: 'Inteligencia', items: [
+  { label: 'Resultados', items: [
     { id: 'buscar', label: 'Buscar', icon: Search },
     { id: 'analiticas', label: 'Analíticas', icon: BarChart3 },
     { id: 'informes', label: 'Informes', icon: FileText },
@@ -69,6 +67,7 @@ const CLIENT_LABELS: Partial<Record<ViewId, string>> = {
   archivos: 'Documentos',
   skills: 'Habilidades',
   analiticas: 'Resultados',
+  orquestador: 'Modelos y automatización',
 };
 
 type Props = {

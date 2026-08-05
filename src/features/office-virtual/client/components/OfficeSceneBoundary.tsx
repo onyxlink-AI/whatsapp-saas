@@ -42,14 +42,14 @@ function supportsWebGL(): boolean {
 
 function SceneStatus({ icon, title, description, action }: { icon: React.ReactNode; title: string; description?: string; action?: React.ReactNode }) {
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-[#dfe3e1]">
+    <div className="onyx-scene-status absolute inset-0 flex items-center justify-center">
       <div className="flex flex-col items-center gap-3 text-center px-6 max-w-sm">
-        <div className="w-11 h-11 rounded-full border border-black/10 bg-white/70 flex items-center justify-center text-[#2c3a3a]">
+        <div className="onyx-scene-status__icon w-11 h-11 rounded-xl flex items-center justify-center">
           {icon}
         </div>
         <div>
-          <div className="text-sm font-semibold text-[#1f2b2b]">{title}</div>
-          {description && <p className="text-xs text-[#4a5858] mt-1 leading-relaxed">{description}</p>}
+          <div className="text-sm font-semibold text-white/90">{title}</div>
+          {description && <p className="text-xs text-white/45 mt-1 leading-relaxed">{description}</p>}
         </div>
         {action}
       </div>
@@ -94,7 +94,7 @@ export default function OfficeSceneBoundary({ rooms, selectedId, onSelect, onHov
         action={
           <button
             onClick={() => setForceEnabled(true)}
-            className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-md border border-black/15 bg-white/80 text-[#1f2b2b] hover:bg-white transition-colors"
+            className="onyx-office-hud__action mt-1"
           >
             <PlayCircle className="w-3.5 h-3.5" />
             Ver la oficina de todas formas

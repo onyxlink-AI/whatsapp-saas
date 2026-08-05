@@ -9,7 +9,9 @@ export const ROOM_W = 8.2;
 export const ROOM_D = 6.5;
 export const WALL_H = 3;
 export const WALL_T = 0.2;
-export const GAP = 0.7;
+// Real circulation lanes between rooms. The previous decorative 70 cm gap
+// could not physically accommodate a walking character or an opening door.
+export const GAP = 1.8;
 
 export const SPACING_X = ROOM_W + GAP;
 export const SPACING_Z = ROOM_D + GAP;

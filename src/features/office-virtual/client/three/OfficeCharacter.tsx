@@ -4,12 +4,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { STATUS_HEX as STATUS_COLOR, STATUS_LABEL_ES as STATUS_LABEL } from '../lib/statusStyles';
 import type { OfficeSceneAgent } from '../types';
+import { resolveIdleMotion } from './idleMotion';
 
 type Props = {
   agent: OfficeSceneAgent;
   center: [number, number, number];
   patrolAmplitude: number;
   phase: number;
+  idlePath?: [number, number, number][];
+  routeDistance?: number;
   seated?: boolean;
   presentation?: boolean;
   isSelected: boolean;
@@ -113,6 +116,8 @@ export default function OfficeCharacter({
   center,
   patrolAmplitude,
   phase,
+  idlePath,
+  routeDistance = 12,
   seated = false,
   presentation = false,
   isSelected,
@@ -125,6 +130,7 @@ export default function OfficeCharacter({
   const leftArm = useRef<THREE.Group>(null);
   const rightArm = useRef<THREE.Group>(null);
   const bodyBob = useRef<THREE.Group>(null);
+  const coffeeCup = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
 
   const materials = useMemo(
@@ -145,22 +151,49 @@ export default function OfficeCharacter({
 
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
-    const localX = seated ? 0 : Math.sin(t * 0.6 + phase) * patrolAmplitude;
-    const velocity = Math.cos(t * 0.6 + phase);
+    const motion = resolveIdleMotion(t, phase, routeDistance);
+    const travellingOut = motion.phase === 'walking-out';
+    const travellingBack = motion.phase === 'walking-back';
+    const atCoffee = motion.phase === 'at-cafe';
+    // A working character is physically locked to the chair. Previously the
+    // hidden idle schedule still changed its world position, producing the
+    // "moving chair" effect and allowing a seated body to cross closed walls.
+    const rawProgress = seated ? 0 : motion.progress;
+    const progress = rawProgress * rawProgress * (3 - 2 * rawProgress);
+    const walking = !seated && (travellingOut || travellingBack);
+    const route = idlePath?.length ? [center, ...idlePath] : [center, [center[0] + patrolAmplitude, center[1], center[2]] as [number, number, number]];
+    let remainingDistance = progress * routeDistance;
+    let segment = 0;
+    let segmentProgress = 0;
+    for (let index = 0; index < route.length - 1; index += 1) {
+      const length = Math.hypot(route[index + 1][0] - route[index][0], route[index + 1][2] - route[index][2]);
+      if (remainingDistance <= length || index === route.length - 2) {
+        segment = index;
+        segmentProgress = length > 0 ? Math.min(1, remainingDistance / length) : 1;
+        break;
+      }
+      remainingDistance -= length;
+    }
+    const from = route[segment];
+    const to = route[segment + 1];
+    const x = THREE.MathUtils.lerp(from[0], to[0], segmentProgress);
+    const z = THREE.MathUtils.lerp(from[2], to[2], segmentProgress);
     if (group.current) {
-      group.current.position.set(center[0] + localX, center[1], center[2]);
-      const targetYaw = seated ? Math.PI : velocity >= 0 ? Math.PI / 2 : -Math.PI / 2;
+      group.current.position.set(x, center[1], z);
+      const direction = travellingBack ? -1 : 1;
+      const targetYaw = seated ? Math.PI : walking ? Math.atan2(direction * (to[0] - from[0]), direction * (to[2] - from[2])) : atCoffee ? -Math.PI / 2 : Math.PI;
       group.current.rotation.y = THREE.MathUtils.lerp(group.current.rotation.y, targetYaw, 0.06);
     }
 
-    const swing = seated ? 0 : Math.sin(t * 5.5) * 0.48;
+    const swing = walking ? Math.sin(t * 5.5) * 0.48 : 0;
     if (leftLeg.current) leftLeg.current.rotation.x = swing;
     if (rightLeg.current) rightLeg.current.rotation.x = -swing;
     if (leftArm.current) leftArm.current.rotation.x = -swing;
     if (rightArm.current) rightArm.current.rotation.x = swing;
     if (bodyBob.current) {
-      bodyBob.current.position.y = seated ? -0.2 : Math.abs(Math.sin(t * 5.5)) * 0.035;
+      bodyBob.current.position.y = seated ? -0.2 : walking ? Math.abs(Math.sin(t * 5.5)) * 0.035 : Math.sin(t * 1.4 + phase) * 0.012;
     }
+    if (coffeeCup.current) coffeeCup.current.visible = !seated && (atCoffee || travellingBack);
   });
 
   return (
@@ -198,6 +231,14 @@ export default function OfficeCharacter({
             <StandingLeg side={-1} legRef={leftLeg} />
             <StandingLeg side={1} legRef={rightLeg} />
           </>
+        )}
+
+        {!seated && (
+          <group ref={coffeeCup} position={[0.4, 1.05, 0.18]} visible={false}>
+            <mesh castShadow><cylinderGeometry args={[0.1, 0.085, 0.22, 12]} /><meshStandardMaterial color="#e8dfd0" roughness={0.58} /></mesh>
+            <mesh position={[0.11, 0, 0]} rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[0.065, 0.018, 8, 14]} /><meshStandardMaterial color="#e8dfd0" /></mesh>
+            <mesh position={[0, 0.116, 0]}><cylinderGeometry args={[0.078, 0.078, 0.012, 12]} /><meshStandardMaterial color="#5b3523" roughness={0.9} /></mesh>
+          </group>
         )}
 
         <mesh position={[0, 1.28, 0]} material={POLO_MATERIAL} castShadow>
