@@ -61,6 +61,22 @@ export function TeamChatShell({
     }
   }
 
+  function handleChannelCreated(channelId: string, name: string) {
+    setSelectedChannelId(channelId);
+    setChannels((prev) => [
+      ...prev,
+      {
+        id: channelId,
+        kind: "custom",
+        displayName: name,
+        otherUserId: null,
+        lastMessagePreview: null,
+        lastMessageAt: null,
+        unreadCount: 0,
+      },
+    ]);
+  }
+
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden rounded-lg border border-border/60">
       <div className={cn("w-full shrink-0 border-r border-border/60 md:w-80", selectedChannelId ? "hidden md:block" : "block")}>
@@ -71,6 +87,7 @@ export function TeamChatShell({
           selectedChannelId={selectedChannelId}
           onSelect={(channel) => setSelectedChannelId(channel.id)}
           onChannelOpened={handleChannelOpened}
+          onChannelCreated={handleChannelCreated}
         />
       </div>
 

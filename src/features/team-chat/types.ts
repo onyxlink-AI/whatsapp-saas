@@ -1,4 +1,6 @@
-export type TeamChannelKind = "general" | "direct";
+export type TeamChannelKind = "general" | "direct" | "custom";
+
+export const TEAM_CHANNEL_NAME_MAX_LENGTH = 60;
 
 export interface TeamChannelRow {
   id: string;

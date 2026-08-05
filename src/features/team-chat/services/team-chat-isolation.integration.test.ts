@@ -262,6 +262,134 @@ describe("Chat de equipo — aislamiento entre tenants con JWT reales", () => {
     await db.from("team_channels").delete().eq("id", channelId);
   });
 
+  // ────────────────────────────────────────────────────────────────────────
+  // create_team_channel — canales personalizados, abiertos a todo el
+  // workspace desde que se crean (decisión del usuario). Igual que
+  // get_or_create_dm_channel, deriva el creador de auth.uid() — nunca de un
+  // parámetro del cliente.
+  // ────────────────────────────────────────────────────────────────────────
+
+  it("create_team_channel crea el canal y da de alta de inmediato a todos los miembros activos actuales", async (ctx) => {
+    if (!reachable) return ctx.skip();
+    const channelName = `${RUN_TAG}-canal-marketing`;
+
+    const { data: channelId, error } = await clientA.rpc("create_team_channel", {
+      p_workspace_id: EMPRESA_A,
+      p_name: channelName,
+    });
+    expect(error).toBeNull();
+    expect(typeof channelId).toBe("string");
+
+    // El propio creador (clientA) y el superadmin (también miembro activo
+    // de Empresa A en el seed) deben quedar dados de alta sin unirse a mano.
+    const { data: superRow } = await db.from("users").select("id").eq("email", SUPERADMIN_EMAIL).single();
+    const { data: members } = await db
+      .from("team_channel_members")
+      .select("user_id")
+      .eq("channel_id", channelId);
+    const memberIds = (members ?? []).map((m) => m.user_id as string);
+    expect(memberIds).toContain((await clientA.auth.getUser()).data.user!.id);
+    expect(memberIds).toContain(superRow!.id);
+
+    await db.from("team_channel_members").delete().eq("channel_id", channelId);
+    await db.from("team_channels").delete().eq("id", channelId);
+  });
+
+  it("create_team_channel rechaza crear un canal en el workspace de otra empresa", async (ctx) => {
+    if (!reachable) return ctx.skip();
+    const { error } = await clientA.rpc("create_team_channel", {
+      p_workspace_id: EMPRESA_B,
+      p_name: `${RUN_TAG}-intento-cruzado`,
+    });
+    // clientA no es miembro activo de Empresa B: la función debe rechazarlo.
+    expect(error).not.toBeNull();
+  });
+
+  it("create_team_channel rechaza un nombre duplicado (case-insensitive) en el mismo workspace", async (ctx) => {
+    if (!reachable) return ctx.skip();
+    const channelName = `${RUN_TAG}-Duplicado`;
+
+    const { data: channelId, error: firstErr } = await clientA.rpc("create_team_channel", {
+      p_workspace_id: EMPRESA_A,
+      p_name: channelName,
+    });
+    expect(firstErr).toBeNull();
+
+    const { error: secondErr } = await clientA.rpc("create_team_channel", {
+      p_workspace_id: EMPRESA_A,
+      p_name: channelName.toLowerCase(), // mismo nombre, distinta capitalización
+    });
+    expect(secondErr).not.toBeNull();
+    expect(secondErr?.message).toContain("CHANNEL_NAME_TAKEN");
+
+    await db.from("team_channel_members").delete().eq("channel_id", channelId);
+    await db.from("team_channels").delete().eq("id", channelId);
+  });
+
+  it("un miembro nuevo (claim_workspace_seat) queda auto-unido a los canales personalizados existentes, no solo a General", async (ctx) => {
+    if (!reachable) return ctx.skip();
+
+    const { data: channelId, error: createErr } = await clientA.rpc("create_team_channel", {
+      p_workspace_id: EMPRESA_A,
+      p_name: `${RUN_TAG}-canal-para-nuevos`,
+    });
+    expect(createErr).toBeNull();
+
+    const email = `${RUN_TAG}-nuevo-miembro@empresab.local`;
+    const { data: authUser } = await db.auth.admin.createUser({ email, password: "TestLocal123!", email_confirm: true });
+    const newUserId = authUser!.user!.id;
+    await db.from("users").insert({ id: newUserId, full_name: "Nuevo miembro (test)", email });
+
+    const { error: claimErr } = await db.rpc("claim_workspace_seat", {
+      p_workspace_id: EMPRESA_A,
+      p_user_id: newUserId,
+      p_role: "agent",
+    });
+    expect(claimErr).toBeNull();
+
+    const { data: membership } = await db
+      .from("team_channel_members")
+      .select("user_id")
+      .eq("channel_id", channelId)
+      .eq("user_id", newUserId)
+      .maybeSingle();
+    expect(membership).not.toBeNull();
+
+    await db.from("memberships").delete().eq("workspace_id", EMPRESA_A).eq("user_id", newUserId);
+    await db.auth.admin.deleteUser(newUserId).catch(() => {});
+    await db.from("team_channel_members").delete().eq("channel_id", channelId);
+    await db.from("team_channels").delete().eq("id", channelId);
+  });
+
+  it("Empresa B no puede leer un canal personalizado de Empresa A", async (ctx) => {
+    if (!reachable) return ctx.skip();
+
+    const { data: channelId, error: createErr } = await clientA.rpc("create_team_channel", {
+      p_workspace_id: EMPRESA_A,
+      p_name: `${RUN_TAG}-canal-privado-de-A`,
+    });
+    expect(createErr).toBeNull();
+
+    const { data, error } = await clientB.from("team_channels").select("id").eq("id", channelId);
+    expect(error).toBeNull();
+    expect(data ?? []).toHaveLength(0);
+
+    await db.from("team_channel_members").delete().eq("channel_id", channelId);
+    await db.from("team_channels").delete().eq("id", channelId);
+  });
+
+  it("anon no puede ejecutar create_team_channel directamente vía REST", async (ctx) => {
+    if (!reachable) return ctx.skip();
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/create_team_channel`, {
+      method: "POST",
+      headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_workspace_id: EMPRESA_A, p_name: `${RUN_TAG}-anon` }),
+    });
+    const body = await r.json();
+    expect(r.status).toBe(401);
+    expect(body.code).toBe("42501");
+  });
+
   it("desactivar a un miembro corta el acceso al chat de inmediato", async (ctx) => {
     if (!reachable) return ctx.skip();
     const { error: deactivateErr } = await db

@@ -163,8 +163,13 @@ export async function listMyChannels(workspaceId: string): Promise<TeamChannelSu
     });
   }
 
+  // Orden: General primero, luego los canales personalizados (alfabético,
+  // como cualquier lista de canales tipo Slack), luego los DM por actividad
+  // reciente.
+  const kindRank: Record<TeamChannelKind, number> = { general: 0, custom: 1, direct: 2 };
   summaries.sort((a, b) => {
-    if (a.kind !== b.kind) return a.kind === "general" ? -1 : 1;
+    if (a.kind !== b.kind) return kindRank[a.kind] - kindRank[b.kind];
+    if (a.kind === "custom") return a.displayName.localeCompare(b.displayName);
     return (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? "");
   });
 
@@ -394,6 +399,43 @@ export async function openDirectMessage(
   if (error || !data) {
     console.error("[openDirectMessage] Supabase error:", error?.message);
     return { ok: false, error: "Error al abrir el mensaje directo" };
+  }
+
+  return { ok: true, data: { channelId: data as string } };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// createTeamChannel — crea un canal abierto a todo el workspace vía
+// create_team_channel(), que deriva "quién crea" de auth.uid() dentro de la
+// función (no de un parámetro del cliente) — mismo motivo anti-IDOR que
+// get_or_create_dm_channel. El backfill de todos los miembros activos
+// actuales lo hace la propia función SQL.
+// ──────────────────────────────────────────────────────────────────────────────
+export async function createTeamChannel(
+  workspaceId: string,
+  name: string,
+): Promise<ActionResult<{ channelId: string }>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) return { ok: false, error: "No autorizado" };
+
+  const trimmed = name.trim();
+  if (!trimmed) return { ok: false, error: "El nombre del canal no puede estar vacío" };
+
+  const { data, error } = await supabase.rpc("create_team_channel", {
+    p_workspace_id: workspaceId,
+    p_name: trimmed,
+  });
+
+  if (error || !data) {
+    if (error?.message?.includes("CHANNEL_NAME_TAKEN")) {
+      return { ok: false, error: "CHANNEL_NAME_TAKEN" };
+    }
+    console.error("[createTeamChannel] Supabase error:", error?.message);
+    return { ok: false, error: "Error al crear el canal" };
   }
 
   return { ok: true, data: { channelId: data as string } };
