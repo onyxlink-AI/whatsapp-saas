@@ -65,7 +65,7 @@ export default async function SettingsPage() {
       .eq("workspace_id", workspaceId),
     svc
       .from("workspaces")
-      .select("advanced_memory_enabled, pipeline_ai_enabled, cold_lead_recovery_enabled, vapi_assistant_id, cross_channel_memory_enabled, whatsapp_agent_enabled, gestion_enabled, office_virtual_enabled, chatbot_enabled, help_assistant_actions_enabled, whiteboard_enabled")
+      .select("advanced_memory_enabled, pipeline_ai_enabled, cold_lead_recovery_enabled, vapi_assistant_id, cross_channel_memory_enabled, whatsapp_agent_enabled, gestion_enabled, office_virtual_enabled, chatbot_enabled, help_assistant_actions_enabled, whiteboard_enabled, team_chat_enabled, human_member_limit")
       .eq("id", workspaceId)
       .single(),
     svc.from("users").select("is_super_admin").eq("id", user.id).maybeSingle(),
@@ -133,6 +133,17 @@ export default async function SettingsPage() {
   // client — only the resulting status label does.
   const vapiStatus = await getVapiConnectionStatus(vapiAssistantId);
 
+  // Plazas ocupadas: activos y no superadministradores — misma regla que
+  // claim_workspace_seat() en la base de datos.
+  const { data: activeMemberRows } = await svc
+    .from("memberships")
+    .select("user_id, users(is_super_admin)")
+    .eq("workspace_id", workspaceId)
+    .eq("is_active", true);
+  const seatsUsed = (
+    (activeMemberRows ?? []) as unknown as Array<{ users: { is_super_admin: boolean | null } | null }>
+  ).filter((row) => !row.users?.is_super_admin).length;
+
   return (
     <SettingsShell
       workspaceId={workspaceId}
@@ -155,6 +166,9 @@ export default async function SettingsPage() {
       initialChatbotEnabled={workspaceData?.chatbot_enabled === true}
       initialHelpAssistantActionsEnabled={workspaceData?.help_assistant_actions_enabled === true}
       initialWhiteboardEnabled={workspaceData?.whiteboard_enabled === true}
+      initialTeamChatEnabled={workspaceData?.team_chat_enabled === true}
+      initialHumanMemberLimit={workspaceData?.human_member_limit ?? 1}
+      teamChatSeatsUsed={seatsUsed}
     />
   );
 }

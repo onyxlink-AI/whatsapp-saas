@@ -34,6 +34,7 @@ import { OfficeVirtualToggle } from "./office-virtual-toggle";
 import { ChatbotToggle } from "./chatbot-toggle";
 import { HelpAssistantActionsToggle } from "./help-assistant-actions-toggle";
 import { WhiteboardToggle } from "./whiteboard-toggle";
+import { TeamChatToggle } from "./team-chat-toggle";
 import { WhatsappAgentToggle } from "./whatsapp-agent-toggle";
 import { ToolsCatalog } from "./tools-catalog";
 import { IntegrationsTab } from "./integrations-tab";
@@ -80,6 +81,9 @@ interface Props {
   initialChatbotEnabled?: boolean;
   initialHelpAssistantActionsEnabled?: boolean;
   initialWhiteboardEnabled?: boolean;
+  initialTeamChatEnabled?: boolean;
+  initialHumanMemberLimit?: number;
+  teamChatSeatsUsed?: number;
 }
 
 function ReadinessItem({
@@ -127,6 +131,9 @@ export function SettingsShell({
   initialChatbotEnabled = false,
   initialHelpAssistantActionsEnabled = false,
   initialWhiteboardEnabled = false,
+  initialTeamChatEnabled = false,
+  initialHumanMemberLimit = 1,
+  teamChatSeatsUsed = 0,
 }: Props) {
   const biForForm = initialBusinessInfo as {
     structured: Record<string, unknown>;
@@ -336,6 +343,14 @@ export function SettingsShell({
                   <WhiteboardToggle
                     workspaceId={workspaceId}
                     initialEnabled={initialWhiteboardEnabled}
+                  />
+                )}
+                {isSuperAdmin && (
+                  <TeamChatToggle
+                    workspaceId={workspaceId}
+                    initialEnabled={initialTeamChatEnabled}
+                    initialLimit={initialHumanMemberLimit}
+                    seatsUsed={teamChatSeatsUsed}
                   />
                 )}
                 <VapiAssistantField

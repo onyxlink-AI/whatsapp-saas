@@ -58,20 +58,27 @@ export async function GET(
 
   const db = svc();
 
-  const { data, error } = await db
-    .from("memberships")
-    .select(
-      `
-      id,
-      user_id,
-      role,
-      is_active,
-      created_at,
-      users ( full_name, email )
-    `,
-    )
-    .eq("workspace_id", workspaceId)
-    .order("created_at", { ascending: true });
+  const [{ data, error }, { data: workspaceRow }] = await Promise.all([
+    db
+      .from("memberships")
+      .select(
+        `
+        id,
+        user_id,
+        role,
+        is_active,
+        created_at,
+        users ( full_name, email, is_super_admin )
+      `,
+      )
+      .eq("workspace_id", workspaceId)
+      .order("created_at", { ascending: true }),
+    db
+      .from("workspaces")
+      .select("human_member_limit, team_chat_enabled")
+      .eq("id", workspaceId)
+      .maybeSingle(),
+  ]);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -80,16 +87,16 @@ export async function GET(
   // Flatten nested users join into a flat member shape. supabase-js doesn't
   // infer this nested-relation select — the shape below must stay in sync by
   // hand with the select() string above; a drift fails silently at runtime.
-  const members = (
-    (data ?? []) as unknown as Array<{
-      id: string;
-      user_id: string;
-      role: string;
-      is_active: boolean;
-      created_at: string;
-      users: { full_name: string | null; email: string } | null;
-    }>
-  ).map((row) => ({
+  const rows = (data ?? []) as unknown as Array<{
+    id: string;
+    user_id: string;
+    role: string;
+    is_active: boolean;
+    created_at: string;
+    users: { full_name: string | null; email: string; is_super_admin: boolean | null } | null;
+  }>;
+
+  const members = rows.map((row) => ({
     id: row.id,
     user_id: row.user_id,
     email: row.users?.email ?? "",
@@ -99,7 +106,20 @@ export async function GET(
     created_at: row.created_at,
   }));
 
-  return NextResponse.json({ members });
+  // Plazas ocupadas: activos y no superadministradores — misma regla que
+  // claim_workspace_seat() en la base de datos (sección 3 de la
+  // arquitectura del Chat: "Los superadministradores de OnyxLink no
+  // consumen plaza").
+  const seatsUsed = rows.filter((row) => row.is_active && !row.users?.is_super_admin).length;
+
+  return NextResponse.json({
+    members,
+    seats: {
+      used: seatsUsed,
+      limit: workspaceRow?.human_member_limit ?? 1,
+    },
+    teamChatEnabled: workspaceRow?.team_chat_enabled ?? false,
+  });
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -160,19 +180,40 @@ export async function POST(
     );
   }
 
-  // Create membership (upsert — re-invite idempotent)
-  const { error: memberError } = await db.from("memberships").upsert(
-    {
-      workspace_id: workspaceId,
-      user_id: provisioned.userId,
-      role,
-      is_active: true,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "workspace_id,user_id" },
-  );
+  // Reserva de plaza transaccional (lee human_member_limit con FOR UPDATE,
+  // cuenta activos no-superadmin, y solo entonces hace el upsert de la
+  // membership) — un conteo hecho aquí en la API antes del upsert no basta
+  // contra dos invitaciones concurrentes para la última plaza.
+  const { error: memberError } = await db.rpc("claim_workspace_seat", {
+    p_workspace_id: workspaceId,
+    p_user_id: provisioned.userId,
+    p_role: role,
+  });
 
   if (memberError) {
+    // Revisión de arquitectura (bloqueo 4): provisionWorkspaceUser() ya creó
+    // Auth + users ANTES de saber si había plaza. Si esta invitación creó
+    // una cuenta nueva (provisioned.created) y la reserva falla después
+    // (cupo lleno, o pierde una carrera por la última plaza), esa cuenta
+    // queda huérfana: existe en Auth con una contraseña que nadie recibió,
+    // ocupando un email que ya no se puede reintentar. Compensar borrando
+    // solo lo que se acaba de crear — nunca una cuenta preexistente
+    // (created=false), que puede pertenecer a alguien con acceso en otro
+    // workspace. auth.users(id) → public.users(id) es ON DELETE CASCADE, así
+    // que borrar en Auth también limpia el perfil.
+    if (provisioned.created) {
+      const { error: cleanupError } = await db.auth.admin.deleteUser(provisioned.userId);
+      if (cleanupError) {
+        console.error(
+          "[POST /api/workspace/[id]/team] failed to compensate orphaned auth user after seat claim failure:",
+          cleanupError,
+        );
+      }
+    }
+
+    if (memberError.message?.includes("TEAM_SEAT_LIMIT_REACHED")) {
+      return NextResponse.json({ error: "TEAM_SEAT_LIMIT_REACHED" }, { status: 409 });
+    }
     return NextResponse.json({ error: memberError.message }, { status: 500 });
   }
 
@@ -242,6 +283,27 @@ export async function PATCH(
       { error: "No puedes asignar un rol superior al tuyo" },
       { status: 403 },
     );
+  }
+
+  // Reactivar (is_active pasa de false a true) vuelve a consumir una plaza
+  // — pasa por la misma reserva transaccional que la invitación, nunca por
+  // un UPDATE directo, por la misma razón: dos reactivaciones concurrentes
+  // no deben poder superar la última plaza juntas.
+  if (is_active === true) {
+    const { error: rpcError } = await db.rpc("claim_workspace_seat", {
+      p_workspace_id: workspaceId,
+      p_user_id: userId,
+      p_role: role ?? targetCurrentRole,
+    });
+
+    if (rpcError) {
+      if (rpcError.message?.includes("TEAM_SEAT_LIMIT_REACHED")) {
+        return NextResponse.json({ error: "TEAM_SEAT_LIMIT_REACHED" }, { status: 409 });
+      }
+      return NextResponse.json({ error: rpcError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true });
   }
 
   const updates: Record<string, unknown> = {

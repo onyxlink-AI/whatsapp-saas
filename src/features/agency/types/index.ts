@@ -20,7 +20,10 @@ export interface WorkspaceWithStats {
     officeVirtual: boolean;
     chatbot: boolean;
     whiteboard: boolean;
+    teamChat: boolean;
   };
+  /** Solo relevante cuando products.teamChat es true. */
+  teamChatSeats: { used: number; limit: number };
   addons: {
     advancedMemory: boolean;
     pipelineAi: boolean;

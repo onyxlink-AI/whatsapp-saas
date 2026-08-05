@@ -104,6 +104,16 @@ export async function createWorkspaceForClient(
   const suffix = Math.random().toString(36).slice(2, 5);
   const slug = `${baseSlug}-${suffix}`;
 
+  // Revisión de arquitectura del Chat, bloqueo 6: los workspaces nuevos
+  // deben recibir el default contractual de plazas humanas según su
+  // paquete, no el DEFAULT 1 plano de la columna (ese default solo existe
+  // como piso de seguridad, no como valor comercial). Oficina Virtual
+  // (Suite=4) se activa después de crear el workspace, no aquí — por eso
+  // este cálculo solo distingue Gestión (1) de WhatsApp+Gestión (2); el
+  // backfill retroactivo de la migración usa los mismos umbrales, con Suite
+  // incluido, para workspaces ya existentes.
+  const humanMemberLimit = whatsappAgentEnabled ? 2 : 1;
+
   const { data: workspace, error: wsError } = await service
     .from("workspaces")
     .insert({
@@ -111,6 +121,7 @@ export async function createWorkspaceForClient(
       slug,
       whatsapp_agent_enabled: whatsappAgentEnabled,
       gestion_enabled: gestionEnabled,
+      human_member_limit: humanMemberLimit,
       advanced_memory_enabled: advancedMemoryEnabled ?? false,
       pipeline_ai_enabled: pipelineAiEnabled ?? false,
       cold_lead_recovery_enabled: coldLeadRecoveryEnabled ?? false,
@@ -390,7 +401,7 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
   const { data: workspaces, error: wsError } = await service
     .from("workspaces")
     .select(
-      "id, name, slug, created_at, whatsapp_agent_enabled, gestion_enabled, office_virtual_enabled, chatbot_enabled, whiteboard_enabled, vapi_assistant_id, advanced_memory_enabled, pipeline_ai_enabled, cold_lead_recovery_enabled, cross_channel_memory_enabled, help_assistant_actions_enabled",
+      "id, name, slug, created_at, whatsapp_agent_enabled, gestion_enabled, office_virtual_enabled, chatbot_enabled, whiteboard_enabled, vapi_assistant_id, advanced_memory_enabled, pipeline_ai_enabled, cold_lead_recovery_enabled, cross_channel_memory_enabled, help_assistant_actions_enabled, team_chat_enabled, human_member_limit",
     )
     .order("created_at", { ascending: false });
 
@@ -408,7 +419,7 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
   // Member counts
   const { data: memberships } = await service
     .from("memberships")
-    .select("workspace_id")
+    .select("workspace_id, user_id, users(is_super_admin)")
     .in("workspace_id", ids)
     .eq("is_active", true);
 
@@ -440,9 +451,19 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
 
   // Build lookup maps
   const memberMap = new Map<string, number>();
+  const seatsUsedMap = new Map<string, number>();
   for (const m of memberships ?? []) {
-    const id = (m as { workspace_id: string }).workspace_id;
-    memberMap.set(id, (memberMap.get(id) ?? 0) + 1);
+    const row = m as unknown as {
+      workspace_id: string;
+      users: { is_super_admin: boolean | null } | { is_super_admin: boolean | null }[] | null;
+    };
+    const userRow = Array.isArray(row.users) ? row.users[0] : row.users;
+    memberMap.set(row.workspace_id, (memberMap.get(row.workspace_id) ?? 0) + 1);
+    // Misma regla que claim_workspace_seat() en base de datos: los
+    // superadministradores de Onyxlink nunca consumen plaza.
+    if (!userRow?.is_super_admin) {
+      seatsUsedMap.set(row.workspace_id, (seatsUsedMap.get(row.workspace_id) ?? 0) + 1);
+    }
   }
 
   const convMap = new Map<string, number>();
@@ -505,6 +526,8 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
       cold_lead_recovery_enabled: boolean | null;
       cross_channel_memory_enabled: boolean | null;
       help_assistant_actions_enabled: boolean | null;
+      team_chat_enabled: boolean | null;
+      human_member_limit: number | null;
     }[]
   ).map((w) => {
     const whatsappAgent = w.whatsapp_agent_enabled !== false;
@@ -536,6 +559,13 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
       readinessIssues.push("Completar memoria entre canales");
     }
 
+    const teamChat = w.team_chat_enabled === true;
+    const teamChatLimit = w.human_member_limit ?? 1;
+    const teamChatUsed = seatsUsedMap.get(w.id) ?? 0;
+    if (teamChat && teamChatUsed >= teamChatLimit) {
+      readinessIssues.push("Chat de equipo sin plazas libres");
+    }
+
     return {
       id: w.id,
       name: w.name,
@@ -554,7 +584,9 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
         officeVirtual,
         chatbot: w.chatbot_enabled === true,
         whiteboard,
+        teamChat,
       },
+      teamChatSeats: { used: teamChatUsed, limit: teamChatLimit },
       package_tier: packageTier,
       addons: {
         advancedMemory: w.advanced_memory_enabled === true,

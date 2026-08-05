@@ -55,7 +55,7 @@ export default async function MainLayout({
         await supabase
           .from("workspaces")
           .select(
-            "vapi_assistant_id, whatsapp_agent_enabled, gestion_enabled, office_virtual_enabled, chatbot_enabled",
+            "vapi_assistant_id, whatsapp_agent_enabled, gestion_enabled, office_virtual_enabled, chatbot_enabled, team_chat_enabled",
           )
           .eq("id", activeId)
           .maybeSingle()
@@ -67,6 +67,7 @@ export default async function MainLayout({
   const hasGestion = activeWorkspaceRow?.gestion_enabled === true;
   const hasOfficeVirtual = isOfficeVirtualEnabled(activeWorkspaceRow);
   const hasChatbot = canSeeChatbotNav(isSuperAdmin, activeWorkspaceRow);
+  const hasTeamChat = activeWorkspaceRow?.team_chat_enabled === true;
 
   const navItems: AppNavItem[] = [];
 
@@ -88,6 +89,16 @@ export default async function MainLayout({
         mobilePrimary: true,
       },
     );
+  }
+
+  if (hasTeamChat) {
+    navItems.push({
+      href: "/chat",
+      label: "Chat de equipo",
+      shortLabel: "Chat",
+      icon: "team-chat",
+      section: "Trabajo diario",
+    });
   }
 
   if (hasGestion) {

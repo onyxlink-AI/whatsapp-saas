@@ -138,6 +138,7 @@ function TeamEmpty({ onInvite }: { onInvite: () => void }) {
 
 export function TeamTab({ workspaceId }: Props) {
   const [members, setMembers] = useState<TeamMember[]>([]);
+  const [seats, setSeats] = useState<{ used: number; limit: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -146,6 +147,8 @@ export function TeamTab({ workspaceId }: Props) {
   const [updatingRole, setUpdatingRole] = useState<string | null>(null);
   const [togglingActive, setTogglingActive] = useState<string | null>(null);
 
+  const seatsFull = seats !== null && seats.used >= seats.limit;
+
   // ── Fetch team ─────────────────────────────────────────────────────────────
   const fetchTeam = useCallback(async () => {
     setLoading(true);
@@ -153,8 +156,12 @@ export function TeamTab({ workspaceId }: Props) {
     try {
       const res = await fetch(`/api/workspace/${workspaceId}/team`);
       if (!res.ok) throw new Error("Error al cargar el equipo");
-      const json = (await res.json()) as { members: TeamMember[] };
+      const json = (await res.json()) as {
+        members: TeamMember[];
+        seats?: { used: number; limit: number };
+      };
       setMembers(json.members ?? []);
+      setSeats(json.seats ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
     } finally {
@@ -204,13 +211,19 @@ export function TeamTab({ workspaceId }: Props) {
         ),
       });
       const json = (await res.json()) as { error?: string };
-      if (!res.ok) throw new Error(json.error ?? "Error al actualizar");
+      if (!res.ok) {
+        if (json.error === "TEAM_SEAT_LIMIT_REACHED") {
+          throw new Error("No hay plazas libres — pide a Onyxlink que amplíe el límite o desactiva a alguien más primero");
+        }
+        throw new Error(json.error ?? "Error al actualizar");
+      }
       setMembers((prev) =>
         prev.map((m) =>
           m.user_id === member.user_id ? { ...m, is_active: next } : m,
         ),
       );
       toast.success(next ? "Miembro reactivado" : "Miembro desactivado");
+      void fetchTeam();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error desconocido");
     } finally {
@@ -273,6 +286,12 @@ export function TeamTab({ workspaceId }: Props) {
         <p className="text-sm text-muted-foreground">
           Administra quién tiene acceso a tu negocio.
         </p>
+        {seats && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Plazas: <span className="font-mono font-semibold text-foreground">{seats.used}</span> ocupadas de{" "}
+            <span className="font-mono font-semibold text-foreground">{seats.limit}</span> contratadas
+          </p>
+        )}
       </div>
 
       {/* Members list or empty state */}
@@ -292,9 +311,11 @@ export function TeamTab({ workspaceId }: Props) {
               size="sm"
               className="gap-1.5"
               onClick={() => setInviteOpen(true)}
+              disabled={seatsFull}
+              title={seatsFull ? "Sin plazas libres — pide a Onyxlink que amplíe el límite" : undefined}
             >
               <UserPlus className="h-4 w-4" aria-hidden="true" />
-              Invitar miembro
+              {seatsFull ? "Sin plazas libres" : "Invitar miembro"}
             </Button>
           </div>
 

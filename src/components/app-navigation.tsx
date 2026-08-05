@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   Menu,
   MessageCircle,
+  MessagesSquare,
   Network,
   PenTool,
   Phone,
@@ -33,6 +34,7 @@ import {
 export type AppNavIcon =
   | "dashboard"
   | "messages"
+  | "team-chat"
   | "clients"
   | "pipeline"
   | "projects"
@@ -57,6 +59,7 @@ export interface AppNavItem {
 const ICONS: Record<AppNavIcon, LucideIcon> = {
   dashboard: LayoutDashboard,
   messages: MessageCircle,
+  "team-chat": MessagesSquare,
   clients: Users,
   pipeline: Kanban,
   projects: FolderKanban,

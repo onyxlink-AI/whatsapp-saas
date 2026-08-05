@@ -43,6 +43,8 @@ interface MiEquipoViewProps {
   projects: MiEquipoProject[];
   tasks: MiEquipoTask[];
   canManage: boolean;
+  seatsUsed: number;
+  seatsLimit: number;
 }
 
 function getInitials(name: string | null, email: string): string {
@@ -59,8 +61,11 @@ export function MiEquipoView({
   projects,
   tasks,
   canManage,
+  seatsUsed,
+  seatsLimit,
 }: MiEquipoViewProps) {
   const [members, setMembers] = useState(initialMembers);
+  const seatsFull = seatsUsed >= seatsLimit;
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<WorkspaceRole | "all">("all");
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -110,10 +115,20 @@ export function MiEquipoView({
           </SelectContent>
         </Select>
 
+        <span className="text-xs text-muted-foreground">
+          {seatsUsed} de {seatsLimit} plazas ocupadas
+        </span>
+
         {canManage && (
-          <Button size="sm" className="ml-auto h-9 gap-1.5 text-xs" onClick={() => setInviteOpen(true)}>
+          <Button
+            size="sm"
+            className="ml-auto h-9 gap-1.5 text-xs"
+            onClick={() => setInviteOpen(true)}
+            disabled={seatsFull}
+            title={seatsFull ? "Sin plazas libres — pide a Onyxlink que amplíe el límite" : undefined}
+          >
             <UserPlus className="h-3.5 w-3.5" />
-            Añadir miembro
+            {seatsFull ? "Sin plazas libres" : "Añadir miembro"}
           </Button>
         )}
       </div>

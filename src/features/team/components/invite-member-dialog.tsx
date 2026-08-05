@@ -93,7 +93,12 @@ export function InviteMemberDialog({
         userId?: string;
         credentials?: { email: string; password: string } | null;
       };
-      if (!res.ok) throw new Error(json.error ?? "Error al crear el usuario");
+      if (!res.ok) {
+        if (json.error === "TEAM_SEAT_LIMIT_REACHED") {
+          throw new Error("Sin plazas libres — pide a Onyxlink que amplíe el límite o desactiva a alguien más primero");
+        }
+        throw new Error(json.error ?? "Error al crear el usuario");
+      }
 
       if (json.credentials && json.userId) {
         setCreatedCreds(json.credentials);

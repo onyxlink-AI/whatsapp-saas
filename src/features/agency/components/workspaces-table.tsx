@@ -10,6 +10,7 @@ import {
   Trash2,
   AlertTriangle,
   MessageCircle,
+  MessagesSquare,
   Users,
   Phone,
   Network,
@@ -70,11 +71,19 @@ const PRODUCT_META = [
   { key: "officeVirtual", label: "Oficina Virtual", Icon: Network } as const,
   { key: "chatbot", label: "Chatbot", Icon: Bot } as const,
   { key: "whiteboard", label: "Board", Icon: PenTool } as const,
+  { key: "teamChat", label: "Chat de equipo", Icon: MessagesSquare } as const,
 ];
 
-/** Compact "what's contracted" row — same 5 product flags every other surface reads, never a separate computation. */
-function ProductBadges({ products }: { products: WorkspaceWithStats["products"] }) {
+/** Compact "what's contracted" row — same product flags every other surface reads, never a separate computation. */
+function ProductBadges({
+  products,
+  teamChatSeats,
+}: {
+  products: WorkspaceWithStats["products"];
+  teamChatSeats: WorkspaceWithStats["teamChatSeats"];
+}) {
   const activeProducts = PRODUCT_META.filter(({ key }) => products[key]);
+  const seatsFull = products.teamChat && teamChatSeats.used >= teamChatSeats.limit;
   return (
     <div className="mt-2 flex flex-wrap items-center gap-1.5">
       {activeProducts.length === 0 && (
@@ -83,10 +92,15 @@ function ProductBadges({ products }: { products: WorkspaceWithStats["products"] 
       {activeProducts.map(({ key, label, Icon }) => (
         <span
           key={key}
-          className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/[0.07] px-2 py-0.5 text-[10px] font-medium text-foreground"
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium",
+            key === "teamChat" && seatsFull
+              ? "border-warning/40 bg-warning/10 text-warning"
+              : "border-primary/20 bg-primary/[0.07] text-foreground",
+          )}
         >
           <Icon className="h-3 w-3 text-primary" aria-hidden="true" />
-          {label}
+          {key === "teamChat" ? `${label} · ${teamChatSeats.used}/${teamChatSeats.limit}` : label}
         </span>
       ))}
     </div>
@@ -280,7 +294,7 @@ export function WorkspacesTable({
               <div className="mt-1.5">
                 <PackageTierBadge tier={workspace.package_tier} />
               </div>
-              <ProductBadges products={workspace.products} />
+              <ProductBadges products={workspace.products} teamChatSeats={workspace.teamChatSeats} />
             </div>
 
             {/* Miembros */}

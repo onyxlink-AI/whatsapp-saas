@@ -23,7 +23,7 @@ export default async function MiEquipoPage() {
 
   const { data: workspaceFlagsRow } = await supabase
     .from("workspaces")
-    .select("gestion_enabled")
+    .select("gestion_enabled, human_member_limit")
     .eq("id", membership.workspace_id)
     .maybeSingle();
 
@@ -37,11 +37,20 @@ export default async function MiEquipoPage() {
     );
   }
 
-  const [members, projects, tasks] = await Promise.all([
+  const [members, projects, tasks, { data: activeMemberRows }] = await Promise.all([
     listTeamMembers(membership.workspace_id),
     getProjectsForBoard(membership.workspace_id),
     listTasks(membership.workspace_id),
+    supabase
+      .from("memberships")
+      .select("user_id, users(is_super_admin)")
+      .eq("workspace_id", membership.workspace_id)
+      .eq("is_active", true),
   ]);
+
+  const seatsUsed = (
+    (activeMemberRows ?? []) as unknown as Array<{ users: { is_super_admin: boolean | null } | null }>
+  ).filter((row) => !row.users?.is_super_admin).length;
 
   const canManage =
     ROLE_RANK[membership.role as WorkspaceRole] >= ROLE_RANK.manager;
@@ -59,6 +68,8 @@ export default async function MiEquipoPage() {
         projects={projects.map((p) => ({ id: p.id, name: p.name, responsible_id: p.responsible_id }))}
         tasks={tasks.map((t) => ({ id: t.id, title: t.title, status: t.status, assigned_to: t.assigned_to }))}
         canManage={canManage}
+        seatsUsed={seatsUsed}
+        seatsLimit={workspaceFlagsRow?.human_member_limit ?? 1}
       />
     </div>
   );
