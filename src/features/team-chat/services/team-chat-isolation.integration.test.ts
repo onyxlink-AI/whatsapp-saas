@@ -774,4 +774,118 @@ describe("Chat de equipo — aislamiento entre tenants con JWT reales", () => {
     for (const id of userIds) await db.auth.admin.deleteUser(id).catch(() => {});
     await db.from("workspaces").delete().eq("id", wsId);
   });
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Regresión de seguridad: claim_workspace_seat(), set_team_chat_enabled()
+  // y team_chat_backfill_seat_limit() son SECURITY DEFINER de solo
+  // service_role — ninguna comprueba internamente quién llama, confían en
+  // que la ruta API ya autorizó al llamador antes de invocarlas. Detectado
+  // en vivo en producción con `supabase inspect db advisors`: el patrón
+  // "REVOKE ALL ... FROM PUBLIC" (el mismo que sí basta para las funciones
+  // RLS-helper de la base) no bastaba en este proyecto — algo a nivel de
+  // proyecto concede EXECUTE directo a anon/authenticated en toda función
+  // nueva, sin pasar por PUBLIC. Sin este REVOKE explícito de anon Y
+  // authenticated (20260808000002_team_chat_security_definer_grants_fix.sql),
+  // cualquiera sin sesión podía llamar claim_workspace_seat con cualquier
+  // workspace_id/user_id/role y auto-concederse una membership de admin en
+  // cualquier empresa. Mismo patrón — no solo REVOKE FROM PUBLIC — para
+  // cualquier SECURITY DEFINER futuro de uso exclusivo service_role.
+  // ────────────────────────────────────────────────────────────────────────
+  describe("Seguridad: claim_workspace_seat/set_team_chat_enabled/team_chat_backfill_seat_limit son solo service_role", () => {
+    async function rpcAsAnon(fn: string, body: Record<string, unknown>) {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+        method: "POST",
+        headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return { status: r.status, body: await r.json() };
+    }
+
+    async function rpcAsAuthenticated(fn: string, jwt: string, body: Record<string, unknown>) {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+        method: "POST",
+        headers: { apikey: ANON_KEY, Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return { status: r.status, body: await r.json() };
+    }
+
+    it("anon no puede ejecutar claim_workspace_seat directamente vía REST", async (ctx) => {
+      if (!reachable) return ctx.skip();
+      const { status, body } = await rpcAsAnon("claim_workspace_seat", {
+        p_workspace_id: EMPRESA_A,
+        p_user_id: userBId,
+        p_role: "admin",
+      });
+      expect(status).toBe(401);
+      expect(body.code).toBe("42501");
+    });
+
+    it("anon no puede ejecutar set_team_chat_enabled directamente vía REST", async (ctx) => {
+      if (!reachable) return ctx.skip();
+      const { status, body } = await rpcAsAnon("set_team_chat_enabled", {
+        p_workspace_id: EMPRESA_A,
+        p_enabled: true,
+      });
+      expect(status).toBe(401);
+      expect(body.code).toBe("42501");
+    });
+
+    it("anon no puede ejecutar team_chat_backfill_seat_limit directamente vía REST", async (ctx) => {
+      if (!reachable) return ctx.skip();
+      const { status, body } = await rpcAsAnon("team_chat_backfill_seat_limit", { p_workspace_id: EMPRESA_A });
+      expect(status).toBe(401);
+      expect(body.code).toBe("42501");
+    });
+
+    // Inician sesión frescas en vez de reutilizar clientA/clientB (vivas
+    // durante todo el archivo): bajo el conjunto completo de tests en
+    // paralelo, reutilizar una sesión de larga duración dio 401 en vez de
+    // 403 de forma intermitente (getSession() intentando refrescar un
+    // access_token bajo carga concurrente del stack local) — una sesión
+    // recién obtenida aquí mismo hace la prueba autocontenida y determinista.
+    it("un usuario authenticated normal (no service_role) tampoco puede ejecutar claim_workspace_seat", async (ctx) => {
+      if (!reachable) return ctx.skip();
+      const freshClient = createClient(SUPABASE_URL, ANON_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
+      const { data: signInData, error: signInErr } = await freshClient.auth.signInWithPassword({
+        email: CLIENTE_A_EMAIL,
+        password: CLIENTE_A_PASSWORD,
+      });
+      expect(signInErr).toBeNull();
+      const jwt = signInData.session?.access_token;
+      expect(jwt).toBeTruthy();
+
+      const { status, body } = await rpcAsAuthenticated("claim_workspace_seat", jwt!, {
+        p_workspace_id: EMPRESA_A,
+        // Un atacante intentaría auto-concederse admin en su propio workspace
+        // saltándose requireWorkspaceMember(minRole:"manager") de la ruta API.
+        p_user_id: signInData.user!.id,
+        p_role: "admin",
+      });
+      expect(status).toBe(403);
+      expect(body.code).toBe("42501");
+      await freshClient.auth.signOut().catch(() => {});
+    });
+
+    it("un usuario authenticated normal tampoco puede ejecutar set_team_chat_enabled sobre otra empresa", async (ctx) => {
+      if (!reachable) return ctx.skip();
+      const freshClient = createClient(SUPABASE_URL, ANON_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
+      const { data: signInData, error: signInErr } = await freshClient.auth.signInWithPassword({
+        email: CLIENTE_A_EMAIL,
+        password: CLIENTE_A_PASSWORD,
+      });
+      expect(signInErr).toBeNull();
+      const jwt = signInData.session?.access_token;
+      expect(jwt).toBeTruthy();
+
+      const { status, body } = await rpcAsAuthenticated("set_team_chat_enabled", jwt!, {
+        p_workspace_id: EMPRESA_B,
+        p_enabled: true,
+        p_human_member_limit: 500,
+      });
+      expect(status).toBe(403);
+      expect(body.code).toBe("42501");
+      await freshClient.auth.signOut().catch(() => {});
+    });
+  });
 });
