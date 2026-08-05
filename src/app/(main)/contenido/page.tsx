@@ -1,15 +1,16 @@
 import { redirect } from "next/navigation";
-import { Clapperboard } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveWorkspace } from "@/features/workspace/services/active-workspace";
+import { listContentItems } from "@/features/content/services/content-actions";
+import { listWorkspaceMembers } from "@/features/projects/services/project-actions";
+import { ContentHub } from "@/features/content/components/content-hub";
 import { PageHeader } from "@/components/page-header";
 
 export const dynamic = "force-dynamic";
 
-// Fase 1 del roadmap comercial: Contenido aparece ya en la navegación de
-// Gestión (Ideas, Guiones, Pipeline de contenido, Teleprompter), pero su
-// funcionalidad real se construye en la Fase 3 — aquí solo el destino y el
-// guard de plan, con un estado vacío honesto en vez de una página rota.
+// Fase 3 del roadmap comercial: Contenido queda completo — Ideas, Guiones y
+// Pipeline sobre la misma tabla content_items (una idea es una fila en
+// status='idea'; "convertir a guion" solo avanza el status).
 export default async function ContenidoPage() {
   const supabase = await createClient();
 
@@ -53,6 +54,11 @@ export default async function ContenidoPage() {
     );
   }
 
+  const [items, members] = await Promise.all([
+    listContentItems(membership.workspace_id),
+    listWorkspaceMembers(membership.workspace_id),
+  ]);
+
   return (
     <div className="page-shell flex min-h-[calc(100vh-4rem)] max-w-none flex-col gap-6">
       <PageHeader
@@ -60,13 +66,7 @@ export default async function ContenidoPage() {
         title="Contenido"
         description="Ideas, guiones, pipeline de publicación y teleprompter para tu equipo."
       />
-      <div className="surface-card flex flex-col items-center gap-3 py-20 text-center">
-        <Clapperboard className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
-        <p className="max-w-sm text-sm text-muted-foreground">
-          Todavía estamos construyendo Contenido. Muy pronto podrás crear
-          ideas, guiones y planificar publicaciones desde aquí.
-        </p>
-      </div>
+      <ContentHub workspaceId={membership.workspace_id} items={items} members={members} />
     </div>
   );
 }

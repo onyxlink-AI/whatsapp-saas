@@ -10,7 +10,6 @@ import { sendDueReminders } from "@/features/inbox/services/appointment-reminder
 // each appointment's own workspace_id.
 // ──────────────────────────────────────────────────────────────────────────────
 
-export const schedule = "*/15 * * * *"; // reference only — actual schedule lives in pg_cron
 
 export async function GET(request: Request): Promise<NextResponse> {
   const authHeader = request.headers.get("Authorization");

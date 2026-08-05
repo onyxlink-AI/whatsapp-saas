@@ -15,7 +15,6 @@ import {
 // workspaces it processes per tick.
 // ──────────────────────────────────────────────────────────────────────────────
 
-export const schedule = "0 14 * * *"; // reference only — actual schedule lives in pg_cron
 
 const MAX_WORKSPACES_PER_RUN = 20;
 

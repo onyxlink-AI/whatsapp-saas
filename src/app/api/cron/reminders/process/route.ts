@@ -9,7 +9,6 @@ import { processDueReminderJobs } from "@/features/reminders/services/reminder-s
 // same concurrency-safe pattern as buffer-flush's claim_next_batch()).
 // ──────────────────────────────────────────────────────────────────────────────
 
-export const schedule = "*/10 * * * *"; // reference only — actual schedule lives in pg_cron
 
 export async function GET(request: Request): Promise<NextResponse> {
   const authHeader = request.headers.get("Authorization");
