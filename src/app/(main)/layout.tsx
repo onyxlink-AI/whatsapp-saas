@@ -90,10 +90,6 @@ export default async function MainLayout({
     );
   }
 
-  // Fase 1 del roadmap comercial: Pipeline y Pizarra dejan de ser entradas
-  // de menú independientes — viven como vistas dentro de Proyectos
-  // (?view=pipeline / ?view=board). Las rutas antiguas /pipeline y /pizarra
-  // redirigen ahí (ver next.config.ts); /pizarra/[id] se conserva.
   if (hasGestion) {
     navItems.push(
       {
@@ -102,6 +98,13 @@ export default async function MainLayout({
         icon: "clients",
         section: "Gestión",
         mobilePrimary: true,
+      },
+      {
+        href: "/pipeline",
+        label: "Oportunidades",
+        shortLabel: "Ventas",
+        icon: "pipeline",
+        section: "Gestión",
       },
       {
         href: "/proyectos",
@@ -123,6 +126,17 @@ export default async function MainLayout({
         section: "Gestión",
       },
     );
+  }
+
+  if (hasWhatsappAgent && !hasGestion) {
+    navItems.push({
+      href: "/pipeline",
+      label: "Oportunidades",
+      shortLabel: "Ventas",
+      icon: "pipeline",
+      section: "Gestión",
+      mobilePrimary: true,
+    });
   }
 
   if (hasWhatsappAgent && hasVoiceAgent) {

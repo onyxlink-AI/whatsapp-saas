@@ -76,13 +76,9 @@ const nextConfig: NextConfig = {
   ],
   // Serve the app icon for legacy /favicon.ico probes (avoids a 404).
   rewrites: async () => [{ source: "/favicon.ico", destination: "/icon.png" }],
-  // Fase 1 del roadmap comercial: Pipeline y Board (Pizarra) dejan de ser
-  // páginas propias — viven como vistas dentro de Proyectos. Solo la ruta
-  // exacta /pizarra (la lista) redirige; /pizarra/[id] (editor de un board
-  // concreto) se conserva intacta. Next.js reenvía automáticamente los demás
-  // query params (ej. ?createFor=) a la nueva URL.
+  // Board vive dentro de Proyectos. La ruta exacta /pizarra redirige, mientras
+  // /pizarra/[id] conserva el editor de cada tablero.
   redirects: async () => [
-    { source: "/pipeline", destination: "/proyectos?view=pipeline", permanent: false },
     { source: "/pizarra", destination: "/proyectos?view=board", permanent: false },
   ],
 };
