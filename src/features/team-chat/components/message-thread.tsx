@@ -11,7 +11,7 @@ import {
 import { useTeamChatRealtime } from "@/features/team-chat/hooks/use-team-chat-realtime";
 import { MessageBubble } from "./message-bubble";
 import { MessageComposer } from "./message-composer";
-import type { TeamChannelSummary } from "@/features/team-chat/types";
+import type { AttachmentScanStatus, TeamChannelSummary } from "@/features/team-chat/types";
 import type { WorkspaceMember } from "@/features/projects/services/project-actions";
 
 interface MessageThreadProps {
@@ -86,6 +86,23 @@ export function MessageThread({ channel, currentUserId, members, onBack, onRead,
     },
   );
 
+  // Actualización optimista local del propio uploader mientras espera el
+  // broadcast "message_updated" (que también le llega a él, ver
+  // team-chat-broadcast.ts) — idempotente frente a esa segunda entrega, así
+  // que no hace falta desduplicar aquí.
+  function handleAttachmentStatusChange(messageId: string, attachmentId: string, status: AttachmentScanStatus) {
+    setPage((prev) =>
+      prev
+        ? {
+            ...prev,
+            messages: prev.messages.map((m) =>
+              m.id === messageId && m.attachment?.id === attachmentId ? { ...m, attachment: { ...m.attachment, scan_status: status } } : m,
+            ),
+          }
+        : prev,
+    );
+  }
+
   function handleLoadMore() {
     if (!page?.nextCursor || loadingMore) return;
     startLoadingMore(async () => {
@@ -157,6 +174,7 @@ export function MessageThread({ channel, currentUserId, members, onBack, onRead,
           setPage((prev) => (prev ? { ...prev, messages: [...prev.messages, message] } : prev));
           onMessageActivity(channel.id, message.body, message.created_at);
         }}
+        onAttachmentStatusChange={handleAttachmentStatusChange}
       />
     </div>
   );

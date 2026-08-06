@@ -84,6 +84,7 @@ interface Props {
   initialTeamChatEnabled?: boolean;
   initialHumanMemberLimit?: number;
   teamChatSeatsUsed?: number;
+  initialTeamChatStorageQuotaMb?: number;
 }
 
 function ReadinessItem({
@@ -134,6 +135,7 @@ export function SettingsShell({
   initialTeamChatEnabled = false,
   initialHumanMemberLimit = 1,
   teamChatSeatsUsed = 0,
+  initialTeamChatStorageQuotaMb = 500,
 }: Props) {
   const biForForm = initialBusinessInfo as {
     structured: Record<string, unknown>;
@@ -351,6 +353,7 @@ export function SettingsShell({
                     initialEnabled={initialTeamChatEnabled}
                     initialLimit={initialHumanMemberLimit}
                     seatsUsed={teamChatSeatsUsed}
+                    initialStorageQuotaMb={initialTeamChatStorageQuotaMb}
                   />
                 )}
                 <VapiAssistantField

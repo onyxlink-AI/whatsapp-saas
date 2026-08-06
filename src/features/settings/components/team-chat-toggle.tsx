@@ -13,11 +13,12 @@ interface Props {
   initialEnabled: boolean;
   initialLimit: number;
   seatsUsed: number;
+  initialStorageQuotaMb: number;
 }
 
 async function patchTeamChat(
   workspaceId: string,
-  body: { enabled?: boolean; humanMemberLimit?: number },
+  body: { enabled?: boolean; humanMemberLimit?: number; storageQuotaMb?: number },
 ) {
   const response = await fetch(`/api/workspace/${workspaceId}/team-chat-enabled`, {
     method: "PATCH",
@@ -30,9 +31,10 @@ async function patchTeamChat(
   }
 }
 
-export function TeamChatToggle({ workspaceId, initialEnabled, initialLimit, seatsUsed }: Props) {
+export function TeamChatToggle({ workspaceId, initialEnabled, initialLimit, seatsUsed, initialStorageQuotaMb }: Props) {
   const [enabled, setEnabled] = useState(initialEnabled);
   const [limit, setLimit] = useState(String(initialLimit));
+  const [storageQuotaMb, setStorageQuotaMb] = useState(String(initialStorageQuotaMb));
   const [saving, setSaving] = useState(false);
 
   async function handleToggle(next: boolean) {
@@ -63,6 +65,23 @@ export function TeamChatToggle({ workspaceId, initialEnabled, initialLimit, seat
     try {
       await patchTeamChat(workspaceId, { humanMemberLimit: parsed });
       toast.success("Límite de plazas actualizado");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al guardar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSaveStorageQuota() {
+    const parsed = parseInt(storageQuotaMb, 10);
+    if (!Number.isFinite(parsed) || parsed < 1 || parsed > 51200) {
+      toast.error("La cuota debe estar entre 1 y 51200 MB");
+      return;
+    }
+    setSaving(true);
+    try {
+      await patchTeamChat(workspaceId, { storageQuotaMb: parsed });
+      toast.success("Cuota de almacenamiento actualizada");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al guardar");
     } finally {
@@ -104,6 +123,26 @@ export function TeamChatToggle({ workspaceId, initialEnabled, initialLimit, seat
             Guardar
           </Button>
           <span className="text-[11px] text-muted-foreground">{seatsUsed} ocupadas</span>
+        </div>
+      )}
+
+      {enabled && (
+        <div className="flex items-center gap-2 pl-8">
+          <Label htmlFor="team-chat-storage-quota" className="text-xs text-muted-foreground shrink-0">
+            Cuota de documentos (MB/mes)
+          </Label>
+          <Input
+            id="team-chat-storage-quota"
+            type="number"
+            min={1}
+            max={51200}
+            value={storageQuotaMb}
+            onChange={(e) => setStorageQuotaMb(e.target.value)}
+            className="h-8 w-24 text-sm"
+          />
+          <Button size="sm" variant="outline" className="h-8 text-xs" onClick={handleSaveStorageQuota} disabled={saving}>
+            Guardar
+          </Button>
         </div>
       )}
     </div>

@@ -10,30 +10,8 @@
 
 import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createSbClient } from "@supabase/supabase-js";
-import type { TeamChannelKind, TeamChannelSummary, TeamMessageRow } from "@/features/team-chat/types";
+import type { TeamChannelKind, TeamChannelSummary, TeamMessageAttachment, TeamMessageRow } from "@/features/team-chat/types";
 import { TEAM_MESSAGE_MAX_LENGTH } from "@/features/team-chat/types";
-
-export type ActionResult<T> =
-  | { ok: true; data: T; error?: never }
-  | { ok: false; data?: never; error: string };
-
-const RATE_LIMIT_WINDOW_MS = 10_000;
-const RATE_LIMIT_MAX = 20;
-
-function svc() {
-  return createSbClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-// broadcastTeamMessage — envío server-side vía HTTP (sin mantener socket).
-// El cliente nunca emite el broadcast: solo se suscribe a recibir (ver la
-// policy de realtime.messages en la migración). Un fallo aquí nunca debe
-// tumbar el envío del mensaje, que ya quedó persistido — best-effort.
-//
 // Se programa con after() (next/server), no con un `void fn()` suelto: una
 // Server Action puede terminar de ejecutarse en cuanto se envía la
 // respuesta al cliente, y un fire-and-forget sin after() puede quedar
@@ -41,42 +19,18 @@ function svc() {
 // visual de Fase 1 (Empresa A y superadmin en el mismo canal: el mensaje de
 // A nunca llegaba en vivo a la sesión del superadmin, solo tras recargar).
 // after() garantiza que esta llamada corra hasta el final aunque la
-// respuesta ya se haya enviado, sin retrasarla.
-// ──────────────────────────────────────────────────────────────────────────────
-// httpSend() explícito, no send(): sin él, realtime-js hace el fallback
-// automático a REST igualmente (avisando por consola que lo hará), pero ese
-// fallback implícito está marcado para dejar de existir — aquí no
-// mantenemos socket a propósito (ver comentario de la sección de arriba),
-// así que se pide la vía REST sin ambigüedad. httpSend() no lanza en caso
-// de fallo (devuelve {success:false,...}), a diferencia de send(): hay que
-// comprobar el resultado explícitamente. removeChannel() al terminar, tal
-// como recomienda la documentación de @supabase/realtime-js para canales
-// creados solo para un envío REST puntual.
-async function broadcastTeamMessage(message: TeamMessageRow): Promise<void> {
-  const client = svc();
-  const channel = client.channel(`team:${message.channel_id}`, { config: { private: true } });
-  try {
-    const result = await channel.httpSend("new_message", message);
-    if (!result.success) console.error("[broadcastTeamMessage] failed:", result.error);
-  } catch (err) {
-    console.error("[broadcastTeamMessage] failed:", err);
-  } finally {
-    await client.removeChannel(channel);
-  }
-}
+// respuesta ya se haya enviado, sin retrasarla. broadcastTeamMessage/Update
+// viven en team-chat-broadcast.ts (sin "use server") para poder
+// reutilizarlas también desde team-chat-attachments.ts sin exponerlas como
+// endpoints públicos invocables por el cliente.
+import { broadcastTeamMessage, broadcastTeamMessageUpdate } from "@/features/team-chat/services/team-chat-broadcast";
 
-async function broadcastTeamMessageUpdate(message: TeamMessageRow): Promise<void> {
-  const client = svc();
-  const channel = client.channel(`team:${message.channel_id}`, { config: { private: true } });
-  try {
-    const result = await channel.httpSend("message_updated", message);
-    if (!result.success) console.error("[broadcastTeamMessageUpdate] failed:", result.error);
-  } catch (err) {
-    console.error("[broadcastTeamMessageUpdate] failed:", err);
-  } finally {
-    await client.removeChannel(channel);
-  }
-}
+export type ActionResult<T> =
+  | { ok: true; data: T; error?: never }
+  | { ok: false; data?: never; error: string };
+
+const RATE_LIMIT_WINDOW_MS = 10_000;
+const RATE_LIMIT_MAX = 20;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // listMyChannels — General primero, luego DMs por actividad reciente.
@@ -229,6 +183,30 @@ export async function getChannelMessages(
   const rows = data as TeamMessageRow[];
   const last = rows[rows.length - 1];
   const nextCursor = rows.length === limit && last ? { createdAt: last.created_at, id: last.id } : null;
+
+  // Los mensajes con adjunto no traen esa relación en el SELECT de arriba
+  // (team_message_attachments es una tabla aparte, un mensaje "contenedor"
+  // por adjunto) — sin este segundo query, un mensaje con adjunto solo se
+  // ve completo durante la propia sesión de subida (donde el composer ya
+  // conoce el adjunto de memoria); al recargar el canal o reabrirlo,
+  // getChannelMessages() lo devolvía como texto plano con el body
+  // placeholder ("📎 nombre.pdf") en vez del bloque de adjunto real.
+  const messageIds = rows.map((r) => r.id);
+  if (messageIds.length > 0) {
+    const { data: attachmentRows } = await supabase
+      .from("team_message_attachments")
+      .select("id, message_id, file_name, declared_mime, byte_size, scan_status, created_at")
+      .in("message_id", messageIds);
+
+    const attachmentByMessageId = new Map(
+      ((attachmentRows ?? []) as unknown as TeamMessageAttachment[]).map((a) => [a.message_id, a]),
+    );
+
+    for (const row of rows) {
+      const attachment = attachmentByMessageId.get(row.id);
+      if (attachment) row.attachment = attachment;
+    }
+  }
 
   return { messages: [...rows].reverse(), nextCursor };
 }

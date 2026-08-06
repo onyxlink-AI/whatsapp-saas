@@ -12,6 +12,7 @@ import { readJsonBody, requireSuperAdmin } from "@/lib/auth/workspace-access";
 const patchSchema = z.object({
   enabled: z.boolean().optional(),
   humanMemberLimit: z.number().int().min(1).max(500).optional(),
+  storageQuotaMb: z.number().int().min(1).max(51200).optional(),
 });
 
 function serviceClient() {
@@ -37,8 +38,8 @@ export async function PATCH(
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { enabled, humanMemberLimit } = parsed.data;
-  if (enabled === undefined && humanMemberLimit === undefined) {
+  const { enabled, humanMemberLimit, storageQuotaMb } = parsed.data;
+  if (enabled === undefined && humanMemberLimit === undefined && storageQuotaMb === undefined) {
     return NextResponse.json({ error: "Nada que actualizar" }, { status: 400 });
   }
 
@@ -50,24 +51,44 @@ export async function PATCH(
   // fallo limpio. set_team_chat_enabled() hace ambas cosas en una sola
   // función PL/pgSQL: si algo falla dentro, TODO se revierte, incluida la
   // propia bandera.
-  const { error: rpcError } = await db.rpc("set_team_chat_enabled", {
-    p_workspace_id: workspaceId,
-    p_enabled: enabled ?? null,
-    p_human_member_limit: humanMemberLimit ?? null,
-  });
+  if (enabled !== undefined || humanMemberLimit !== undefined) {
+    const { error: rpcError } = await db.rpc("set_team_chat_enabled", {
+      p_workspace_id: workspaceId,
+      p_enabled: enabled ?? null,
+      p_human_member_limit: humanMemberLimit ?? null,
+    });
 
-  if (rpcError) {
-    console.error("[PATCH /api/workspace/[id]/team-chat-enabled] set_team_chat_enabled", rpcError);
-    if (rpcError.message?.includes("not found")) {
-      return NextResponse.json({ error: "Workspace no encontrado" }, { status: 404 });
+    if (rpcError) {
+      console.error("[PATCH /api/workspace/[id]/team-chat-enabled] set_team_chat_enabled", rpcError);
+      if (rpcError.message?.includes("not found")) {
+        return NextResponse.json({ error: "Workspace no encontrado" }, { status: 404 });
+      }
+      if (rpcError.message?.includes("is below the")) {
+        return NextResponse.json(
+          { error: "El límite no puede ser menor que las plazas humanas ya ocupadas" },
+          { status: 409 },
+        );
+      }
+      return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
     }
-    if (rpcError.message?.includes("is below the")) {
-      return NextResponse.json(
-        { error: "El límite no puede ser menor que las plazas humanas ya ocupadas" },
-        { status: 409 },
-      );
+  }
+
+  // La cuota de almacenamiento no tiene los efectos secundarios de
+  // enabled/humanMemberLimit (provisionar General, backfill) ni un
+  // invariante que validar contra el uso actual — bajarla por debajo de lo
+  // ya usado este mes es un estado válido (solo bloquea subidas nuevas
+  // hasta que se suba o llegue el próximo mes), así que un UPDATE directo
+  // con service role basta, mismo patrón que whiteboard-enabled.
+  if (storageQuotaMb !== undefined) {
+    const { error: quotaError } = await db
+      .from("workspaces")
+      .update({ team_chat_storage_quota_mb: storageQuotaMb })
+      .eq("id", workspaceId);
+
+    if (quotaError) {
+      console.error("[PATCH /api/workspace/[id]/team-chat-enabled] storage quota update", quotaError);
+      return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
     }
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 
   void logAudit({
@@ -79,10 +100,11 @@ export async function PATCH(
     summary: [
       enabled !== undefined ? `${enabled ? "Activó" : "Desactivó"} el Chat de equipo` : null,
       humanMemberLimit !== undefined ? `Fijó el límite de plazas en ${humanMemberLimit}` : null,
+      storageQuotaMb !== undefined ? `Fijó la cuota de almacenamiento en ${storageQuotaMb} MB` : null,
     ]
       .filter(Boolean)
       .join(" · "),
   });
 
-  return NextResponse.json({ enabled, humanMemberLimit });
+  return NextResponse.json({ enabled, humanMemberLimit, storageQuotaMb });
 }

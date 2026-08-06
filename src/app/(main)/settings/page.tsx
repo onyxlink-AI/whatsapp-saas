@@ -65,7 +65,7 @@ export default async function SettingsPage() {
       .eq("workspace_id", workspaceId),
     svc
       .from("workspaces")
-      .select("advanced_memory_enabled, pipeline_ai_enabled, cold_lead_recovery_enabled, vapi_assistant_id, cross_channel_memory_enabled, whatsapp_agent_enabled, gestion_enabled, office_virtual_enabled, chatbot_enabled, help_assistant_actions_enabled, whiteboard_enabled, team_chat_enabled, human_member_limit")
+      .select("advanced_memory_enabled, pipeline_ai_enabled, cold_lead_recovery_enabled, vapi_assistant_id, cross_channel_memory_enabled, whatsapp_agent_enabled, gestion_enabled, office_virtual_enabled, chatbot_enabled, help_assistant_actions_enabled, whiteboard_enabled, team_chat_enabled, human_member_limit, team_chat_storage_quota_mb")
       .eq("id", workspaceId)
       .single(),
     svc.from("users").select("is_super_admin").eq("id", user.id).maybeSingle(),
@@ -169,6 +169,7 @@ export default async function SettingsPage() {
       initialTeamChatEnabled={workspaceData?.team_chat_enabled === true}
       initialHumanMemberLimit={workspaceData?.human_member_limit ?? 1}
       teamChatSeatsUsed={seatsUsed}
+      initialTeamChatStorageQuotaMb={workspaceData?.team_chat_storage_quota_mb ?? 500}
     />
   );
 }
