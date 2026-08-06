@@ -24,12 +24,10 @@ function buildIdlePath(index: number, corridorZ: number, cafeCenter: [number, nu
   const laneOffset = (index % 4 - 1.5) * .28;
   const rowCorridorZ = room[2] + ROOM_D / 2 + GAP / 2 + laneOffset;
   const sideCorridorX = BUILDING_WIDTH / 2 + 1.05 + (index % 3) * .34;
-  const cafeStops: Array<[number, number]> = [
-    [-5.8, -.2], [-2.8, -.2], [.2, -.2], [3.2, -.2],
-    [-5.8, 5], [-2.8, 5], [.2, 5], [3.2, 5],
-    [-6, -4.4], [-3.5, -4.4], [-1, -4.4], [4.6, -4.4],
-  ];
-  const stop = cafeStops[index % cafeStops.length];
+  // Two completely clear internal aisles between the two table rows. Every
+  // destination is outside the table, chair, sofa and counter footprints.
+  const cafeStopX = -6.05 + (index % 6) * 2.35;
+  const cafeAisleZ = index % 2 === 0 ? .35 : 1.35;
   const entranceZ = index % 2 === 0 ? -2.6 : 2.6;
   return [
     [room[0] + ROOM_W / 2 - 1.15, 0, room[2] + ROOM_D / 2 + .35],
@@ -37,9 +35,16 @@ function buildIdlePath(index: number, corridorZ: number, cafeCenter: [number, nu
     [sideCorridorX, 0, rowCorridorZ],
     [sideCorridorX, 0, corridorZ],
     [cafeCenter[0] - 8.55, 0, corridorZ + laneOffset],
+    // Align while still outside. Crossing the wall diagonally was the source
+    // of the visible wall clipping in the previous route.
+    [cafeCenter[0] - 8.55, 0, corridorZ + entranceZ],
     [cafeCenter[0] - 8.2, 0, corridorZ + entranceZ],
     [cafeCenter[0] - 7.55, 0, corridorZ + entranceZ],
-    [cafeCenter[0] + stop[0], 0, corridorZ + stop[1]],
+    // Stay against the clear left edge until reaching an internal aisle, then
+    // turn at 90 degrees. No diagonal segment can cut across furniture.
+    [cafeCenter[0] - 7.4, 0, corridorZ + entranceZ],
+    [cafeCenter[0] - 7.4, 0, corridorZ + cafeAisleZ],
+    [cafeCenter[0] + cafeStopX, 0, corridorZ + cafeAisleZ],
   ];
 }
 
@@ -88,7 +93,7 @@ function CafeLounge({ position, presentation }: { position: [number, number, num
       <mesh position={[1.45,1.5,.15]} castShadow><boxGeometry args={[2.3,.52,.75]} /><meshStandardMaterial color="#182625" transparent opacity={.68} /></mesh>
       {[.55,1.05,1.55,2.05,2.55].map((x)=><mesh key={x} position={[x,1.62,.54]}><cylinderGeometry args={[.11,.09,.22,12]} /><meshStandardMaterial color="#f1e8da" /></mesh>)}
     </group>
-    {[[-4.5,-1.5],[2,-1.5],[-4.5,3.4],[2,3.4]].map(([x,z], i) => <group key={i}><CafeTable position={[x,0,z]} presentation={presentation} /><CafeChair position={[x-1.55,0,z]} rotation={Math.PI/2} presentation={presentation} /><CafeChair position={[x+1.55,0,z]} rotation={-Math.PI/2} presentation={presentation} /></group>)}
+    {[[-4.5,-1.5],[2,-1.5],[-4.5,3.4],[2,3.4]].map(([x,z], i) => <group key={i}><CafeTable position={[x,0,z]} presentation={presentation} /><CafeChair position={[x-1.85,0,z]} rotation={Math.PI/2} presentation={presentation} /><CafeChair position={[x+1.85,0,z]} rotation={-Math.PI/2} presentation={presentation} /></group>)}
     <group position={[5.4,0,3.9]}><mesh position={[0,.42,0]} castShadow><boxGeometry args={[3.6,.82,1]} /><meshStandardMaterial color={presentation ? '#24413f' : '#7d8b87'} /></mesh><mesh position={[0,1.02,-.4]} castShadow><boxGeometry args={[3.6,1.2,.16]} /><meshStandardMaterial color={presentation ? '#1a302f' : '#71817d'} /></mesh></group>
     <Html position={[0,2.45,-6.38]} center distanceFactor={12}><div className="office-coffee-sign">ONYXLINK CAFÉ</div></Html>
     {[[-4.5,2.65,-1.5],[2,2.65,-1.5],[-4.5,2.65,3.4],[2,2.65,3.4],[5.5,2.65,0]].map((p,i)=><pointLight key={i} position={p as [number,number,number]} color={i < 4 ? '#ffd8a8' : '#A0DCDB'} intensity={presentation ? 2.6 : 1.8} distance={8} decay={2} />)}
