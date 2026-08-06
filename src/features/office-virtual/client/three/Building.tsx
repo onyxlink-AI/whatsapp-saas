@@ -1,4 +1,7 @@
 import { Html } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
+import { useRef } from 'react';
+import * as THREE from 'three';
 import { BUILDING_DEPTH, BUILDING_WIDTH, GAP, ROOM_D, ROOM_W, SPACING_X, roomCenter } from './layout';
 import type { OfficeRoomSlot } from './officeRoster';
 import OfficeCharacter from './OfficeCharacter';
@@ -78,13 +81,76 @@ function CafeTable({ position, presentation }: { position: [number, number, numb
   </group>;
 }
 
+// Antes 3 — se sube para dar sitio a un rótulo de verdad (marco de neón +
+// placa de montaje) con margen arriba y abajo, en vez de rozar el techo.
+const CAFE_WALL_HEIGHT = 3.7;
+const CAFE_WALL_CENTER_Y = CAFE_WALL_HEIGHT / 2;
+
+function CafeSign({ presentation }: { presentation: boolean }) {
+  const glowMat = useRef<THREE.MeshStandardMaterial>(null);
+  const tubeTopMat = useRef<THREE.MeshStandardMaterial>(null);
+  const tubeBottomMat = useRef<THREE.MeshStandardMaterial>(null);
+  const lightA = useRef<THREE.PointLight>(null);
+  const lightB = useRef<THREE.PointLight>(null);
+
+  useFrame((state) => {
+    // Parpadeo de neón real, no una respiración senoidal: estable la mayor
+    // parte del ciclo, con dos caídas breves e irregulares — mismo patrón
+    // (y mismo período, 5.2s) que la animación CSS del texto en
+    // office-virtual.css, para que ambos lean como el mismo rótulo.
+    const cycle = (state.clock.getElapsedTime() % 5.2) / 5.2;
+    let flicker = 1;
+    if (cycle > 0.05 && cycle < 0.09) flicker = 0.5 + Math.sin(((cycle - 0.05) / 0.04) * Math.PI) * 0.3;
+    else if (cycle > 0.42 && cycle < 0.47) flicker = 0.65 + Math.sin(((cycle - 0.42) / 0.05) * Math.PI) * 0.3;
+
+    const tubeBase = presentation ? 2.4 : 1.7;
+    if (tubeTopMat.current) tubeTopMat.current.emissiveIntensity = tubeBase * flicker;
+    if (tubeBottomMat.current) tubeBottomMat.current.emissiveIntensity = tubeBase * flicker;
+    if (glowMat.current) glowMat.current.opacity = (presentation ? 0.32 : 0.22) * flicker;
+    const lightBase = presentation ? 3.2 : 2.2;
+    if (lightA.current) lightA.current.intensity = lightBase * flicker;
+    if (lightB.current) lightB.current.intensity = lightBase * flicker;
+  });
+
+  const neon = '#79CBCA';
+  return (
+    <group position={[0, 2.85, -6.36]}>
+      {/* Halo suave detrás de la placa: sin post-procesado no hay bloom de
+          verdad, pero un plano emisivo semitransparente algo más grande que
+          la placa da la misma sensación de resplandor sobre la pared. */}
+      <mesh position={[0, 0, -0.03]}>
+        <planeGeometry args={[7.4, 2]} />
+        <meshStandardMaterial ref={glowMat} color={neon} emissive={neon} emissiveIntensity={1} transparent opacity={0.28} depthWrite={false} />
+      </mesh>
+      <mesh castShadow>
+        <boxGeometry args={[6.6, 1.5, 0.12]} />
+        <meshStandardMaterial color={presentation ? '#0a1716' : '#122120'} metalness={0.4} roughness={0.35} />
+      </mesh>
+      {/* Marco tipo tubo de neón alrededor del texto. */}
+      <mesh position={[0, 0.68, 0.08]}>
+        <boxGeometry args={[6.2, 0.06, 0.06]} />
+        <meshStandardMaterial ref={tubeTopMat} color={neon} emissive={neon} emissiveIntensity={1.7} toneMapped={false} />
+      </mesh>
+      <mesh position={[0, -0.68, 0.08]}>
+        <boxGeometry args={[6.2, 0.06, 0.06]} />
+        <meshStandardMaterial ref={tubeBottomMat} color={neon} emissive={neon} emissiveIntensity={1.7} toneMapped={false} />
+      </mesh>
+      <pointLight ref={lightA} position={[-1.8, 0, 0.6]} color={neon} intensity={2.2} distance={5.5} decay={2} />
+      <pointLight ref={lightB} position={[1.8, 0, 0.6]} color={neon} intensity={2.2} distance={5.5} decay={2} />
+      <Html position={[0, 0, 0.09]} center distanceFactor={12}>
+        <div className="office-coffee-sign">ONYXLINK CAFÉ</div>
+      </Html>
+    </group>
+  );
+}
+
 function CafeLounge({ position, presentation }: { position: [number, number, number]; presentation: boolean }) {
   const wall = presentation ? '#152625' : '#dce5e2';
   return <group position={position}>
     <mesh position={[0,-.06,0]} receiveShadow><boxGeometry args={[16,.12,13]} /><meshStandardMaterial color={presentation ? '#0d1b1a' : '#c9aa7c'} roughness={.7} /></mesh>
-    <mesh position={[0,1.5,-6.5]} castShadow><boxGeometry args={[16,3,.18]} /><meshStandardMaterial color={wall} /></mesh>
-    <mesh position={[8,1.5,0]} castShadow><boxGeometry args={[.18,3,13]} /><meshStandardMaterial color={wall} /></mesh>
-    {[-5, 0, 5].map((z) => <mesh key={z} position={[-8,1.5,z]} castShadow><boxGeometry args={[.18,3,z === 0 ? 3.4 : 3]} /><meshStandardMaterial color={wall} /></mesh>)}
+    <mesh position={[0,CAFE_WALL_CENTER_Y,-6.5]} castShadow><boxGeometry args={[16,CAFE_WALL_HEIGHT,.18]} /><meshStandardMaterial color={wall} /></mesh>
+    <mesh position={[8,CAFE_WALL_CENTER_Y,0]} castShadow><boxGeometry args={[.18,CAFE_WALL_HEIGHT,13]} /><meshStandardMaterial color={wall} /></mesh>
+    {[-5, 0, 5].map((z) => <mesh key={z} position={[-8,CAFE_WALL_CENTER_Y,z]} castShadow><boxGeometry args={[.18,CAFE_WALL_HEIGHT,z === 0 ? 3.4 : 3]} /><meshStandardMaterial color={wall} /></mesh>)}
     {[-2.6, 2.6].map((z) => <group key={z} position={[-8,0,z]}><mesh position={[0,2.72,0]} castShadow><boxGeometry args={[.22,.22,2]} /><meshStandardMaterial color="#3D6463" metalness={.48} /></mesh>{[-1,1].map((side)=><mesh key={side} position={[0,1.35,side]} castShadow><boxGeometry args={[.22,2.7,.16]} /><meshStandardMaterial color="#3D6463" metalness={.48} /></mesh>)}</group>)}
     <group position={[2.4,0,-5.4]}>
       <mesh position={[0,.56,0]} castShadow><boxGeometry args={[10,1.12,1.25]} /><meshStandardMaterial color={presentation ? '#263b39' : '#a77b50'} roughness={.48} /></mesh>
@@ -95,7 +161,7 @@ function CafeLounge({ position, presentation }: { position: [number, number, num
     </group>
     {[[-4.5,-1.5],[2,-1.5],[-4.5,3.4],[2,3.4]].map(([x,z], i) => <group key={i}><CafeTable position={[x,0,z]} presentation={presentation} /><CafeChair position={[x-1.85,0,z]} rotation={Math.PI/2} presentation={presentation} /><CafeChair position={[x+1.85,0,z]} rotation={-Math.PI/2} presentation={presentation} /></group>)}
     <group position={[5.4,0,3.9]}><mesh position={[0,.42,0]} castShadow><boxGeometry args={[3.6,.82,1]} /><meshStandardMaterial color={presentation ? '#24413f' : '#7d8b87'} /></mesh><mesh position={[0,1.02,-.4]} castShadow><boxGeometry args={[3.6,1.2,.16]} /><meshStandardMaterial color={presentation ? '#1a302f' : '#71817d'} /></mesh></group>
-    <Html position={[0,2.45,-6.38]} center distanceFactor={12}><div className="office-coffee-sign">ONYXLINK CAFÉ</div></Html>
+    <CafeSign presentation={presentation} />
     {[[-4.5,2.65,-1.5],[2,2.65,-1.5],[-4.5,2.65,3.4],[2,2.65,3.4],[5.5,2.65,0]].map((p,i)=><pointLight key={i} position={p as [number,number,number]} color={i < 4 ? '#ffd8a8' : '#A0DCDB'} intensity={presentation ? 2.6 : 1.8} distance={8} decay={2} />)}
   </group>;
 }

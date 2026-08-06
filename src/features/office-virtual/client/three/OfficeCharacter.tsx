@@ -68,10 +68,12 @@ function WalkingArm({
   side,
   skinMaterial,
   armRef,
+  children,
 }: {
   side: -1 | 1;
   skinMaterial: THREE.Material;
   armRef: React.RefObject<THREE.Group | null>;
+  children?: React.ReactNode;
 }) {
   return (
     <group ref={armRef} position={[side * 0.36, 1.47, 0]}>
@@ -84,6 +86,7 @@ function WalkingArm({
       <mesh position={[0, -0.66, 0]} material={skinMaterial} castShadow>
         <sphereGeometry args={[0.105, 8, 6]} />
       </mesh>
+      {children}
     </group>
   );
 }
@@ -186,14 +189,29 @@ export default function OfficeCharacter({
     }
 
     const swing = walking ? Math.sin(t * 5.5) * 0.48 : 0;
+    // La taza es hija del brazo derecho (ver JSX) — mientras se lleva, ese
+    // brazo deja de hacer el vaivén de caminar (que la cruzaría a través del
+    // pecho) y en su lugar se dobla desde el hombro (el rig no tiene codo
+    // aparte) para sostenerla: más alta y quieta al estar parado tomando
+    // café, más baja y con un vaivén suave al volver caminando.
+    const carryingCup = !seated && (atCoffee || travellingBack);
     if (leftLeg.current) leftLeg.current.rotation.x = swing;
     if (rightLeg.current) rightLeg.current.rotation.x = -swing;
     if (leftArm.current) leftArm.current.rotation.x = -swing;
-    if (rightArm.current) rightArm.current.rotation.x = swing;
+    if (rightArm.current) {
+      if (carryingCup) {
+        const sway = atCoffee ? Math.sin(t * 1.6) * 0.05 : Math.sin(t * 5.5) * 0.07;
+        rightArm.current.rotation.x = (atCoffee ? -1.85 : -1.1) + sway;
+        rightArm.current.rotation.z = 0.1;
+      } else {
+        rightArm.current.rotation.x = swing;
+        rightArm.current.rotation.z = 0;
+      }
+    }
     if (bodyBob.current) {
       bodyBob.current.position.y = seated ? -0.2 : walking ? Math.abs(Math.sin(t * 5.5)) * 0.035 : Math.sin(t * 1.4 + phase) * 0.012;
     }
-    if (coffeeCup.current) coffeeCup.current.visible = !seated && (atCoffee || travellingBack);
+    if (coffeeCup.current) coffeeCup.current.visible = carryingCup;
   });
 
   return (
@@ -233,14 +251,6 @@ export default function OfficeCharacter({
           </>
         )}
 
-        {!seated && (
-          <group ref={coffeeCup} position={[0.4, 1.05, 0.18]} visible={false}>
-            <mesh castShadow><cylinderGeometry args={[0.1, 0.085, 0.22, 12]} /><meshStandardMaterial color="#e8dfd0" roughness={0.58} /></mesh>
-            <mesh position={[0.11, 0, 0]} rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[0.065, 0.018, 8, 14]} /><meshStandardMaterial color="#e8dfd0" /></mesh>
-            <mesh position={[0, 0.116, 0]}><cylinderGeometry args={[0.078, 0.078, 0.012, 12]} /><meshStandardMaterial color="#5b3523" roughness={0.9} /></mesh>
-          </group>
-        )}
-
         <mesh position={[0, 1.28, 0]} material={POLO_MATERIAL} castShadow>
           <capsuleGeometry args={[0.28, 0.4, 4, 8]} />
         </mesh>
@@ -256,7 +266,17 @@ export default function OfficeCharacter({
         ) : (
           <>
             <WalkingArm side={-1} skinMaterial={materials.skin} armRef={leftArm} />
-            <WalkingArm side={1} skinMaterial={materials.skin} armRef={rightArm} />
+            <WalkingArm side={1} skinMaterial={materials.skin} armRef={rightArm}>
+              {/* Hija del brazo derecho, en la posición local de la mano
+                  (misma que la esfera de la mano) — así la taza gira y se
+                  desplaza EXACTAMENTE con el brazo, en vez de flotar en una
+                  posición fija sin relación con dónde está la mano de verdad. */}
+              <group ref={coffeeCup} position={[0, -0.66, 0.1]} visible={false}>
+                <mesh castShadow><cylinderGeometry args={[0.1, 0.085, 0.22, 12]} /><meshStandardMaterial color="#e8dfd0" roughness={0.58} /></mesh>
+                <mesh position={[0.11, 0, 0]} rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[0.065, 0.018, 8, 14]} /><meshStandardMaterial color="#e8dfd0" /></mesh>
+                <mesh position={[0, 0.116, 0]}><cylinderGeometry args={[0.078, 0.078, 0.012, 12]} /><meshStandardMaterial color="#5b3523" roughness={0.9} /></mesh>
+              </group>
+            </WalkingArm>
           </>
         )}
 
