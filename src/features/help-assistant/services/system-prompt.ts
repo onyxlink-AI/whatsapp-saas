@@ -92,9 +92,9 @@ function buildProductKnowledge(plan: HelpAssistantPlanContext): string[] {
   if (plan.gestionEnabled) {
     lines.push(
       '- Clientes (/clientes): crear/editar cliente con el botón "Nuevo cliente" — solo el nombre es obligatorio; teléfono, correo, red social, método de contacto, empresa, sector, estado (potencial/activo/archivado) y notas son todos opcionales, se guarda lo que se tenga.',
-      '- Proyectos (/proyectos) es el centro de trabajo de Gestión: agrupa varias vistas con pestañas — Proyectos, Tareas, Agenda, Board, Anotaciones y (si tiene el agente de WhatsApp o Gestión) Oportunidades — cada una con su propia URL (?view=projects|tasks|agenda|board|notes|pipeline), así que un enlace directo abre esa pestaña ya seleccionada.',
+      '- Proyectos (/proyectos) es una biblioteca del centro de trabajo de Gestión: sin parámetros muestra tarjetas para elegir herramienta — Proyectos, Tareas, Agenda, Board y Anotaciones — cada una con su propia URL (?view=projects|tasks|agenda|board|notes), así que un enlace directo abre esa herramienta ya seleccionada. Oportunidades ya no está aquí dentro: es su propia página, /pipeline.',
       "- Mi equipo (/settings?tab=equipo): quién tiene acceso al panel de la empresa.",
-      "- Contenido (/contenido): en construcción — todavía no tiene funciones que explicar paso a paso.",
+      '- Contenido (/contenido) es una biblioteca, igual que Proyectos: sin parámetros muestra tarjetas para elegir herramienta — Ideas, Pipeline y Guiones — cada una con su propia URL (?view=ideas|pipeline|scripts). Ideas: capturar y organizar ideas antes de convertirlas en guion. Pipeline: mover cada pieza de contenido por sus estados de producción. Guiones: redactar el guion completo, abrir el editor de cada pieza y usar el teleprompter para grabar.',
     );
   }
 
@@ -106,7 +106,7 @@ function buildProductKnowledge(plan: HelpAssistantPlanContext): string[] {
 
   if (plan.gestionEnabled || plan.whatsappAgentEnabled) {
     lines.push(
-      '- Oportunidades (pestaña "Oportunidades" dentro de Proyectos, /proyectos?view=pipeline): crear un negocio con "Nuevo negocio" — solo el nombre del lead es obligatorio, sin necesitar un contacto ya existente; teléfono, correo, red social, método de contacto y notas son opcionales. Se elige o se crea un "Sector" (etiqueta libre, se guarda para reusarla) y un "Producto" (Herramienta / Panel completo / Oficina Virtual). Al mover un negocio a la etapa "Cliente" (ganado) se crea automáticamente el contacto real en Clientes, o se puede pulsar el botón "Agregar a CRM" en el detalle del negocio para pasarlo antes, en cualquier etapa — usa los datos que ya tenga el negocio, no hace falta que estén completos.',
+      '- Oportunidades (/pipeline, página independiente — ya no una pestaña dentro de Proyectos): crear un negocio con "Nuevo negocio" — solo el nombre del lead es obligatorio, sin necesitar un contacto ya existente; teléfono, correo, red social, método de contacto y notas son opcionales. Se elige o se crea un "Sector" (etiqueta libre, se guarda para reusarla) y un "Producto" (Herramienta / Panel completo / Oficina Virtual). Al mover un negocio a la etapa "Cliente" (ganado) se crea automáticamente el contacto real en Clientes, o se puede pulsar el botón "Agregar a CRM" en el detalle del negocio para pasarlo antes, en cualquier etapa — usa los datos que ya tenga el negocio, no hace falta que estén completos.',
     );
   }
 

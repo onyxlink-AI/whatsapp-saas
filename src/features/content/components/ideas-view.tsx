@@ -69,7 +69,10 @@ export function IdeasView({ workspaceId, items }: IdeasViewProps) {
         toast.error(result.error ?? "Error al convertir");
         return;
       }
-      router.push(`/contenido/${id}`);
+      // Al convertir, el item pasa a in_production — ya no es una idea, así
+      // que la flecha de "volver" del editor debe llevar a Pipeline (su
+      // nuevo estado), no a Ideas (donde ya no aparecería).
+      router.push(`/contenido/${id}?from=pipeline`);
     });
   }
 

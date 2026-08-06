@@ -48,9 +48,11 @@ interface Props {
   item: ContentItemRow;
   members: WorkspaceMember[];
   initialProject: ProjectOption | null;
+  /** Adónde vuelve la flecha — calculado y validado en contenido/[id]/page.tsx a partir de ?from=. */
+  backHref: string;
 }
 
-export function ContentEditor({ workspaceId, item, members, initialProject }: Props) {
+export function ContentEditor({ workspaceId, item, members, initialProject, backHref }: Props) {
   const router = useRouter();
   const [title, setTitle] = useState(item.title);
   const [mainIdea, setMainIdea] = useState(item.main_idea ?? "");
@@ -167,7 +169,7 @@ export function ContentEditor({ workspaceId, item, members, initialProject }: Pr
     <div className="page-shell flex min-h-[calc(100vh-4rem)] max-w-3xl flex-col gap-6 pb-16">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-          <Link href="/contenido?view=pipeline" aria-label="Volver a Contenido">
+          <Link href={backHref} aria-label="Volver a Contenido">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>

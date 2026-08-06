@@ -1,12 +1,8 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { FolderKanban, ListChecks, CalendarDays, PenTool, StickyNote } from "lucide-react";
+import { LibraryToolGrid, LibraryBackButton, type LibraryToolItem } from "@/components/library-tool-grid";
 import { NotesList } from "@/features/notes/components/notes-list";
 import { ProjectsBoard } from "./projects-board";
 import { TasksTab } from "./tasks-tab";
@@ -20,22 +16,12 @@ import type {
 } from "@/features/projects/types";
 import { WhiteboardList } from "@/features/whiteboard/components/whiteboard-list";
 import type { WhiteboardRow } from "@/features/whiteboard/types";
-import { PipelineBoard } from "@/features/pipeline/components/pipeline-board";
-import type { WorkspaceMember as PipelineMember } from "@/features/pipeline/services/deal-actions";
-import type { ContactSummary, DealWithContact } from "@/features/pipeline/types";
 
-// Fase 1 del roadmap comercial: Proyectos es el centro de trabajo de
-// Gestión — Pipeline y Board (Pizarra) viven aquí como vistas, no como
-// páginas propias. La vista activa persiste en la URL (?view=) para que
-// enlaces directos y los botones anterior/siguiente del navegador funcionen.
-const VALID_VIEWS = [
-  "projects",
-  "tasks",
-  "agenda",
-  "board",
-  "notes",
-  "pipeline",
-] as const;
+// Fase 1 (docs/CLAUDE-ARQUITECTURA-PAQUETES-NAVEGACION-IA-ASISTENTE.md §3.2):
+// Proyectos es una biblioteca — sin ?view=, un grid de tarjetas; con un
+// ?view= válido, esa herramienta a pantalla completa con un botón volver.
+// Oportunidades ya no vive aquí: es /pipeline, página independiente (§3.1).
+const VALID_VIEWS = ["projects", "tasks", "agenda", "board", "notes"] as const;
 type View = (typeof VALID_VIEWS)[number];
 
 function isValidView(value: string | null): value is View {
@@ -44,7 +30,7 @@ function isValidView(value: string | null): value is View {
 
 interface Props {
   workspaceId: string;
-  defaultView: View;
+  view: View | null;
   initialProjects: ProjectWithContact[];
   members: ProjectMember[];
   initialSelectedProjectId: string | null;
@@ -53,16 +39,11 @@ interface Props {
   initialNotes: NoteRow[];
   hasWhiteboard: boolean;
   whiteboards: WhiteboardRow[];
-  hasPipeline: boolean;
-  initialDeals: DealWithContact[];
-  pipelineMembers: PipelineMember[];
-  initialContact: ContactSummary | null;
-  initialSelectedDealId: string | null;
 }
 
 export function ProyectosHub({
   workspaceId,
-  defaultView,
+  view: serverView,
   initialProjects,
   members,
   initialSelectedProjectId,
@@ -71,37 +52,49 @@ export function ProyectosHub({
   initialNotes,
   hasWhiteboard,
   whiteboards,
-  hasPipeline,
-  initialDeals,
-  pipelineMembers,
-  initialContact,
-  initialSelectedDealId,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const requestedView = searchParams.get("view");
-  const view = isValidView(requestedView) ? requestedView : defaultView;
+  // El servidor ya validó/calculó la vista para los datos que cargó — se
+  // reutiliza tal cual salvo que la URL cambie client-side (navegación con
+  // el grid, atrás/adelante del navegador). "board" sin hasWhiteboard nunca
+  // cuenta como válida — mismo motivo que en proyectos/page.tsx: sin esto,
+  // un ?view=board directo en un workspace sin Board dejaba el panel en
+  // blanco en vez de caer a la biblioteca.
+  const requestedViewUsable = isValidView(requestedView) && !(requestedView === "board" && !hasWhiteboard);
+  const view = requestedViewUsable ? (requestedView as View) : serverView;
 
-  function handleViewChange(next: string) {
+  function handleSelect(next: string) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("view", next);
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   }
 
-  return (
-    <Tabs value={view} onValueChange={handleViewChange} className="flex flex-col h-full">
-      <TabsList className="surface-card h-11 max-w-full justify-start overflow-x-auto bg-card p-1">
-        <TabsTrigger value="projects">📋 Proyectos</TabsTrigger>
-        <TabsTrigger value="tasks">✅ Tareas</TabsTrigger>
-        <TabsTrigger value="agenda">📅 Agenda</TabsTrigger>
-        {hasWhiteboard && <TabsTrigger value="board">✏️ Board</TabsTrigger>}
-        <TabsTrigger value="notes">📝 Anotaciones</TabsTrigger>
-        {hasPipeline && <TabsTrigger value="pipeline">💼 Oportunidades</TabsTrigger>}
-      </TabsList>
+  function handleBack() {
+    router.push(pathname, { scroll: false });
+  }
 
-      <TabsContent value="projects" className="flex-1 mt-3">
+  if (!view) {
+    const items: LibraryToolItem[] = [
+      { view: "projects", label: "Proyectos", description: "Entregas activas y su avance.", icon: FolderKanban },
+      { view: "tasks", label: "Tareas", description: "Todo lo pendiente del equipo.", icon: ListChecks },
+      { view: "agenda", label: "Agenda", description: "Próximas citas y eventos.", icon: CalendarDays },
+      ...(hasWhiteboard
+        ? [{ view: "board", label: "Board", description: "Tableros de dibujo libre.", icon: PenTool }]
+        : []),
+      { view: "notes", label: "Anotaciones", description: "Notas rápidas del equipo.", icon: StickyNote },
+    ];
+    return <LibraryToolGrid items={items} onSelect={handleSelect} />;
+  }
+
+  return (
+    <div className="flex h-full flex-col gap-2">
+      <LibraryBackButton label="Volver a herramientas de Proyectos" onClick={handleBack} />
+
+      {view === "projects" && (
         <ProjectsBoard
           workspaceId={workspaceId}
           initialProjects={initialProjects}
@@ -109,37 +102,17 @@ export function ProyectosHub({
           initialSelectedProjectId={initialSelectedProjectId}
           progressMap={progressMap}
         />
-      </TabsContent>
-
-      <TabsContent value="tasks" className="flex-1 mt-3">
-        <TasksTab workspaceId={workspaceId} initialTasks={initialTasks} members={members} />
-      </TabsContent>
-
-      <TabsContent value="agenda" className="flex-1 mt-3">
-        <AgendaView workspaceId={workspaceId} />
-      </TabsContent>
-
-      {hasWhiteboard && (
-        <TabsContent value="board" className="flex-1 mt-3">
-          <WhiteboardList workspaceId={workspaceId} initialBoards={whiteboards} />
-        </TabsContent>
       )}
 
-      <TabsContent value="notes" className="flex-1 mt-3">
-        <NotesList workspaceId={workspaceId} initialNotes={initialNotes} />
-      </TabsContent>
+      {view === "tasks" && <TasksTab workspaceId={workspaceId} initialTasks={initialTasks} members={members} />}
 
-      {hasPipeline && (
-        <TabsContent value="pipeline" className="flex-1 mt-3">
-          <PipelineBoard
-            workspaceId={workspaceId}
-            initialDeals={initialDeals}
-            members={pipelineMembers}
-            initialContact={initialContact}
-            initialSelectedDealId={initialSelectedDealId}
-          />
-        </TabsContent>
+      {view === "agenda" && <AgendaView workspaceId={workspaceId} />}
+
+      {view === "board" && hasWhiteboard && (
+        <WhiteboardList workspaceId={workspaceId} initialBoards={whiteboards} />
       )}
-    </Tabs>
+
+      {view === "notes" && <NotesList workspaceId={workspaceId} initialNotes={initialNotes} />}
+    </div>
   );
 }

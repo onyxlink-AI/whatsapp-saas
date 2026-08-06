@@ -81,7 +81,7 @@ export function ScriptsView({ items, members }: ScriptsViewProps) {
               <button
                 key={item.id}
                 type="button"
-                onClick={() => router.push(`/contenido/${item.id}`)}
+                onClick={() => router.push(`/contenido/${item.id}?from=scripts`)}
                 className="flex w-full items-center gap-3 border-b border-border/30 px-3 py-2.5 text-left last:border-0 hover:bg-muted/30"
               >
                 <FileVideo className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />

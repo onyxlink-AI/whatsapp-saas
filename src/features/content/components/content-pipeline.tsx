@@ -147,7 +147,7 @@ export function ContentPipeline({ workspaceId, items: initialItems, members }: C
             status={status}
             items={byStatus.get(status) ?? []}
             members={members}
-            onSelect={(id) => router.push(`/contenido/${id}`)}
+            onSelect={(id) => router.push(`/contenido/${id}?from=pipeline`)}
           />
         ))}
       </div>

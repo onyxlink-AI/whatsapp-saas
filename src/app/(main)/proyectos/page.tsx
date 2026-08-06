@@ -10,17 +10,12 @@ import { listTasks } from "@/features/projects/services/task-actions";
 import { listNotes } from "@/features/notes/services/note-actions";
 import { listWhiteboards } from "@/features/whiteboard/services/whiteboard-actions";
 import { isWhiteboardEnabled } from "@/features/whiteboard/access";
-import {
-  getDealsForBoard,
-  listWorkspaceMembers as listPipelineMembers,
-} from "@/features/pipeline/services/deal-actions";
-import { getContactSummary } from "@/features/pipeline/services/contact-lookup";
 import { ProyectosHub } from "@/features/projects/components/proyectos-hub";
 import { PageHeader } from "@/components/page-header";
 
 export const dynamic = "force-dynamic";
 
-const VALID_VIEWS = ["projects", "tasks", "agenda", "board", "notes", "pipeline"] as const;
+const VALID_VIEWS = ["projects", "tasks", "agenda", "board", "notes"] as const;
 type View = (typeof VALID_VIEWS)[number];
 
 export default async function ProyectosPage({
@@ -33,6 +28,21 @@ export default async function ProyectosPage({
     createFor?: string;
   }>;
 }) {
+  const { view: rawView, open, openDeal, createFor } = await searchParams;
+
+  // Compat (Fase 1, docs/CLAUDE-ARQUITECTURA-PAQUETES-NAVEGACION-IA-ASISTENTE.md
+  // §3.1): Oportunidades ya no vive dentro de Proyectos — enlaces/favoritos
+  // viejos a ?view=pipeline redirigen a la página independiente,
+  // trasladando los mismos parámetros que ya acepta /pipeline
+  // (openDeal -> open, createFor tal cual).
+  if (rawView === "pipeline") {
+    const params = new URLSearchParams();
+    if (openDeal) params.set("open", openDeal);
+    if (createFor) params.set("createFor", createFor);
+    const qs = params.toString();
+    redirect(qs ? `/pipeline?${qs}` : "/pipeline");
+  }
+
   const supabase = await createClient();
 
   const {
@@ -62,7 +72,7 @@ export default async function ProyectosPage({
 
   const { data: workspaceFlagsRow } = await supabase
     .from("workspaces")
-    .select("gestion_enabled, whatsapp_agent_enabled, whiteboard_enabled")
+    .select("gestion_enabled, whiteboard_enabled")
     .eq("id", membership.workspace_id)
     .maybeSingle();
 
@@ -76,42 +86,41 @@ export default async function ProyectosPage({
     );
   }
 
-  const { view, open, openDeal, createFor } = await searchParams;
-
   const hasWhiteboard = isWhiteboardEnabled(workspaceFlagsRow);
-  // Gestión ya implica el agente de WhatsApp o no (chk_whatsapp_requires_gestion
-  // exige lo contrario: WhatsApp siempre implica Gestión) — Oportunidades se
-  // muestra con cualquiera de los dos productos, igual que antes en /pipeline.
-  const hasPipeline =
-    workspaceFlagsRow?.whatsapp_agent_enabled !== false ||
-    workspaceFlagsRow?.gestion_enabled === true;
 
-  const defaultView: View =
-    view && (VALID_VIEWS as readonly string[]).includes(view) ? (view as View) : "projects";
+  // Fase 1 (§3.2): sin vista seleccionada se muestra la biblioteca, que no
+  // necesita ninguno de los datos de abajo — null en vez de un valor por
+  // defecto como "projects". "board" solo cuenta como vista válida si el
+  // workspace tiene Board contratado — sin esta comprobación, un enlace
+  // directo a ?view=board en un workspace sin Board renderizaba el botón
+  // "volver" con el panel completamente en blanco en vez de caer a la
+  // biblioteca (detectado en la revisión visual de Fase 1).
+  const isKnownView = Boolean(rawView && (VALID_VIEWS as readonly string[]).includes(rawView));
+  const view: View | null = isKnownView && !(rawView === "board" && !hasWhiteboard) ? (rawView as View) : null;
 
-  const [projects, members, tasks, progressMap, notes, whiteboards, deals, pipelineMembers, initialContact] =
-    await Promise.all([
-      getProjectsForBoard(membership.workspace_id),
-      listWorkspaceMembers(membership.workspace_id),
-      listTasks(membership.workspace_id),
-      getProjectsProgress(membership.workspace_id),
-      listNotes(membership.workspace_id),
-      hasWhiteboard ? listWhiteboards(membership.workspace_id) : Promise.resolve([]),
-      hasPipeline ? getDealsForBoard(membership.workspace_id) : Promise.resolve([]),
-      hasPipeline ? listPipelineMembers(membership.workspace_id) : Promise.resolve([]),
-      hasPipeline && createFor ? getContactSummary(createFor) : Promise.resolve(null),
-    ]);
+  // Cada vista es una tabla/consulta independiente (confirmado: ProjectsBoard,
+  // TasksTab, NotesList y WhiteboardList no comparten props entre sí) — solo
+  // se ejecuta la consulta de la vista activa. members es la excepción: es
+  // ligera y la usan varias vistas, así que se mantiene siempre.
+  const [members, projects, progressMap, tasks, notes, whiteboards] = await Promise.all([
+    listWorkspaceMembers(membership.workspace_id),
+    view === "projects" ? getProjectsForBoard(membership.workspace_id) : Promise.resolve([]),
+    view === "projects" ? getProjectsProgress(membership.workspace_id) : Promise.resolve({}),
+    view === "tasks" ? listTasks(membership.workspace_id) : Promise.resolve([]),
+    view === "notes" ? listNotes(membership.workspace_id) : Promise.resolve([]),
+    view === "board" && hasWhiteboard ? listWhiteboards(membership.workspace_id) : Promise.resolve([]),
+  ]);
 
   return (
     <div className="page-shell flex min-h-[calc(100vh-4rem)] max-w-none flex-col gap-6">
       <PageHeader
         eyebrow="Operaciones"
         title="Proyectos"
-        description="Organiza entregas, tareas, agenda y oportunidades sin perder de vista el avance del equipo."
+        description="Organiza entregas, tareas, agenda y anotaciones sin perder de vista el avance del equipo."
       />
       <ProyectosHub
         workspaceId={membership.workspace_id}
-        defaultView={defaultView}
+        view={view}
         initialProjects={projects}
         members={members}
         initialSelectedProjectId={open ?? null}
@@ -120,11 +129,6 @@ export default async function ProyectosPage({
         initialNotes={notes}
         hasWhiteboard={hasWhiteboard}
         whiteboards={whiteboards}
-        hasPipeline={hasPipeline}
-        initialDeals={deals}
-        pipelineMembers={pipelineMembers}
-        initialContact={initialContact}
-        initialSelectedDealId={openDeal ?? null}
       />
     </div>
   );

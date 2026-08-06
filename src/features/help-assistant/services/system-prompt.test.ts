@@ -33,9 +33,21 @@ describe("buildHelpAssistantSystemPrompt (actions disabled — the default for e
 
   it("documents plan-gated routes when the feature is enabled", () => {
     expect(prompt).toContain("/clientes");
-    expect(prompt).toContain("/proyectos?view=pipeline");
+    expect(prompt).toContain("/pipeline");
     expect(prompt).toContain("/settings?tab=integraciones");
     expect(prompt).toContain("Oficina Virtual");
+  });
+
+  it("documents Contenido as a working library, not as under construction", () => {
+    expect(prompt).not.toContain("Contenido: en construcción");
+    expect(prompt).toContain("Ideas");
+    expect(prompt).toContain("Pipeline");
+    expect(prompt).toContain("Guiones");
+  });
+
+  it("points Oportunidades exclusively to /pipeline, never to the old /proyectos?view=pipeline", () => {
+    expect(prompt).toContain("Oportunidades (/pipeline");
+    expect(prompt).not.toContain("/proyectos?view=pipeline");
   });
 
   it("instructs brief, direct, warm answers", () => {

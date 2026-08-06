@@ -8,10 +8,17 @@ import { PageHeader } from "@/components/page-header";
 
 export const dynamic = "force-dynamic";
 
+const VALID_VIEWS = ["ideas", "pipeline", "scripts"] as const;
+
 // Fase 3 del roadmap comercial: Contenido queda completo — Ideas, Guiones y
 // Pipeline sobre la misma tabla content_items (una idea es una fila en
 // status='idea'; "convertir a guion" solo avanza el status).
-export default async function ContenidoPage() {
+export default async function ContenidoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
+  const { view } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -54,8 +61,13 @@ export default async function ContenidoPage() {
     );
   }
 
+  // Fase 1 (§3.2): en la biblioteca (sin ?view= válido) no hace falta
+  // ningún content_item — las 3 vistas son filtros sobre la misma tabla,
+  // así que basta con una condición, no una consulta por vista.
+  const hasView = Boolean(view && (VALID_VIEWS as readonly string[]).includes(view));
+
   const [items, members] = await Promise.all([
-    listContentItems(membership.workspace_id),
+    hasView ? listContentItems(membership.workspace_id) : Promise.resolve([]),
     listWorkspaceMembers(membership.workspace_id),
   ]);
 
