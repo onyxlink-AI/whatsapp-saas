@@ -1,11 +1,11 @@
-import { Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
-import { useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { BUILDING_DEPTH, BUILDING_WIDTH, GAP, ROOM_D, ROOM_W, SPACING_X, roomCenter } from './layout';
 import type { OfficeRoomSlot } from './officeRoster';
 import OfficeCharacter from './OfficeCharacter';
 import OfficeRoom from './OfficeRoom';
+import { resolveCoffeePropState, resolveIdleMotion } from './idleMotion';
 import { buildPresentationRoomSlots } from './presentationRoster';
 
 type Props = {
@@ -22,7 +22,13 @@ const WORK_CHAIR_LOCAL_Z = DESK_LOCAL_Z + 1.05;
 const PATROL_LOCAL_Z = 0.8;
 const PATROL_AMPLITUDE = 2.75;
 
-function buildIdlePath(index: number, corridorZ: number, cafeCenter: [number, number, number]): [number, number, number][] {
+type IdleRoute = {
+  path: [number, number, number][];
+  distance: number;
+  cupPickupProgress: number;
+};
+
+function buildIdleRoute(index: number, corridorZ: number, cafeCenter: [number, number, number]): IdleRoute {
   const room = roomCenter(index);
   const laneOffset = (index % 4 - 1.5) * .28;
   const rowCorridorZ = room[2] + ROOM_D / 2 + GAP / 2 + laneOffset;
@@ -32,7 +38,8 @@ function buildIdlePath(index: number, corridorZ: number, cafeCenter: [number, nu
   const cafeStopX = -6.05 + (index % 6) * 2.35;
   const cafeAisleZ = index % 2 === 0 ? .35 : 1.35;
   const entranceZ = index % 2 === 0 ? -2.6 : 2.6;
-  return [
+  const cupStationX = 2.8 + (index % 6) * .42;
+  const path: [number, number, number][] = [
     [room[0] + ROOM_W / 2 - 1.15, 0, room[2] + ROOM_D / 2 + .35],
     [room[0] + ROOM_W / 2 - 1.15, 0, rowCorridorZ],
     [sideCorridorX, 0, rowCorridorZ],
@@ -47,8 +54,18 @@ function buildIdlePath(index: number, corridorZ: number, cafeCenter: [number, nu
     // turn at 90 degrees. No diagonal segment can cut across furniture.
     [cafeCenter[0] - 7.4, 0, corridorZ + entranceZ],
     [cafeCenter[0] - 7.4, 0, corridorZ + cafeAisleZ],
+    // Every visit reaches the real cup rack first. The approach runs along
+    // the clear strip in front of the counter, never through tables/chairs.
+    [cafeCenter[0] - 7.4, 0, corridorZ - 4.2],
+    [cafeCenter[0] + cupStationX, 0, corridorZ - 4.2],
+    [cafeCenter[0] - 7, 0, corridorZ - 4.2],
+    [cafeCenter[0] - 7, 0, corridorZ + cafeAisleZ],
     [cafeCenter[0] + cafeStopX, 0, corridorZ + cafeAisleZ],
   ];
+  const start: [number, number, number] = [room[0], room[1], room[2] + PATROL_LOCAL_Z];
+  const distance = pathDistance(start, path);
+  const pickupDistance = pathDistance(start, path.slice(0, 12));
+  return { path, distance, cupPickupProgress: Math.min(.94, pickupDistance / distance) };
 }
 
 function pathDistance(start: [number, number, number], path: [number, number, number][]): number {
@@ -86,33 +103,59 @@ function CafeTable({ position, presentation }: { position: [number, number, numb
 const CAFE_WALL_HEIGHT = 3.7;
 const CAFE_WALL_CENTER_Y = CAFE_WALL_HEIGHT / 2;
 
-function CafeSign({ presentation }: { presentation: boolean }) {
-  const glowMat = useRef<THREE.MeshStandardMaterial>(null);
-  const tubeTopMat = useRef<THREE.MeshStandardMaterial>(null);
-  const tubeBottomMat = useRef<THREE.MeshStandardMaterial>(null);
-  const lightA = useRef<THREE.PointLight>(null);
-  const lightB = useRef<THREE.PointLight>(null);
+type CoffeeSchedule = { phase: number; routeDistance: number; cupPickupProgress: number; slotIndex: number };
 
+function CoffeeCup({ presentation = false }: { presentation?: boolean }) {
+  const ceramic = presentation ? '#dcecea' : '#eee5d7';
+  return <group>
+    <mesh castShadow><cylinderGeometry args={[.1,.085,.22,14]} /><meshStandardMaterial color={ceramic} roughness={.55} /></mesh>
+    <mesh position={[.11,0,0]} rotation={[Math.PI/2,0,0]}><torusGeometry args={[.065,.018,8,14]} /><meshStandardMaterial color={ceramic} /></mesh>
+    <mesh position={[0,.116,0]}><cylinderGeometry args={[.078,.078,.012,14]} /><meshStandardMaterial color="#5b3523" roughness={.9} /></mesh>
+  </group>;
+}
+
+function RackCoffeeCup({ schedule, position, presentation }: { schedule: CoffeeSchedule; position: [number,number,number]; presentation: boolean }) {
+  const cup = useRef<THREE.Group>(null);
   useFrame((state) => {
-    // Parpadeo de neón real, no una respiración senoidal: estable la mayor
-    // parte del ciclo, con dos caídas breves e irregulares — mismo patrón
-    // (y mismo período, 5.2s) que la animación CSS del texto en
-    // office-virtual.css, para que ambos lean como el mismo rótulo.
-    const cycle = (state.clock.getElapsedTime() % 5.2) / 5.2;
-    let flicker = 1;
-    if (cycle > 0.05 && cycle < 0.09) flicker = 0.5 + Math.sin(((cycle - 0.05) / 0.04) * Math.PI) * 0.3;
-    else if (cycle > 0.42 && cycle < 0.47) flicker = 0.65 + Math.sin(((cycle - 0.42) / 0.05) * Math.PI) * 0.3;
-
-    const tubeBase = presentation ? 2.4 : 1.7;
-    if (tubeTopMat.current) tubeTopMat.current.emissiveIntensity = tubeBase * flicker;
-    if (tubeBottomMat.current) tubeBottomMat.current.emissiveIntensity = tubeBase * flicker;
-    if (glowMat.current) glowMat.current.opacity = (presentation ? 0.32 : 0.22) * flicker;
-    const lightBase = presentation ? 3.2 : 2.2;
-    if (lightA.current) lightA.current.intensity = lightBase * flicker;
-    if (lightB.current) lightB.current.intensity = lightBase * flicker;
+    const motion = resolveIdleMotion(state.clock.getElapsedTime(), schedule.phase, schedule.routeDistance);
+    if (cup.current) cup.current.visible = resolveCoffeePropState(motion, schedule.cupPickupProgress) === 'rack';
   });
+  return <group ref={cup} position={position}><CoffeeCup presentation={presentation} /></group>;
+}
 
+function DeskCoffeeCup({ position, schedule, presentation }: { position: [number,number,number]; schedule: CoffeeSchedule; presentation: boolean }) {
+  const cup = useRef<THREE.Group>(null);
+  useFrame((state) => {
+    const motion = resolveIdleMotion(state.clock.getElapsedTime(), schedule.phase, schedule.routeDistance);
+    if (cup.current) cup.current.visible = resolveCoffeePropState(motion, schedule.cupPickupProgress) === 'desk';
+  });
+  return <group ref={cup} position={position} visible={false}><CoffeeCup presentation={presentation} /></group>;
+}
+
+function CafeSign({ presentation }: { presentation: boolean }) {
   const neon = '#79CBCA';
+  const lettering = useMemo(() => {
+    if (typeof document === 'undefined') return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = 1400;
+    canvas.height = 220;
+    const context = canvas.getContext('2d');
+    if (!context) return null;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.font = '800 112px Inter, Arial, sans-serif';
+    context.letterSpacing = '14px';
+    context.shadowColor = neon;
+    context.shadowBlur = 34;
+    context.fillStyle = '#eafffe';
+    context.fillText('ONYXLINK CAFÉ', canvas.width / 2, canvas.height / 2 + 4);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.needsUpdate = true;
+    return texture;
+  }, [neon]);
+  useEffect(() => () => lettering?.dispose(), [lettering]);
   return (
     <group position={[0, 2.85, -6.36]}>
       {/* Halo suave detrás de la placa: sin post-procesado no hay bloom de
@@ -120,7 +163,7 @@ function CafeSign({ presentation }: { presentation: boolean }) {
           la placa da la misma sensación de resplandor sobre la pared. */}
       <mesh position={[0, 0, -0.03]}>
         <planeGeometry args={[7.4, 2]} />
-        <meshStandardMaterial ref={glowMat} color={neon} emissive={neon} emissiveIntensity={1} transparent opacity={0.28} depthWrite={false} />
+        <meshStandardMaterial color={neon} emissive={neon} emissiveIntensity={1} transparent opacity={presentation ? .32 : .22} depthWrite={false} />
       </mesh>
       <mesh castShadow>
         <boxGeometry args={[6.6, 1.5, 0.12]} />
@@ -129,22 +172,22 @@ function CafeSign({ presentation }: { presentation: boolean }) {
       {/* Marco tipo tubo de neón alrededor del texto. */}
       <mesh position={[0, 0.68, 0.08]}>
         <boxGeometry args={[6.2, 0.06, 0.06]} />
-        <meshStandardMaterial ref={tubeTopMat} color={neon} emissive={neon} emissiveIntensity={1.7} toneMapped={false} />
+        <meshStandardMaterial color={neon} emissive={neon} emissiveIntensity={presentation ? 2.4 : 1.7} toneMapped={false} />
       </mesh>
       <mesh position={[0, -0.68, 0.08]}>
         <boxGeometry args={[6.2, 0.06, 0.06]} />
-        <meshStandardMaterial ref={tubeBottomMat} color={neon} emissive={neon} emissiveIntensity={1.7} toneMapped={false} />
+        <meshStandardMaterial color={neon} emissive={neon} emissiveIntensity={presentation ? 2.4 : 1.7} toneMapped={false} />
       </mesh>
-      <pointLight ref={lightA} position={[-1.8, 0, 0.6]} color={neon} intensity={2.2} distance={5.5} decay={2} />
-      <pointLight ref={lightB} position={[1.8, 0, 0.6]} color={neon} intensity={2.2} distance={5.5} decay={2} />
-      <Html position={[0, 0, 0.09]} center distanceFactor={12}>
-        <div className="office-coffee-sign">ONYXLINK CAFÉ</div>
-      </Html>
+      <pointLight position={[-1.8, 0, 0.6]} color={neon} intensity={presentation ? 3.2 : 2.2} distance={5.5} decay={2} />
+      <pointLight position={[1.8, 0, 0.6]} color={neon} intensity={presentation ? 3.2 : 2.2} distance={5.5} decay={2} />
+      {/* A texture on a real scene plane: fixed to the plaque, no DOM
+          billboard and no worker/font dependency that can drift on camera. */}
+      {lettering && <mesh position={[0, 0, .09]}><planeGeometry args={[5.9, .93]} /><meshBasicMaterial map={lettering} transparent toneMapped={false} depthWrite={false} /></mesh>}
     </group>
   );
 }
 
-function CafeLounge({ position, presentation }: { position: [number, number, number]; presentation: boolean }) {
+function CafeLounge({ position, presentation, coffeeSchedules }: { position: [number, number, number]; presentation: boolean; coffeeSchedules: CoffeeSchedule[] }) {
   const wall = presentation ? '#152625' : '#dce5e2';
   return <group position={position}>
     <mesh position={[0,-.06,0]} receiveShadow><boxGeometry args={[16,.12,13]} /><meshStandardMaterial color={presentation ? '#0d1b1a' : '#c9aa7c'} roughness={.7} /></mesh>
@@ -157,7 +200,11 @@ function CafeLounge({ position, presentation }: { position: [number, number, num
       <mesh position={[0,1.16,.48]} castShadow><boxGeometry args={[10.2,.12,1.42]} /><meshStandardMaterial color={presentation ? '#426361' : '#dfc49e'} roughness={.35} /></mesh>
       {[-2.65, -.75].map((x) => <group key={x} position={[x,0,0]}><mesh position={[0,1.62,0]} castShadow><boxGeometry args={[1.15,.82,.72]} /><meshStandardMaterial color="#172322" metalness={.72} roughness={.22} /></mesh><mesh position={[0,1.65,.38]}><circleGeometry args={[.19,24]} /><meshStandardMaterial color="#79CBCA" emissive="#397C7B" emissiveIntensity={1.2} /></mesh></group>)}
       <mesh position={[1.45,1.5,.15]} castShadow><boxGeometry args={[2.3,.52,.75]} /><meshStandardMaterial color="#182625" transparent opacity={.68} /></mesh>
-      {[.55,1.05,1.55,2.05,2.55].map((x)=><mesh key={x} position={[x,1.62,.54]}><cylinderGeometry args={[.11,.09,.22,12]} /><meshStandardMaterial color="#f1e8da" /></mesh>)}
+      {Array.from({ length: 12 }, (_, slotIndex) => {
+        const position: [number,number,number] = [.45 + (slotIndex % 6) * .43, 1.62 + Math.floor(slotIndex / 6) * .28, .54];
+        const schedule = coffeeSchedules.find((item) => item.slotIndex === slotIndex);
+        return schedule ? <RackCoffeeCup key={slotIndex} schedule={schedule} presentation={presentation} position={position} /> : <group key={slotIndex} position={position}><CoffeeCup presentation={presentation} /></group>;
+      })}
     </group>
     {[[-4.5,-1.5],[2,-1.5],[-4.5,3.4],[2,3.4]].map(([x,z], i) => <group key={i}><CafeTable position={[x,0,z]} presentation={presentation} /><CafeChair position={[x-1.85,0,z]} rotation={Math.PI/2} presentation={presentation} /><CafeChair position={[x+1.85,0,z]} rotation={-Math.PI/2} presentation={presentation} /></group>)}
     <group position={[5.4,0,3.9]}><mesh position={[0,.42,0]} castShadow><boxGeometry args={[3.6,.82,1]} /><meshStandardMaterial color={presentation ? '#24413f' : '#7d8b87'} /></mesh><mesh position={[0,1.02,-.4]} castShadow><boxGeometry args={[3.6,1.2,.16]} /><meshStandardMaterial color={presentation ? '#1a302f' : '#71817d'} /></mesh></group>
@@ -171,6 +218,8 @@ export default function Building({ rooms, selectedId, onSelect, onHover, present
   const corridorZ = frontRoomZ + ROOM_D / 2 + GAP / 2;
   const cafeCenter: [number, number, number] = [BUILDING_WIDTH / 2 + 12, 0, corridorZ];
   const visibleRooms = presentation ? buildPresentationRoomSlots(rooms) : rooms;
+  const idleRoutes = visibleRooms.map((_, index) => buildIdleRoute(index, corridorZ, cafeCenter));
+  const coffeeSchedules: CoffeeSchedule[] = visibleRooms.flatMap((slot, index) => slot.occupant && slot.occupant.status !== 'working' ? [{ phase: index * 1.3, routeDistance: idleRoutes[index].distance, cupPickupProgress: idleRoutes[index].cupPickupProgress, slotIndex: index }] : []);
 
   return (
     <group>
@@ -209,11 +258,10 @@ export default function Building({ rooms, selectedId, onSelect, onHover, present
         <meshBasicMaterial color={presentationStyle ? '#83CFCE' : '#879995'} />
       </mesh>
 
-      <CafeLounge position={cafeCenter} presentation={presentationStyle} />
+      <CafeLounge position={cafeCenter} presentation={presentationStyle} coffeeSchedules={coffeeSchedules} />
 
       {visibleRooms.map((slot, i) => {
-        const room = roomCenter(i);
-        const path = buildIdlePath(i, corridorZ, cafeCenter);
+        const route = idleRoutes[i];
         return <OfficeRoom
           key={slot.seatId}
           agent={slot.room}
@@ -222,15 +270,20 @@ export default function Building({ rooms, selectedId, onSelect, onHover, present
           presentation={presentationStyle}
           phase={i * 1.3}
           doorEnabled={slot.occupant !== null && slot.occupant.status !== 'working'}
-          routeDistance={pathDistance([room[0], room[1], room[2] + PATROL_LOCAL_Z], path)}
+          routeDistance={route.distance}
         />;
+      })}
+
+      {coffeeSchedules.map((schedule) => {
+        const room = roomCenter(schedule.slotIndex);
+        return <DeskCoffeeCup key={`desk-cup-${schedule.slotIndex}`} schedule={schedule} presentation={presentationStyle} position={[room[0] + .72, .84, room[2] + DESK_LOCAL_Z + .22]} />;
       })}
 
       {visibleRooms.map((slot, i) => {
         if (!slot.occupant) return null;
         const [x, y, z] = roomCenter(i);
         const isWorking = slot.occupant.status === 'working';
-        const path = buildIdlePath(i, corridorZ, cafeCenter);
+        const route = idleRoutes[i];
         const start: [number, number, number] = [x, y, z + (isWorking ? WORK_CHAIR_LOCAL_Z : PATROL_LOCAL_Z)];
         return (
           <OfficeCharacter
@@ -239,8 +292,9 @@ export default function Building({ rooms, selectedId, onSelect, onHover, present
             center={start}
             patrolAmplitude={PATROL_AMPLITUDE}
             phase={i * 1.3}
-            idlePath={path}
-            routeDistance={pathDistance(start, path)}
+            idlePath={route.path}
+            routeDistance={pathDistance(start, route.path)}
+            cupPickupProgress={route.cupPickupProgress}
             seated={isWorking}
             presentation={presentationStyle}
             isSelected={slot.seatId === selectedId}

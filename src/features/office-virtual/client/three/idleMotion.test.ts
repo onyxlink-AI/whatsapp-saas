@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveIdleMotion } from './idleMotion';
+import { resolveCoffeePropState, resolveIdleMotion } from './idleMotion';
 
 describe('resolveIdleMotion', () => {
   it('keeps a human walking duration for a long office route', () => {
@@ -21,5 +21,15 @@ describe('resolveIdleMotion', () => {
       expect(motion.progress).toBeGreaterThanOrEqual(0);
       expect(motion.progress).toBeLessThanOrEqual(1);
     }
+  });
+
+  it('moves one physical cup from rack to hand and finally to the desk', () => {
+    const pickup = 0.72;
+    expect(resolveCoffeePropState({ phase: 'at-desk', progress: 0, trip: 0 }, pickup)).toBe('rack');
+    expect(resolveCoffeePropState({ phase: 'walking-out', progress: 0.71, trip: 0 }, pickup)).toBe('rack');
+    expect(resolveCoffeePropState({ phase: 'walking-out', progress: 0.72, trip: 0 }, pickup)).toBe('hand');
+    expect(resolveCoffeePropState({ phase: 'at-cafe', progress: 1, trip: 0 }, pickup)).toBe('hand');
+    expect(resolveCoffeePropState({ phase: 'walking-back', progress: 0.4, trip: 0 }, pickup)).toBe('hand');
+    expect(resolveCoffeePropState({ phase: 'at-desk', progress: 0, trip: 1 }, pickup)).toBe('desk');
   });
 });

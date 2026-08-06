@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { STATUS_HEX as STATUS_COLOR, STATUS_LABEL_ES as STATUS_LABEL } from '../lib/statusStyles';
 import type { OfficeSceneAgent } from '../types';
-import { resolveIdleMotion } from './idleMotion';
+import { resolveCoffeePropState, resolveIdleMotion } from './idleMotion';
 
 type Props = {
   agent: OfficeSceneAgent;
@@ -13,6 +13,7 @@ type Props = {
   phase: number;
   idlePath?: [number, number, number][];
   routeDistance?: number;
+  cupPickupProgress?: number;
   seated?: boolean;
   presentation?: boolean;
   isSelected: boolean;
@@ -121,6 +122,7 @@ export default function OfficeCharacter({
   phase,
   idlePath,
   routeDistance = 12,
+  cupPickupProgress = 0.72,
   seated = false,
   presentation = false,
   isSelected,
@@ -189,19 +191,19 @@ export default function OfficeCharacter({
     }
 
     const swing = walking ? Math.sin(t * 5.5) * 0.48 : 0;
-    // La taza es hija del brazo derecho (ver JSX) — mientras se lleva, ese
-    // brazo deja de hacer el vaivén de caminar (que la cruzaría a través del
-    // pecho) y en su lugar se dobla desde el hombro (el rig no tiene codo
-    // aparte) para sostenerla: más alta y quieta al estar parado tomando
-    // café, más baja y con un vaivén suave al volver caminando.
-    const carryingCup = !seated && (atCoffee || travellingBack);
+    // La taza solo aparece en la mano después de alcanzar físicamente el
+    // expositor. Antes de ese punto sigue visible en la barra de la cafetería.
+    const carryingCup = !seated && resolveCoffeePropState(motion, cupPickupProgress) === 'hand';
+    const sipTime = (t + phase * 2.17) % 9.5;
+    const sipping = atCoffee && sipTime < 2.4;
     if (leftLeg.current) leftLeg.current.rotation.x = swing;
     if (rightLeg.current) rightLeg.current.rotation.x = -swing;
     if (leftArm.current) leftArm.current.rotation.x = -swing;
     if (rightArm.current) {
       if (carryingCup) {
-        const sway = atCoffee ? Math.sin(t * 1.6) * 0.05 : Math.sin(t * 5.5) * 0.07;
-        rightArm.current.rotation.x = (atCoffee ? -1.85 : -1.1) + sway;
+        const sipLift = sipping ? Math.sin((sipTime / 2.4) * Math.PI) * 0.9 : 0;
+        const sway = atCoffee ? Math.sin(t * 1.2) * 0.025 : Math.sin(t * 5.5) * 0.07;
+        rightArm.current.rotation.x = -1.08 - sipLift + sway;
         rightArm.current.rotation.z = 0.1;
       } else {
         rightArm.current.rotation.x = swing;

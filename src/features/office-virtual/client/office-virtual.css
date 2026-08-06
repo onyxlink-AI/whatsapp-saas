@@ -865,35 +865,6 @@
   box-shadow: 0 0 7px var(--agent-color, #79CBCA);
 }
 
-.office-coffee-sign {
-  color: #eafffe;
-  font-size: 34px;
-  font-weight: 800;
-  letter-spacing: .16em;
-  white-space: nowrap;
-  text-shadow:
-    0 0 6px rgba(234, 255, 254, .95),
-    0 0 16px rgba(121, 203, 202, .9),
-    0 0 34px rgba(121, 203, 202, .65),
-    0 0 60px rgba(121, 203, 202, .35);
-  pointer-events: none;
-  user-select: none;
-  animation: office-coffee-sign-flicker 5.2s ease-in-out infinite;
-}
-
-/* Parpadeo de rótulo de neón real: la mayor parte del ciclo brilla estable,
-   con dos caídas breves e irregulares — nunca un simple fundido sinusoidal,
-   que se lee como "respirar", no como neón. */
-@keyframes office-coffee-sign-flicker {
-  0%, 5%, 9%, 42%, 47%, 100% { opacity: 1; }
-  6% { opacity: .55; }
-  7% { opacity: .92; }
-  8% { opacity: .4; }
-  44% { opacity: .78; }
-  45% { opacity: 1; }
-  46% { opacity: .6; }
-}
-
 .showcase-screen-brand {
   width: 190px;
   padding: 20px 16px;
