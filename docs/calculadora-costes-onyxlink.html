@@ -26,17 +26,17 @@
 </head>
 <body>
 <main class="shell">
-  <header class="topbar"><div class="brand"><div class="mark">OX</div><div><strong>ONYXLINK</strong><span>Modelo financiero SaaS</span></div></div><div class="date">Escenario fiscal España · 2026<br>Plantilla editable para dirección e inversores</div></header>
+  <header class="topbar"><div class="brand"><div class="mark">OX</div><div><strong>ONYXLINK</strong><span>Modelo financiero SaaS</span></div></div><div class="date">Autónomos en España · 2026<br>Plantilla editable para dirección e inversores</div></header>
 
   <section class="hero">
-    <article class="card hero-copy"><div class="eyebrow">Rentabilidad real, no solo facturación</div><h1>Cuánto cuesta vender OnyxLink, cuánto debe pagar el cliente y cuánto queda limpio.</h1><p>Esta plantilla separa IVA, infraestructura, soporte, captación, comisiones, impagos e Impuesto sobre Sociedades. OpenRouter, Vapi, Meta y otras cuentas externas siguen siendo gastos directos del cliente y no reducen el margen de OnyxLink.</p></article>
+    <article class="card hero-copy"><div class="eyebrow">Rentabilidad real, no solo facturación</div><h1>Cuánto cuesta vender OnyxLink, cuánto debe pagar el cliente y cuánto queda limpio.</h1><p>Esta plantilla separa IVA, infraestructura, soporte, captación, comisiones, impagos, cuota de autónomos e IRPF estimado. OpenRouter, Vapi, Meta y otras cuentas externas siguen siendo gastos directos del cliente y no reducen el margen de OnyxLink.</p></article>
     <aside class="card hero-side"><div><div class="eyebrow">Objetivo mínimo editable</div><div class="big" id="heroTarget">60%</div></div><small>Margen neto objetivo después del impuesto estimado. La calculadora obtiene automáticamente el precio mínimo que permite alcanzarlo.</small></aside>
   </section>
 
   <section class="steps">
     <article class="card step"><div class="num">PASO 01</div><h3>Elige el producto</h3><p>Selecciona Gestión, WhatsApp o Suite. Cada paquete carga un precio y costes de servicio realistas, pero editables.</p></article>
     <article class="card step"><div class="num">PASO 02</div><h3>Añade todos los costes</h3><p>Infraestructura compartida, tiempo de soporte, captación, cobro, ventas e impagos. No ocultamos costes para inflar el margen.</p></article>
-    <article class="card step"><div class="num">PASO 03</div><h3>Separa los impuestos</h3><p>El IVA cobrado no es ingreso. Se calcula su liquidación y, aparte, el impuesto estimado sobre el beneficio.</p></article>
+    <article class="card step"><div class="num">PASO 03</div><h3>Separa los impuestos</h3><p>El IVA cobrado no es ingreso. La cuota de autónomos es un coste y el IRPF estimado se calcula sobre el rendimiento.</p></article>
     <article class="card step"><div class="num">PASO 04</div><h3>Decide el precio</h3><p>Compara el precio matemático mínimo con el precio comercial recomendado y proyecta el negocio a 10, 50, 100 y 200 clientes.</p></article>
   </section>
 
@@ -48,7 +48,10 @@
       <label class="field">Precio actual sin IVA (€)<input id="salePrice" type="number" min="0" step="1" value="129"></label>
       <label class="field">Margen neto objetivo (%)<input id="targetMargin" type="number" min="0" max="90" step="1" value="60"><small>Después del impuesto estimado.</small></label>
       <label class="field">IVA de venta (%)<input id="vatRate" type="number" min="0" max="100" step="1" value="21"></label>
-      <label class="field">Régimen de Sociedades<select id="taxRegime"><option value="micro">Micropyme 2026 · 19% / 21%</option><option value="new">Nueva creación · 15%</option><option value="reduced">Reducida dimensión · 23%</option><option value="general">General · 25%</option><option value="custom">Tipo personalizado</option></select></label>
+      <label class="field">Forma fiscal<select id="taxRegime"><option value="autonomous" selected>Autónomo · IRPF estimado</option><option value="micro">S.L. Micropyme 2026 · 19% / 21%</option><option value="new">S.L. nueva creación · 15%</option><option value="reduced">S.L. reducida dimensión · 23%</option><option value="general">S.L. general · 25%</option><option value="custom">S.L. tipo personalizado</option></select></label>
+      <label class="field">IRPF efectivo estimado (%)<input id="irpfEffective" type="number" min="0" max="60" step="1" value="20"><small>No es automáticamente el resultado final de Renta.</small></label>
+      <label class="field">Número de autónomos<input id="autonomousCount" type="number" min="0" step="1" value="1"></label>
+      <label class="field">Cuota mensual por autónomo (€)<input id="autonomousQuota" type="number" min="0" step="1" value="300"><small>Sustituye por la cuota real de TGSS.</small></label>
       <label class="field">Tipo fiscal personalizado (%)<input id="customTax" type="number" min="0" max="100" step="1" value="25"></label>
       <label class="field">Cambio: 1 USD en €<input id="exchange" type="number" min="0.1" step="0.01" value="0.92"></label>
       <label class="field">IVA soportado deducible / mes (€)<input id="inputVat" type="number" min="0" step="1" value="0"><small>Introduce solo IVA deducible confirmado.</small></label>
@@ -61,7 +64,7 @@
   <section class="results" aria-live="polite">
     <article class="card metric"><span class="label">Factura al cliente con IVA</span><strong class="value blue" id="invoiceClient">—</strong><small>Importe que sale de su cuenta cada mes.</small></article>
     <article class="card metric"><span class="label">Ingresos reales sin IVA</span><strong class="value" id="netRevenue">—</strong><small>Base mensual de OnyxLink.</small></article>
-    <article class="card metric"><span class="label">Coste total de OnyxLink</span><strong class="value" id="totalCost">—</strong><small>Antes del Impuesto sobre Sociedades.</small></article>
+    <article class="card metric"><span class="label">Coste total de OnyxLink</span><strong class="value" id="totalCost">—</strong><small>Incluye la cuota mensual de autónomos.</small></article>
     <article class="card metric"><span class="label">IVA estimado a liquidar</span><strong class="value amber" id="vatPayable">—</strong><small>IVA repercutido menos soportado deducible.</small></article>
     <article class="card metric"><span class="label">Beneficio limpio estimado</span><strong class="value mint" id="afterTaxProfit">—</strong><small>Después del impuesto estimado.</small></article>
     <article class="card metric"><span class="label">Margen neto después de impuesto</span><strong class="value" id="netMargin">—</strong><small id="marginStatus">Comparado con el objetivo.</small></article>
@@ -105,9 +108,9 @@
         <div class="fiscal-box"><span>IVA repercutido</span><strong id="outputVat">—</strong><small>Cobrado al cliente, no es beneficio.</small></div>
         <div class="fiscal-box"><span>IVA soportado deducible</span><strong id="deductibleVat">—</strong><small>IVA deducible de compras informado.</small></div>
         <div class="fiscal-box"><span>Liquidación IVA</span><strong class="amber" id="vatSettlement">—</strong><small>Estimación repercutido menos deducible.</small></div>
-        <div class="fiscal-box"><span>Impuesto sobre beneficio</span><strong id="corporateTax">—</strong><small id="corporateHelp">Estimación mensual anualizada.</small></div>
+        <div class="fiscal-box"><span>IRPF / impuesto sobre beneficio</span><strong id="corporateTax">—</strong><small id="corporateHelp">Estimación mensual anualizada.</small></div>
       </div>
-      <div class="explain"><strong>Cómo leerlo:</strong> el IVA no se resta dos veces del beneficio. OnyxLink cobra la base más IVA; la base es ingreso y el IVA se reserva para la liquidación. El Impuesto sobre Sociedades se calcula sobre el beneficio fiscal positivo estimado. La cifra definitiva depende de gastos fiscalmente deducibles, ajustes, bases negativas, retenciones y asesoramiento contable.</div>
+      <div class="explain"><strong>Cómo leerlo como autónomo:</strong> el IVA no se resta dos veces del beneficio. OnyxLink cobra la base más IVA; la base es ingreso y el IVA se reserva para la liquidación. La cuota de autónomos ya aparece dentro de los costes. El IRPF mostrado es una reserva estimada usando el tipo efectivo elegido. El Modelo 130 exige con carácter general pagos fraccionados del 20% del rendimiento neto acumulado, pero la Renta anual definitiva depende del conjunto de ingresos, situación personal, retenciones y deducciones.</div>
     </div>
     <div class="panel" id="investor">
       <div class="fiscal-flow">
@@ -138,7 +141,7 @@
 
   <section class="card contract"><div class="eyebrow">Cláusula económica recomendada</div><blockquote>La suscripción de OnyxLink cubre el acceso y uso de la plataforma dentro de los límites del plan contratado. Los consumos de proveedores externos —incluidos inteligencia artificial, telefonía, WhatsApp, videollamadas y otros servicios conectados— serán contratados y facturados directamente al cliente. Los excesos de usuarios, almacenamiento o capacidad de plataforma se presupuestarán de forma independiente.</blockquote></section>
 
-  <footer class="card sources"><strong>Fuentes oficiales y fecha de referencia:</strong> <a href="https://sede.agenciatributaria.gob.es/Sede/ayuda/manuales-videos-folletos/manuales-practicos/manual-iva-2025/capitulo-04-sujetos-pasivos-repercusion-impositivo/tipo-impositivo.html">AEAT · IVA general 21%</a> · <a href="https://sede.agenciatributaria.gob.es/Sede/iva/regimenes-tributacion-iva/regimen-general.html">AEAT · liquidación IVA</a> · <a href="https://sede.agenciatributaria.gob.es/Sede/impuesto-sobre-sociedades/que-base-imponible-se-determina-sociedades/tipo-impositivo.html">AEAT · tipos de Sociedades 2026</a> · <a href="https://stripe.com/es/pricing">Stripe España</a> · <a href="https://vercel.com/pricing">Vercel</a> · <a href="https://supabase.com/pricing">Supabase</a> · <a href="https://www.ycloud.com/pricing">YCloud</a>. <span class="warning">Esta herramienta ofrece orientación empresarial, no asesoramiento fiscal. Una asesoría debe confirmar régimen, deducibilidad, operaciones internacionales, prorrata y declaraciones reales antes de presentar cifras definitivas a inversores.</span></footer>
+  <footer class="card sources"><strong>Fuentes oficiales y fecha de referencia:</strong> <a href="https://sede.agenciatributaria.gob.es/Sede/ayuda/manuales-videos-folletos/manuales-practicos/manual-iva-2025/capitulo-04-sujetos-pasivos-repercusion-impositivo/tipo-impositivo.html">AEAT · IVA general 21%</a> · <a href="https://sede.agenciatributaria.gob.es/Sede/iva/regimenes-tributacion-iva/regimen-general.html">AEAT · liquidación IVA</a> · <a href="https://sede.agenciatributaria.gob.es/Sede/ayuda/manuales-videos-folletos/folleto-actividades-economicas/3-impuesto-sobre-renta-personas-fisicas/3_7-pagos-fraccionados.html">AEAT · pagos fraccionados IRPF</a> · <a href="https://www.boe.es/buscar/act.php?id=BOE-A-2026-7296">BOE · cotización autónomos 2026</a> · <a href="https://sede.agenciatributaria.gob.es/Sede/impuesto-sobre-sociedades/que-base-imponible-se-determina-sociedades/tipo-impositivo.html">AEAT · comparación futura con S.L.</a> · <a href="https://stripe.com/es/pricing">Stripe España</a> · <a href="https://vercel.com/pricing">Vercel</a> · <a href="https://supabase.com/pricing">Supabase</a>. <span class="warning">Esta herramienta ofrece orientación empresarial, no asesoramiento fiscal. Una asesoría debe confirmar cuota, estimación directa, gastos deducibles, retenciones, operaciones internacionales y declaración anual de cada autónomo.</span></footer>
 </main>
 
 <script>
@@ -151,6 +154,7 @@
   function corporateTax(annualProfit){
     if(annualProfit<=0)return 0;
     const regime=$('taxRegime').value;
+    if(regime==='autonomous')return annualProfit*n('irpfEffective')/100;
     if(regime==='micro')return Math.min(annualProfit,50000)*.19+Math.max(0,annualProfit-50000)*.21;
     const rate=regime==='new'?15:regime==='reduced'?23:regime==='general'?25:n('customTax');
     return annualProfit*rate/100;
@@ -158,7 +162,8 @@
   function compute(clients,price,computeOverride){
     const vat=n('vatRate')/100,exchange=n('exchange'),invoice=price*(1+vat),revenue=price*clients;
     const supabase=computeOverride??n('supabase');
-    const fixed=n('vercel')*exchange+supabase*exchange+n('ycloud')*exchange+n('otherFixed')+n('adminFixed')+n('staffFixed')+n('marketingFixed')+n('infraExtra');
+    const autonomousCost=$('taxRegime').value==='autonomous'?n('autonomousCount')*n('autonomousQuota'):0;
+    const fixed=n('vercel')*exchange+supabase*exchange+n('ycloud')*exchange+n('otherFixed')+n('adminFixed')+n('staffFixed')+n('marketingFixed')+n('infraExtra')+autonomousCost;
     const support=n('support')*clients,cacAmortized=n('cac')/Math.max(1,n('retention'))*clients;
     const payment=invoice*(n('paymentPct')/100)*clients+n('paymentFixed')*clients;
     const sales=revenue*n('salesPct')/100,badDebt=revenue*n('badDebtPct')/100;
@@ -180,7 +185,7 @@
     $('netMargin').style.color=current.margin>=n('targetMargin')?'var(--mint2)':current.margin>=40?'var(--amber)':'var(--red)';$('marginStatus').textContent=current.margin>=n('targetMargin')?'Objetivo alcanzado con el precio actual.':'Precio actual por debajo del objetivo.';
     $('minimumPrice').textContent=eur.format(minimum);$('minimumInvoice').textContent='Factura con IVA: '+eur.format(minimum*(1+vat))+' por cliente.';$('minimumProfit').textContent='Beneficio limpio mensual total: '+eur.format(compute(clients,minimum).afterTax)+'.';
     $('recommendedPrice').textContent=eur.format(recommended);$('recommendedInvoice').textContent='Factura final con IVA: '+eur.format(recommended*(1+vat))+' por cliente.';$('recommendedMargin').textContent='Margen neto estimado: '+rec.margin.toFixed(1).replace('.',',')+'% después del impuesto.';$('recommendedAnnual').textContent='Beneficio limpio anual con '+clients+' clientes: '+eur.format(rec.afterTax*12)+'.';
-    $('externalTotal').textContent=eur.format(external)+'/mes';$('taxBase').textContent=eur.format(current.revenue);$('outputVat').textContent=eur.format(outputVat);$('deductibleVat').textContent=eur.format(n('inputVat'));$('vatSettlement').textContent=eur.format(vatSettlement);$('corporateTax').textContent=eur.format(current.taxMonthly);$('corporateHelp').textContent='Estimación mensual sobre '+eur.format(Math.max(0,current.beforeTax*12))+' anualizados.';
+    $('externalTotal').textContent=eur.format(external)+'/mes';$('taxBase').textContent=eur.format(current.revenue);$('outputVat').textContent=eur.format(outputVat);$('deductibleVat').textContent=eur.format(n('inputVat'));$('vatSettlement').textContent=eur.format(vatSettlement);$('corporateTax').textContent=eur.format(current.taxMonthly);$('corporateHelp').textContent=$('taxRegime').value==='autonomous'?'Reserva IRPF al '+n('irpfEffective').toFixed(0)+'% sobre '+eur.format(Math.max(0,current.beforeTax*12))+' anualizados.':'Estimación mensual sobre '+eur.format(Math.max(0,current.beforeTax*12))+' anualizados.';
     const profitClient=rec.afterTax/clients,ltv=profitClient*n('retention'),ratio=n('cac')?ltv/n('cac'):0,payback=profitClient>0?n('cac')/profitClient:0;
     $('mrrInvestor').textContent=eur.format(rec.revenue);$('arrInvestor').textContent=eur.format(rec.revenue*12);$('ltvInvestor').textContent=eur.format(ltv);$('ltvCacInvestor').textContent=n('cac')?ratio.toFixed(1).replace('.',',')+'×':'—';$('paybackInvestor').textContent=profitClient>0?payback.toFixed(1).replace('.',',')+' meses':'—';
     const scenarios=[10,50,100,200];$('projectionRows').innerHTML=scenarios.map(count=>{const computeCost=count<=25?25:count<=75?30:count<=200?75:125,r=compute(count,recommended,computeCost);return`<tr class="${count===clients?'highlight-row':''}"><td>${count} clientes · ${computeCost===25?'Micro':computeCost===30?'Small':computeCost===75?'Medium':'Large'}</td><td>${eur.format(recommended)}</td><td>${eur.format(r.revenue)}</td><td>${eur.format(r.costs)}</td><td>${eur.format(r.beforeTax)}</td><td>${eur.format(r.taxMonthly)}</td><td>${eur.format(r.afterTax*12)}</td><td>${r.margin.toFixed(1).replace('.',',')}%</td></tr>`}).join('');
