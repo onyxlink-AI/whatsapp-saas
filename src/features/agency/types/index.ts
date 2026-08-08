@@ -34,15 +34,14 @@ export interface WorkspaceWithStats {
   /** Human-readable commercial/configuration issues for the agency overview. */
   readiness_issues: string[];
   /**
-   * Fase 1 del roadmap comercial — el paquete efectivo, derivado de
-   * products.gestion/whatsappAgent/officeVirtual (nunca un flag propio):
-   * "none" (ni Gestión ni WhatsApp), "gestion" (Paquete 1), "whatsapp"
-   * (Paquete 2 = Gestión + WhatsApp) o "suite" (Paquete 3 = + Oficina
-   * Virtual). WhatsApp sin Gestión no debería poder ocurrir
-   * (chk_whatsapp_requires_gestion), pero si una fila legada lo tiene, cae
-   * en "inconsistent" para que el panel lo señale en vez de ocultarlo.
+   * Fase 2 del roadmap comercial — workspaces.product_package tal cual,
+   * sin derivarlo de los flags sueltos (eso ya lo hace
+   * set_workspace_product_package() al escribir la fila). Ya no existe un
+   * estado "inconsistent": la migración de backfill aborta con diagnóstico
+   * en vez de dejar una fila sin clasificar, y la mutación atómica es la
+   * única vía para cambiar de paquete desde esta fase.
    */
-  package_tier: "none" | "gestion" | "whatsapp" | "suite" | "inconsistent";
+  package_tier: "none" | "gestion" | "whatsapp_gestion" | "suite";
 }
 
 export type UseCase = "setter" | "soporte" | "agendamiento" | "general";

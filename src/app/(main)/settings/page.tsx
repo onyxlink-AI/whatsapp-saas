@@ -5,6 +5,7 @@ import { getActiveWorkspace } from "@/features/workspace/services/active-workspa
 import { listAgents } from "@/features/agents/services/agent-queries";
 import { SettingsShell } from "@/features/settings/components/settings-shell";
 import { getVapiConnectionStatus } from "@/features/voice-agent/services/vapi-verification";
+import { resolveEntitlements } from "@/features/entitlements/resolve";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -65,7 +66,7 @@ export default async function SettingsPage() {
       .eq("workspace_id", workspaceId),
     svc
       .from("workspaces")
-      .select("advanced_memory_enabled, pipeline_ai_enabled, cold_lead_recovery_enabled, vapi_assistant_id, cross_channel_memory_enabled, whatsapp_agent_enabled, gestion_enabled, office_virtual_enabled, chatbot_enabled, help_assistant_actions_enabled, whiteboard_enabled, team_chat_enabled, human_member_limit, team_chat_storage_quota_mb")
+      .select("advanced_memory_enabled, pipeline_ai_enabled, cold_lead_recovery_enabled, vapi_assistant_id, cross_channel_memory_enabled, product_package, chatbot_enabled, help_assistant_actions_enabled, team_chat_enabled, human_member_limit, team_chat_storage_quota_mb")
       .eq("id", workspaceId)
       .single(),
     svc.from("users").select("is_super_admin").eq("id", user.id).maybeSingle(),
@@ -77,6 +78,7 @@ export default async function SettingsPage() {
   // requireSuperAdmin's doc comment). The toggles stay visible to the client
   // for transparency, just locked.
   const isSuperAdmin = userRowForAddons?.is_super_admin === true;
+  const entitlements = resolveEntitlements(workspaceData);
 
   const initialAgents = await listAgents(svc, workspaceId);
 
@@ -160,12 +162,13 @@ export default async function SettingsPage() {
       initialVapiStatus={vapiStatus.status}
       initialCrossChannelMemoryEnabled={workspaceData?.cross_channel_memory_enabled === true}
       isSuperAdmin={isSuperAdmin}
-      hasWhatsappAgent={workspaceData?.whatsapp_agent_enabled !== false}
-      initialGestionEnabled={workspaceData?.gestion_enabled === true}
-      initialOfficeVirtualEnabled={workspaceData?.office_virtual_enabled === true}
+      initialProductPackage={entitlements.package}
+      hasWhatsappAgent={entitlements.hasWhatsappAgent}
+      initialGestionEnabled={entitlements.hasGestion}
+      initialOfficeVirtualEnabled={entitlements.hasOfficeVirtual}
       initialChatbotEnabled={workspaceData?.chatbot_enabled === true}
       initialHelpAssistantActionsEnabled={workspaceData?.help_assistant_actions_enabled === true}
-      initialWhiteboardEnabled={workspaceData?.whiteboard_enabled === true}
+      initialWhiteboardEnabled={entitlements.hasWhiteboard}
       initialTeamChatEnabled={workspaceData?.team_chat_enabled === true}
       initialHumanMemberLimit={workspaceData?.human_member_limit ?? 1}
       teamChatSeatsUsed={seatsUsed}

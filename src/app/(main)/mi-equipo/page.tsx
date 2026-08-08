@@ -7,6 +7,8 @@ import { getProjectsForBoard } from "@/features/projects/services/project-action
 import { listTasks } from "@/features/projects/services/task-actions";
 import { MiEquipoView } from "@/features/team/components/mi-equipo-view";
 import { PageHeader } from "@/components/page-header";
+import { resolveEntitlements } from "@/features/entitlements/resolve";
+import { PlanGate } from "@/components/plan-gate";
 
 export const dynamic = "force-dynamic";
 
@@ -23,18 +25,12 @@ export default async function MiEquipoPage() {
 
   const { data: workspaceFlagsRow } = await supabase
     .from("workspaces")
-    .select("gestion_enabled, human_member_limit")
+    .select("product_package, human_member_limit")
     .eq("id", membership.workspace_id)
     .maybeSingle();
 
-  if (workspaceFlagsRow?.gestion_enabled !== true) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh] px-6 text-center">
-        <p className="text-muted-foreground text-sm max-w-sm">
-          Esta sección no está incluida en tu plan. Pregúntale a tu gestor de Onyxlink.
-        </p>
-      </div>
-    );
+  if (!resolveEntitlements(workspaceFlagsRow).hasGestion) {
+    return <PlanGate />;
   }
 
   const [members, projects, tasks, { data: activeMemberRows }] = await Promise.all([

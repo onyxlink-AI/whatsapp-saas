@@ -9,8 +9,8 @@ import {
   listMemberships,
 } from "@/features/workspace/services/active-workspace";
 import { WorkspaceSwitcher } from "@/features/workspace/components/workspace-switcher";
-import { isOfficeVirtualEnabled } from "@/features/office-virtual/access";
 import { canSeeChatbotNav } from "@/features/chatbot/access";
+import { resolveEntitlements } from "@/features/entitlements/resolve";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SettingsLockToggle } from "@/features/settings/components/settings-lock-toggle";
 import { GlobalSearchLauncher } from "@/features/search/components/global-search-launcher";
@@ -54,41 +54,45 @@ export default async function MainLayout({
     ? (
         await supabase
           .from("workspaces")
-          .select(
-            "vapi_assistant_id, whatsapp_agent_enabled, gestion_enabled, office_virtual_enabled, chatbot_enabled, team_chat_enabled",
-          )
+          .select("vapi_assistant_id, product_package, chatbot_enabled, team_chat_enabled")
           .eq("id", activeId)
           .maybeSingle()
       ).data
     : null;
 
+  const entitlements = resolveEntitlements(activeWorkspaceRow);
   const hasVoiceAgent = Boolean(activeWorkspaceRow?.vapi_assistant_id);
-  const hasWhatsappAgent = activeWorkspaceRow?.whatsapp_agent_enabled !== false;
-  const hasGestion = activeWorkspaceRow?.gestion_enabled === true;
-  const hasOfficeVirtual = isOfficeVirtualEnabled(activeWorkspaceRow);
+  const hasWhatsappAgent = entitlements.hasWhatsappAgent;
+  const hasGestion = entitlements.hasGestion;
+  const hasOfficeVirtual = entitlements.hasOfficeVirtual;
   const hasChatbot = canSeeChatbotNav(isSuperAdmin, activeWorkspaceRow);
   const hasTeamChat = activeWorkspaceRow?.team_chat_enabled === true;
 
   const navItems: AppNavItem[] = [];
 
+  // Inicio (/dashboard) ya es el compositor adaptativo de la Fase 2 — se
+  // muestra con cualquier paquete activo, no solo cuando hay WhatsApp
+  // (antes ambos vivían juntos bajo el mismo hasWhatsappAgent, dejando a un
+  // workspace solo-Gestión sin ningún destino de "Inicio").
+  if (entitlements.package !== "none") {
+    navItems.push({
+      href: "/dashboard",
+      label: "Inicio",
+      icon: "dashboard",
+      section: "Trabajo diario",
+      mobilePrimary: true,
+    });
+  }
+
   if (hasWhatsappAgent) {
-    navItems.push(
-      {
-        href: "/dashboard",
-        label: "Inicio",
-        icon: "dashboard",
-        section: "Trabajo diario",
-        mobilePrimary: true,
-      },
-      {
-        href: "/inbox",
-        label: "Conversaciones",
-        shortLabel: "Mensajes",
-        icon: "messages",
-        section: "Trabajo diario",
-        mobilePrimary: true,
-      },
-    );
+    navItems.push({
+      href: "/inbox",
+      label: "Conversaciones",
+      shortLabel: "Mensajes",
+      icon: "messages",
+      section: "Trabajo diario",
+      mobilePrimary: true,
+    });
   }
 
   if (hasTeamChat) {
@@ -139,16 +143,10 @@ export default async function MainLayout({
     );
   }
 
-  if (hasWhatsappAgent && !hasGestion) {
-    navItems.push({
-      href: "/pipeline",
-      label: "Oportunidades",
-      shortLabel: "Ventas",
-      icon: "pipeline",
-      section: "Gestión",
-      mobilePrimary: true,
-    });
-  }
+  // La rama "whatsapp sin gestión" ya no es alcanzable: la matriz de
+  // paquetes (§2.2) garantiza que whatsapp_gestion/suite siempre implican
+  // gestión — Oportunidades ya quedó cubierta arriba en el bloque
+  // hasGestion para cualquier workspace con paquete comercial activo.
 
   if (hasWhatsappAgent && hasVoiceAgent) {
     navItems.push({

@@ -1,49 +1,38 @@
 import { describe, it, expect } from "vitest";
 import { resolveHelpAssistantTier } from "./tier";
 
+// Fase 2: resolveHelpAssistantTier ahora recibe las PackageCapabilities ya
+// resueltas por resolveEntitlements() (product_package), no 3 flags sueltos
+// con su propia lógica de "por defecto true" — ese idioma ya no existe, el
+// paquete siempre resuelve a un valor concreto.
 describe("resolveHelpAssistantTier", () => {
-  it("returns gestion (30/semana) when only Gestión is enabled", () => {
+  it("returns gestion (30/semana) para el paquete Gestión (sin whatsapp/oficina)", () => {
     const result = resolveHelpAssistantTier({
-      gestion_enabled: true,
-      whatsapp_agent_enabled: false,
-      office_virtual_enabled: false,
+      hasGestion: true,
+      hasWhatsappAgent: false,
+      hasOfficeVirtual: false,
+      hasWhiteboard: true,
     });
     expect(result).toEqual({ tier: "gestion", label: "Onyxlink Gestión", weeklyLimit: 30 });
   });
 
-  it("returns completo (70/semana) when the WhatsApp agent is enabled, with Gestión", () => {
+  it("returns completo (70/semana) para el paquete WhatsApp + Gestión", () => {
     const result = resolveHelpAssistantTier({
-      gestion_enabled: true,
-      whatsapp_agent_enabled: true,
-      office_virtual_enabled: false,
+      hasGestion: true,
+      hasWhatsappAgent: true,
+      hasOfficeVirtual: false,
+      hasWhiteboard: true,
     });
     expect(result.tier).toBe("completo");
     expect(result.weeklyLimit).toBe(70);
   });
 
-  it("returns completo for a legacy workspace with the WhatsApp agent but no Gestión", () => {
+  it("returns oficina (150/semana) para el paquete Suite", () => {
     const result = resolveHelpAssistantTier({
-      gestion_enabled: false,
-      whatsapp_agent_enabled: true,
-      office_virtual_enabled: false,
-    });
-    expect(result.tier).toBe("completo");
-  });
-
-  it("treats a null whatsapp_agent_enabled as enabled (default-true idiom)", () => {
-    const result = resolveHelpAssistantTier({
-      gestion_enabled: true,
-      whatsapp_agent_enabled: null,
-      office_virtual_enabled: false,
-    });
-    expect(result.tier).toBe("completo");
-  });
-
-  it("returns oficina (150/semana) whenever Oficina Virtual is enabled, regardless of the other flags", () => {
-    const result = resolveHelpAssistantTier({
-      gestion_enabled: true,
-      whatsapp_agent_enabled: true,
-      office_virtual_enabled: true,
+      hasGestion: true,
+      hasWhatsappAgent: true,
+      hasOfficeVirtual: true,
+      hasWhiteboard: true,
     });
     expect(result).toEqual({
       tier: "oficina",
@@ -52,21 +41,23 @@ describe("resolveHelpAssistantTier", () => {
     });
   });
 
-  it("returns oficina even in the edge case where Oficina Virtual is on but Gestión/WhatsApp are off", () => {
+  it("falls back to the gestion tier cuando no hay ningún paquete activo (none)", () => {
     const result = resolveHelpAssistantTier({
-      gestion_enabled: false,
-      whatsapp_agent_enabled: false,
-      office_virtual_enabled: true,
-    });
-    expect(result.tier).toBe("oficina");
-  });
-
-  it("falls back to the gestion tier when nothing is enabled", () => {
-    const result = resolveHelpAssistantTier({
-      gestion_enabled: false,
-      whatsapp_agent_enabled: false,
-      office_virtual_enabled: false,
+      hasGestion: false,
+      hasWhatsappAgent: false,
+      hasOfficeVirtual: false,
+      hasWhiteboard: false,
     });
     expect(result.tier).toBe("gestion");
+  });
+
+  it("prioriza oficina sobre las demás capacidades cuando está presente", () => {
+    const result = resolveHelpAssistantTier({
+      hasGestion: false,
+      hasWhatsappAgent: false,
+      hasOfficeVirtual: true,
+      hasWhiteboard: false,
+    });
+    expect(result.tier).toBe("oficina");
   });
 });

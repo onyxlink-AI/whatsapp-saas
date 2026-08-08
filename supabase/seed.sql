@@ -28,6 +28,13 @@
 -- real era false. Ambas quedan corregidas para representar de verdad lo que
 -- dicen ser.
 --
+-- office_virtual_enabled=false en Empresa B (Fase 2 del roadmap comercial,
+-- 20260808000007_product_package.sql): tenía TRUE por error — Suite exige
+-- Oficina + WhatsApp + Gestión (§2.4 del encargo), y B nunca tuvo WhatsApp.
+-- Con el valor viejo, el backfill de product_package abortaba correctamente
+-- (RAISE EXCEPTION, nunca corrige en silencio) en vez de completar el reset
+-- local — corregido para que B represente de verdad "Gestión sin WhatsApp".
+--
 -- Idempotent: safe to re-run manually (`psql -f supabase/seed.sql`) against a
 -- DB that already has this data — every insert is ON CONFLICT DO NOTHING.
 -- ============================================================================
@@ -115,9 +122,21 @@ INSERT INTO public.workspaces (
   (
     '9003dc6d-dafa-48b3-be17-71e36e08272d', 'Empresa B (prueba local)', 'empresa-b-prueba-local',
     '{"timezone": "America/Mexico_City", "language": "es"}'::jsonb, TRUE,
-    FALSE, TRUE, TRUE, TRUE
+    FALSE, FALSE, TRUE, TRUE
   )
 ON CONFLICT (id) DO NOTHING;
+
+-- product_package (Fase 2, 20260808000007_product_package.sql): la
+-- migración solo hace backfill de filas que YA existen en el momento en que
+-- se aplica — en un `supabase db reset` local, las migraciones corren
+-- contra una tabla vacía y este seed se ejecuta DESPUÉS, así que aquí hay
+-- que fijar el paquete explícitamente, vía la propia función atómica (no
+-- un UPDATE suelto) para ejercitar el mismo camino que usará Ajustes en
+-- producción. Empresa A = Suite (gestión+whatsapp+oficina); Empresa B =
+-- Gestión sola — coherente con lo que ya describen sus propios flags de
+-- arriba.
+SELECT public.set_workspace_product_package('1b807ae9-03a2-4cf5-84af-8b72a7078ad9', 'suite');
+SELECT public.set_workspace_product_package('9003dc6d-dafa-48b3-be17-71e36e08272d', 'gestion');
 
 -- ---------------------------------------------------------------------------
 -- Memberships — superadmin is admin of BOTH (needed by the RLS privilege

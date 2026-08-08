@@ -5,6 +5,8 @@ import { getDealsForBoard, listWorkspaceMembers } from "@/features/pipeline/serv
 import { getContactSummary } from "@/features/pipeline/services/contact-lookup";
 import { PipelineBoard } from "@/features/pipeline/components/pipeline-board";
 import { PageHeader } from "@/components/page-header";
+import { resolveEntitlements } from "@/features/entitlements/resolve";
+import { PlanGate } from "@/components/plan-gate";
 
 export const dynamic = "force-dynamic";
 
@@ -41,22 +43,14 @@ export default async function PipelinePage({
 
   const { data: workspaceFlagsRow } = await supabase
     .from("workspaces")
-    .select("whatsapp_agent_enabled, gestion_enabled")
+    .select("product_package")
     .eq("id", membership.workspace_id)
     .maybeSingle();
 
-  const hasEitherProduct =
-    workspaceFlagsRow?.whatsapp_agent_enabled !== false ||
-    workspaceFlagsRow?.gestion_enabled === true;
+  const entitlements = resolveEntitlements(workspaceFlagsRow);
 
-  if (!hasEitherProduct) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh] px-6 text-center">
-        <p className="text-muted-foreground text-sm max-w-sm">
-          Tu cuenta todavía no tiene ningún plan activo. Pregúntale a tu gestor de Onyxlink.
-        </p>
-      </div>
-    );
+  if (entitlements.package === "none") {
+    return <PlanGate message="Tu cuenta todavía no tiene ningún plan activo. Pregúntale a tu gestor de Onyxlink." />;
   }
 
   const { createFor, open } = await searchParams;

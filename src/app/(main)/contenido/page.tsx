@@ -5,6 +5,8 @@ import { listContentItems } from "@/features/content/services/content-actions";
 import { listWorkspaceMembers } from "@/features/projects/services/project-actions";
 import { ContentHub } from "@/features/content/components/content-hub";
 import { PageHeader } from "@/components/page-header";
+import { resolveEntitlements } from "@/features/entitlements/resolve";
+import { PlanGate } from "@/components/plan-gate";
 
 export const dynamic = "force-dynamic";
 
@@ -47,18 +49,12 @@ export default async function ContenidoPage({
 
   const { data: workspaceFlagsRow } = await supabase
     .from("workspaces")
-    .select("gestion_enabled")
+    .select("product_package")
     .eq("id", membership.workspace_id)
     .maybeSingle();
 
-  if (workspaceFlagsRow?.gestion_enabled !== true) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh] px-6 text-center">
-        <p className="text-muted-foreground text-sm max-w-sm">
-          Esta sección no está incluida en tu plan. Pregúntale a tu gestor de Onyxlink.
-        </p>
-      </div>
-    );
+  if (!resolveEntitlements(workspaceFlagsRow).hasGestion) {
+    return <PlanGate />;
   }
 
   // Fase 1 (§3.2): en la biblioteca (sin ?view= válido) no hace falta

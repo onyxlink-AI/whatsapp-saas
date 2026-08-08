@@ -2,6 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { InboxLayout } from "@/features/inbox/components/inbox-layout";
 import { ChatThread } from "@/features/inbox/components/chat-thread";
+import { resolveEntitlements } from "@/features/entitlements/resolve";
+import { PlanGate } from "@/components/plan-gate";
 import type {
   ConversationWithContact,
   ConversationRow,
@@ -61,19 +63,13 @@ export default async function InboxDetailPage({ params }: PageProps) {
   // as everything else on this page (no service-role here).
   const { data: wsData } = await supabase
     .from("workspaces")
-    .select("advanced_memory_enabled, whatsapp_agent_enabled")
+    .select("advanced_memory_enabled, product_package")
     .eq("id", convWithContact.workspace_id)
     .maybeSingle();
   const advancedMemoryEnabled = wsData?.advanced_memory_enabled === true;
 
-  if (wsData?.whatsapp_agent_enabled === false) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh] px-6 text-center">
-        <p className="text-muted-foreground text-sm max-w-sm">
-          Esta sección no está incluida en tu plan. Pregúntale a tu gestor de Onyxlink.
-        </p>
-      </div>
-    );
+  if (!resolveEntitlements(wsData).hasWhatsappAgent) {
+    return <PlanGate />;
   }
 
   let initialMemory: ContactMemory | null = null;

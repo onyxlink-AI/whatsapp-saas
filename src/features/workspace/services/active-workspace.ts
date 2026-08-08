@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { resolveEntitlements } from "@/features/entitlements/resolve";
 
 export const ACTIVE_WORKSPACE_COOKIE = "active_workspace_id";
 
@@ -38,9 +39,12 @@ export async function getActiveWorkspace(
 }
 
 /**
- * Where to land a user for this workspace, since "/inbox" is only usable
- * when the WhatsApp agent product is enabled — a Gestión-only workspace
- * must not redirect there (it would just show the "not included" guard).
+ * Where to land a user for this workspace. Fase 2: delega en el
+ * resolvedor de entitlements (entitlements.defaultRoute) — con el
+ * dashboard ya adaptado por paquete, /dashboard es el destino correcto
+ * para cualquier paquete comercial activo, no solo cuando hay WhatsApp
+ * (antes esta escalera mandaba a /inbox por defecto incluso para un
+ * workspace solo-Gestión).
  */
 export async function getDefaultRouteForWorkspace(
   supabase: SupabaseClient,
@@ -48,13 +52,11 @@ export async function getDefaultRouteForWorkspace(
 ): Promise<string> {
   const { data } = await supabase
     .from("workspaces")
-    .select("whatsapp_agent_enabled, gestion_enabled")
+    .select("product_package")
     .eq("id", workspaceId)
     .maybeSingle();
 
-  if (data?.whatsapp_agent_enabled !== false) return "/inbox";
-  if (data?.gestion_enabled === true) return "/clientes";
-  return "/settings";
+  return resolveEntitlements(data).defaultRoute;
 }
 
 /** Lists the user's active memberships with workspace names — for the switcher. */

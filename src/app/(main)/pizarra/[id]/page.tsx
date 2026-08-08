@@ -26,7 +26,7 @@ export default async function PizarraDetailPage({
 
   const { data: workspaceFlagsRow } = await supabase
     .from("workspaces")
-    .select("whiteboard_enabled")
+    .select("product_package")
     .eq("id", membership.workspace_id)
     .maybeSingle();
 

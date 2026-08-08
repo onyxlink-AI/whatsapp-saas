@@ -5,6 +5,7 @@ import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { provisionWorkspaceUser } from "@/lib/auth/provision-user";
 import { deleteWorkspaceMedia } from "@/features/inbox/services/media-handler";
+import { resolveEntitlements } from "@/features/entitlements/resolve";
 import type {
   ClientCredentials,
   CreateWorkspaceResult,
@@ -140,6 +141,22 @@ export async function createWorkspaceForClient(
   }
 
   const workspaceId = (workspace as { id: string }).id;
+
+  // Fase 2 del roadmap comercial: product_package es la única fuente de
+  // verdad desde ahora — sin esta llamada, un workspace nuevo se quedaría
+  // en el DEFAULT 'none' de la columna aunque el INSERT de arriba ya haya
+  // marcado whatsapp_agent_enabled/gestion_enabled a mano, reabriendo
+  // exactamente el desajuste que la migración de esta fase corrigió.
+  // Oficina Virtual no se ofrece todavía en el alta (se activa después
+  // desde Ajustes → Negocio), así que el paquete inicial nunca es "suite".
+  const initialPackage = whatsappAgentEnabled ? "whatsapp_gestion" : gestionEnabled ? "gestion" : "none";
+  const { error: packageError } = await service.rpc("set_workspace_product_package", {
+    p_workspace_id: workspaceId,
+    p_package: initialPackage,
+  });
+  if (packageError) {
+    console.error("[agency] set_workspace_product_package error:", packageError);
+  }
 
   // The agency super admin manages every workspace they create — membership is
   // required for the membership-based RLS on conversations/messages/integrations,
@@ -401,7 +418,7 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
   const { data: workspaces, error: wsError } = await service
     .from("workspaces")
     .select(
-      "id, name, slug, created_at, whatsapp_agent_enabled, gestion_enabled, office_virtual_enabled, chatbot_enabled, whiteboard_enabled, vapi_assistant_id, advanced_memory_enabled, pipeline_ai_enabled, cold_lead_recovery_enabled, cross_channel_memory_enabled, help_assistant_actions_enabled, team_chat_enabled, human_member_limit",
+      "id, name, slug, created_at, product_package, chatbot_enabled, vapi_assistant_id, advanced_memory_enabled, pipeline_ai_enabled, cold_lead_recovery_enabled, cross_channel_memory_enabled, help_assistant_actions_enabled, team_chat_enabled, human_member_limit",
     )
     .order("created_at", { ascending: false });
 
@@ -515,11 +532,8 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
       name: string;
       slug: string;
       created_at: string;
-      whatsapp_agent_enabled: boolean | null;
-      gestion_enabled: boolean | null;
-      office_virtual_enabled: boolean | null;
+      product_package: string | null;
       chatbot_enabled: boolean | null;
-      whiteboard_enabled: boolean | null;
       vapi_assistant_id: string | null;
       advanced_memory_enabled: boolean | null;
       pipeline_ai_enabled: boolean | null;
@@ -530,31 +544,17 @@ export async function getAllWorkspacesWithStats(): Promise<GetWorkspacesResult> 
       human_member_limit: number | null;
     }[]
   ).map((w) => {
-    const whatsappAgent = w.whatsapp_agent_enabled !== false;
-    const gestion = w.gestion_enabled === true;
+    // Fase 2 del roadmap comercial: product_package tal cual, ya no
+    // derivado de 3 flags sueltos — set_workspace_product_package() es la
+    // única vía para escribirlos, así que ya no puede existir un estado
+    // "inconsistent" (WhatsApp sin Gestión, Oficina sin WhatsApp, etc.).
+    const entitlements = resolveEntitlements(w);
+    const { hasWhatsappAgent: whatsappAgent, hasGestion: gestion, hasOfficeVirtual: officeVirtual, hasWhiteboard: whiteboard } = entitlements;
     const voice = w.vapi_assistant_id !== null;
-    const whiteboard = w.whiteboard_enabled === true;
     const readinessIssues: string[] = [];
     if (whatsappAgent && !(ycloudMap.get(w.id) ?? false)) readinessIssues.push("Conectar WhatsApp");
-    if (whiteboard && !gestion) readinessIssues.push("Board necesita Gestión");
 
-    // Fase 1 del roadmap comercial: paquete efectivo derivado, nunca un flag
-    // propio — WhatsApp siempre incluye Gestión (chk_whatsapp_requires_gestion),
-    // así que whatsapp=true + gestion=false es un estado legado inconsistente,
-    // no un paquete válido.
-    const officeVirtual = w.office_virtual_enabled === true;
-    const packageTier: WorkspaceWithStats["package_tier"] = whatsappAgent && !gestion
-      ? "inconsistent"
-      : whatsappAgent && officeVirtual
-        ? "suite"
-        : whatsappAgent
-          ? "whatsapp"
-          : gestion
-            ? "gestion"
-            : "none";
-    if (packageTier === "inconsistent") {
-      readinessIssues.push("WhatsApp sin Gestión (estado inconsistente, revisar)");
-    }
+    const packageTier: WorkspaceWithStats["package_tier"] = entitlements.package;
     if (w.cross_channel_memory_enabled === true && (!voice || w.advanced_memory_enabled !== true)) {
       readinessIssues.push("Completar memoria entre canales");
     }

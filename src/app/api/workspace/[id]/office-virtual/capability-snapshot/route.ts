@@ -11,6 +11,7 @@ import {
 import { requireOfficeVirtualReader } from '@/features/office-virtual/server/office-virtual-access';
 import { resolveChannelReadiness } from '@/features/chatbot/server/channel-readiness';
 import type { ChatbotProvider } from '@/features/chatbot/types';
+import { resolveEntitlements } from '@/features/entitlements/resolve';
 
 function serviceClient() {
   return createServiceClient(
@@ -47,13 +48,14 @@ export async function GET(
     const { data: workspace, error: workspaceError } = await client
       .from('workspaces')
       .select(
-        'id, office_virtual_enabled, whatsapp_agent_enabled, office_whatsapp_enabled, vapi_assistant_id, advanced_memory_enabled, cross_channel_memory_enabled, pipeline_ai_enabled, cold_lead_recovery_enabled',
+        'id, product_package, office_whatsapp_enabled, vapi_assistant_id, advanced_memory_enabled, cross_channel_memory_enabled, pipeline_ai_enabled, cold_lead_recovery_enabled',
       )
       .eq('id', workspaceId)
       .maybeSingle();
     if (workspaceError) throw workspaceError;
     if (!workspace) return NextResponse.json({ error: 'Workspace no encontrado' }, { status: 404 });
-    if (!workspace.office_virtual_enabled) {
+    const entitlements = resolveEntitlements(workspace);
+    if (!entitlements.hasOfficeVirtual) {
       return NextResponse.json({ error: 'Oficina Virtual no esta activada para este workspace' }, { status: 409 });
     }
 
@@ -75,14 +77,14 @@ export async function GET(
 
     const workspaceRow: SaasWorkspaceCapabilityRow = {
       id: workspace.id,
-      whatsapp_agent_enabled: workspace.whatsapp_agent_enabled,
+      whatsapp_agent_enabled: entitlements.hasWhatsappAgent,
       office_whatsapp_enabled: workspace.office_whatsapp_enabled,
       vapi_assistant_id: workspace.vapi_assistant_id,
       advanced_memory_enabled: workspace.advanced_memory_enabled,
       cross_channel_memory_enabled: workspace.cross_channel_memory_enabled,
       pipeline_ai_enabled: workspace.pipeline_ai_enabled,
       cold_lead_recovery_enabled: workspace.cold_lead_recovery_enabled,
-      virtual_office_enabled: workspace.office_virtual_enabled,
+      virtual_office_enabled: entitlements.hasOfficeVirtual,
     };
 
     const activeWhatsappAgent: SaasActiveAgentRow | null = activeAgent

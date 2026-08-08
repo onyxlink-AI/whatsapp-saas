@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { requireSuperAdmin, requireWorkspaceMember } from '@/lib/auth/workspace-access';
+import { resolveEntitlements } from '@/features/entitlements/resolve';
 
 type Ok = { ok: true; userId: string; isSuperAdmin: boolean };
 type Fail = { ok: false; response: NextResponse };
@@ -30,14 +31,14 @@ export async function requireOfficeVirtualReader(workspaceId: string): Promise<O
 
   const { data: workspace, error } = await serviceClient()
     .from('workspaces')
-    .select('office_virtual_enabled')
+    .select('product_package')
     .eq('id', workspaceId)
     .maybeSingle();
   if (error) {
     console.error('[requireOfficeVirtualReader]', error);
     return { ok: false, response: NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 }) };
   }
-  if (!workspace?.office_virtual_enabled) {
+  if (!resolveEntitlements(workspace).hasOfficeVirtual) {
     return { ok: false, response: NextResponse.json({ error: 'Oficina Virtual no está activada para este workspace' }, { status: 409 }) };
   }
 

@@ -9,6 +9,7 @@ import {
 import { OfficeOpenRouterRequestSchema } from '@/features/office-virtual/openrouter-connection-contract';
 import { readJsonBody, requireSuperAdmin } from '@/lib/auth/workspace-access';
 import { decryptCredentials } from '@/shared/lib/crypto';
+import { resolveEntitlements } from '@/features/entitlements/resolve';
 
 function serviceClient() {
   return createServiceClient(
@@ -87,12 +88,12 @@ async function verifyOpenRouterCredential(apiKey: string) {
 async function ensureWorkspaceIsEnabled(workspaceId: string) {
   const { data, error } = await serviceClient()
     .from('workspaces')
-    .select('id, office_virtual_enabled')
+    .select('id, product_package')
     .eq('id', workspaceId)
     .maybeSingle();
   if (error) throw error;
   if (!data) return { ok: false as const, status: 404, error: 'Workspace no encontrado' };
-  if (!data.office_virtual_enabled) {
+  if (!resolveEntitlements(data).hasOfficeVirtual) {
     return { ok: false as const, status: 409, error: 'Oficina Virtual no esta activada para este workspace' };
   }
   return { ok: true as const };

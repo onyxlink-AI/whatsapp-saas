@@ -36,18 +36,17 @@ interface Props {
   googleServiceAccountEmail?: string;
 }
 
-// Fase 1 del roadmap comercial: el paquete efectivo, en un solo lugar —
-// nunca deducido de nuevo aquí, siempre el valor ya calculado en
-// agency-actions.ts a partir de gestion/whatsapp/officeVirtual.
+// Fase 2 del roadmap comercial: workspaces.product_package tal cual, nunca
+// deducido de nuevo aquí — set_workspace_product_package() es la única vía
+// para cambiarlo, así que ya no existe un estado "inconsistent".
 const PACKAGE_TIER_META: Record<
   WorkspaceWithStats["package_tier"],
   { label: string; className: string }
 > = {
   none: { label: "Sin paquete", className: "border-border bg-muted/40 text-muted-foreground" },
   gestion: { label: "Paquete 1 · Gestión", className: "border-primary/25 bg-primary/[0.08] text-primary" },
-  whatsapp: { label: "Paquete 2 · Gestión + WhatsApp", className: "border-primary/30 bg-primary/[0.12] text-primary" },
+  whatsapp_gestion: { label: "Paquete 2 · Gestión + WhatsApp", className: "border-primary/30 bg-primary/[0.12] text-primary" },
   suite: { label: "Paquete 3 · Suite completa", className: "border-[hsl(var(--electric-lime))]/40 bg-[hsl(var(--electric-lime))]/10 text-foreground" },
-  inconsistent: { label: "⚠ WhatsApp sin Gestión", className: "border-warning/40 bg-warning/10 text-warning" },
 };
 
 function PackageTierBadge({ tier }: { tier: WorkspaceWithStats["package_tier"] }) {

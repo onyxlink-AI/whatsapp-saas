@@ -4,6 +4,8 @@ import { getActiveWorkspace } from "@/features/workspace/services/active-workspa
 import { listClients } from "@/features/clients/services/client-actions";
 import { ClientsTable } from "@/features/clients/components/clients-table";
 import { PageHeader } from "@/components/page-header";
+import { resolveEntitlements } from "@/features/entitlements/resolve";
+import { PlanGate } from "@/components/plan-gate";
 
 export const dynamic = "force-dynamic";
 
@@ -41,18 +43,12 @@ export default async function ClientesPage({
 
   const { data: workspaceFlagsRow } = await supabase
     .from("workspaces")
-    .select("gestion_enabled")
+    .select("product_package")
     .eq("id", membership.workspace_id)
     .maybeSingle();
 
-  if (workspaceFlagsRow?.gestion_enabled !== true) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh] px-6 text-center">
-        <p className="text-muted-foreground text-sm max-w-sm">
-          Esta sección no está incluida en tu plan. Pregúntale a tu gestor de Onyxlink.
-        </p>
-      </div>
-    );
+  if (!resolveEntitlements(workspaceFlagsRow).hasGestion) {
+    return <PlanGate />;
   }
 
   const { open } = await searchParams;

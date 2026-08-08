@@ -13,6 +13,7 @@ import { resolveRealIntegrationStatuses } from '@/features/office-virtual/server
 import { AgentIdSchema } from '@/features/office-virtual/schemas';
 import type { WorkspaceOrchestratorBinding } from '@/features/office-virtual/client/central-orchestrator';
 import { requireSuperAdmin, readJsonBody } from '@/lib/auth/workspace-access';
+import { resolveEntitlements } from '@/features/entitlements/resolve';
 
 function serviceClient() {
   return createServiceClient(
@@ -84,12 +85,12 @@ function ports(): OrchestratorServicePorts {
 async function ensureWorkspaceIsEnabled(workspaceId: string) {
   const { data, error } = await serviceClient()
     .from('workspaces')
-    .select('id, office_virtual_enabled')
+    .select('id, product_package')
     .eq('id', workspaceId)
     .maybeSingle();
   if (error) throw error;
   if (!data) return { ok: false as const, status: 404, error: 'Workspace no encontrado' };
-  if (!data.office_virtual_enabled) {
+  if (!resolveEntitlements(data).hasOfficeVirtual) {
     return { ok: false as const, status: 409, error: 'Oficina Virtual no está activada para este workspace' };
   }
   return { ok: true as const };

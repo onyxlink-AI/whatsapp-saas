@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Bot,
@@ -29,13 +28,12 @@ import { ColdLeadRecoveryToggle } from "./cold-lead-recovery-toggle";
 import { VapiAssistantField } from "./vapi-assistant-field";
 import type { VapiConnectionStatus } from "@/features/voice-agent/lib/vapi-status-labels";
 import { CrossChannelMemoryToggle } from "./cross-channel-memory-toggle";
-import { GestionToggle } from "./gestion-toggle";
-import { OfficeVirtualToggle } from "./office-virtual-toggle";
 import { ChatbotToggle } from "./chatbot-toggle";
 import { HelpAssistantActionsToggle } from "./help-assistant-actions-toggle";
-import { WhiteboardToggle } from "./whiteboard-toggle";
 import { TeamChatToggle } from "./team-chat-toggle";
-import { WhatsappAgentToggle } from "./whatsapp-agent-toggle";
+import { ProductPackageCards } from "./product-package-cards";
+import { PackageFlagIndicators } from "./package-flag-indicators";
+import type { ProductPackage } from "@/features/entitlements/resolve";
 import { ToolsCatalog } from "./tools-catalog";
 import { IntegrationsTab } from "./integrations-tab";
 import { TeamTab } from "./team-tab";
@@ -76,6 +74,7 @@ interface Props {
   isSuperAdmin?: boolean;
   /** false hides every WhatsApp-agent-specific tab/toggle (independent from Gestión). */
   hasWhatsappAgent?: boolean;
+  initialProductPackage?: ProductPackage;
   initialGestionEnabled?: boolean;
   initialOfficeVirtualEnabled?: boolean;
   initialChatbotEnabled?: boolean;
@@ -127,6 +126,7 @@ export function SettingsShell({
   initialCrossChannelMemoryEnabled = false,
   isSuperAdmin = false,
   hasWhatsappAgent = true,
+  initialProductPackage = "none",
   initialGestionEnabled = false,
   initialOfficeVirtualEnabled = false,
   initialChatbotEnabled = false,
@@ -141,11 +141,6 @@ export function SettingsShell({
     structured: Record<string, unknown>;
     free_text: string | null;
   } | null;
-
-  // Tracked separately (not just the `hasWhatsappAgent` prop) so flipping
-  // the WhatsApp toggle live updates the Gestión toggle below it — WhatsApp
-  // always includes Gestión — without needing a page reload.
-  const [whatsappLive, setWhatsappLive] = useState(hasWhatsappAgent);
 
   const isFullMode = hasWhatsappAgent;
   // OnyxLink must be able to build and test an agent before enabling the paid
@@ -315,36 +310,26 @@ export function SettingsShell({
                   </p>
                 </div>
               </div>
+
+              {isSuperAdmin && <ProductPackageCards workspaceId={workspaceId} initialPackage={initialProductPackage} />}
+
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Gestión, WhatsApp, Oficina Virtual y Board</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Solo lectura — son 100% derivados del paquete comercial. Para cambiarlos, activa otro paquete arriba.
+                </p>
+              </div>
+              <PackageFlagIndicators
+                gestionEnabled={initialGestionEnabled}
+                whatsappAgentEnabled={hasWhatsappAgent}
+                officeVirtualEnabled={initialOfficeVirtualEnabled}
+                whiteboardEnabled={initialWhiteboardEnabled}
+              />
               <div className="grid gap-3 xl:grid-cols-2">
-                {isSuperAdmin && (
-                  <WhatsappAgentToggle
-                    workspaceId={workspaceId}
-                    initialEnabled={hasWhatsappAgent}
-                    onEnabledChange={setWhatsappLive}
-                  />
-                )}
-                <GestionToggle
-                  workspaceId={workspaceId}
-                  initialEnabled={initialGestionEnabled}
-                  isSuperAdmin={isSuperAdmin}
-                  whatsappEnabled={whatsappLive}
-                />
-                {isSuperAdmin && (
-                  <OfficeVirtualToggle
-                    workspaceId={workspaceId}
-                    initialEnabled={initialOfficeVirtualEnabled}
-                  />
-                )}
                 {isSuperAdmin && (
                   <ChatbotToggle
                     workspaceId={workspaceId}
                     initialEnabled={initialChatbotEnabled}
-                  />
-                )}
-                {isSuperAdmin && (
-                  <WhiteboardToggle
-                    workspaceId={workspaceId}
-                    initialEnabled={initialWhiteboardEnabled}
                   />
                 )}
                 {isSuperAdmin && (
@@ -363,12 +348,6 @@ export function SettingsShell({
                   isSuperAdmin={isSuperAdmin}
                 />
               </div>
-              {isSuperAdmin && initialWhiteboardEnabled && !initialGestionEnabled && (
-                <div className="flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
-                  <CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  Pizarra necesita OnyxLink Gestión porque ahora se encuentra dentro de Proyectos.
-                </div>
-              )}
             </section>
             {isFullMode && (
               <section className="space-y-4 border-t border-border/60 pt-6">

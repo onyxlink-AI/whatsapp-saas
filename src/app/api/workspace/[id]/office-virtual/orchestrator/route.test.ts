@@ -21,7 +21,7 @@ vi.mock('@/features/office-virtual/server/orchestrator-service', () => ({
 vi.mock('@/features/office-virtual/server/real-integration-status', () => ({ resolveRealIntegrationStatuses }));
 vi.mock('@/features/audit/services/audit-log', () => ({ logAudit: vi.fn() }));
 
-const workspaceRow = { id: 'empresa-a', office_virtual_enabled: true };
+const workspaceRow = { id: 'empresa-a', product_package: 'suite' };
 const supabaseStub = {
   from: () => ({
     select: () => ({

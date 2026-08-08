@@ -4,12 +4,8 @@ import { checkHelpAssistantQuota, recordHelpAssistantQuestion } from "./quota";
 import { buildHelpAssistantSystemPrompt } from "./system-prompt";
 import { generateHelpAssistantReply } from "./openrouter-client";
 import { buildActionTools } from "./action-tools";
-import type {
-  ChatTurn,
-  HelpActionContext,
-  HelpAssistantPlanContext,
-  WorkspacePlanFlags,
-} from "../types";
+import { resolveEntitlements } from "@/features/entitlements/resolve";
+import type { ChatTurn, HelpActionContext, HelpAssistantPlanContext } from "../types";
 
 function svc() {
   return createSbClient(
@@ -31,33 +27,18 @@ export async function askHelpAssistant(opts: {
 }): Promise<AskHelpAssistantResult> {
   const { data: workspace } = await svc()
     .from("workspaces")
-    .select(
-      "gestion_enabled, whatsapp_agent_enabled, office_virtual_enabled, vapi_assistant_id, help_assistant_actions_enabled, whiteboard_enabled",
-    )
+    .select("product_package, vapi_assistant_id, help_assistant_actions_enabled")
     .eq("id", opts.workspaceId)
     .maybeSingle();
 
-  const flags = (workspace as
-    | (WorkspacePlanFlags & {
-        vapi_assistant_id: string | null;
-        help_assistant_actions_enabled: boolean | null;
-        whiteboard_enabled: boolean | null;
-      })
-    | null) ?? {
-    gestion_enabled: false,
-    whatsapp_agent_enabled: true,
-    office_virtual_enabled: false,
-    vapi_assistant_id: null,
-    help_assistant_actions_enabled: false,
-    whiteboard_enabled: false,
-  };
+  const entitlements = resolveEntitlements(workspace);
 
   // Off by default for every workspace — only Onyxlink (superadmin, from
   // Ajustes → Negocio) turns this on per client. Until then the assistant
   // stays text-only, matching the original behavior exactly.
-  const actionsEnabled = flags.help_assistant_actions_enabled === true;
+  const actionsEnabled = workspace?.help_assistant_actions_enabled === true;
 
-  const tierInfo = resolveHelpAssistantTier(flags);
+  const tierInfo = resolveHelpAssistantTier(entitlements);
 
   const quota = await checkHelpAssistantQuota(opts.workspaceId, tierInfo.weeklyLimit);
   if (!quota.allowed) {
@@ -65,11 +46,11 @@ export async function askHelpAssistant(opts: {
   }
 
   const planContext: HelpAssistantPlanContext = {
-    gestionEnabled: flags.gestion_enabled === true,
-    whatsappAgentEnabled: flags.whatsapp_agent_enabled !== false,
-    officeVirtualEnabled: flags.office_virtual_enabled === true,
-    hasVoiceAgent: Boolean(flags.vapi_assistant_id),
-    whiteboardEnabled: flags.whiteboard_enabled === true,
+    gestionEnabled: entitlements.hasGestion,
+    whatsappAgentEnabled: entitlements.hasWhatsappAgent,
+    officeVirtualEnabled: entitlements.hasOfficeVirtual,
+    hasVoiceAgent: Boolean(workspace?.vapi_assistant_id),
+    whiteboardEnabled: entitlements.hasWhiteboard,
   };
 
   const actionCtx: HelpActionContext = { workspaceId: opts.workspaceId, actorUserId: opts.userId };

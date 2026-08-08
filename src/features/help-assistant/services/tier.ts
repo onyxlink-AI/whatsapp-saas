@@ -1,4 +1,5 @@
-import type { HelpAssistantTier, HelpAssistantTierInfo, WorkspacePlanFlags } from "../types";
+import type { HelpAssistantTier, HelpAssistantTierInfo } from "../types";
+import type { PackageCapabilities } from "@/features/entitlements/resolve";
 
 const TIER_TABLE: Record<HelpAssistantTier, HelpAssistantTierInfo> = {
   gestion: { tier: "gestion", label: "Onyxlink Gestión", weeklyLimit: 30 },
@@ -7,21 +8,16 @@ const TIER_TABLE: Record<HelpAssistantTier, HelpAssistantTierInfo> = {
 };
 
 /**
- * Weekly question quota tier for a workspace, derived from its 3 independent
- * plan flags — there's no plan-tier table/enum anywhere else in the app, so
- * this is the one place that ladder is defined. Monotonic: each add-on can
- * only raise the tier, never lower it. Per explicit user direction, having
- * the WhatsApp agent (with or without Gestión) already counts as "Panel
- * completo" — this also covers legacy workspaces that predate Gestión and
- * only ever had the agent (whatsapp_agent_enabled defaults to true).
+ * Weekly question quota tier for a workspace, derivado del paquete
+ * comercial (Fase 2: antes se calculaba de 3 flags sueltos con su propia
+ * lógica de "por defecto true"; ahora reutiliza directamente las
+ * capacidades ya resueltas por resolveEntitlements()). Monotonic: cada
+ * capacidad adicional solo puede subir el tier, nunca bajarlo. Un paquete
+ * "none" no tiene tier propio — cae al mínimo (gestion), igual que el
+ * comportamiento anterior.
  */
-export function resolveHelpAssistantTier(flags: WorkspacePlanFlags): HelpAssistantTierInfo {
-  const gestion = flags.gestion_enabled === true;
-  const whatsapp = flags.whatsapp_agent_enabled !== false;
-  const office = flags.office_virtual_enabled === true;
-
-  if (office) return TIER_TABLE.oficina;
-  if (whatsapp) return TIER_TABLE.completo;
-  if (gestion) return TIER_TABLE.gestion;
+export function resolveHelpAssistantTier(capabilities: PackageCapabilities): HelpAssistantTierInfo {
+  if (capabilities.hasOfficeVirtual) return TIER_TABLE.oficina;
+  if (capabilities.hasWhatsappAgent) return TIER_TABLE.completo;
   return TIER_TABLE.gestion;
 }

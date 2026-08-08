@@ -9,9 +9,10 @@ import {
 import { listTasks } from "@/features/projects/services/task-actions";
 import { listNotes } from "@/features/notes/services/note-actions";
 import { listWhiteboards } from "@/features/whiteboard/services/whiteboard-actions";
-import { isWhiteboardEnabled } from "@/features/whiteboard/access";
 import { ProyectosHub } from "@/features/projects/components/proyectos-hub";
 import { PageHeader } from "@/components/page-header";
+import { resolveEntitlements } from "@/features/entitlements/resolve";
+import { PlanGate } from "@/components/plan-gate";
 
 export const dynamic = "force-dynamic";
 
@@ -72,21 +73,17 @@ export default async function ProyectosPage({
 
   const { data: workspaceFlagsRow } = await supabase
     .from("workspaces")
-    .select("gestion_enabled, whiteboard_enabled")
+    .select("product_package")
     .eq("id", membership.workspace_id)
     .maybeSingle();
 
-  if (workspaceFlagsRow?.gestion_enabled !== true) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh] px-6 text-center">
-        <p className="text-muted-foreground text-sm max-w-sm">
-          Esta sección no está incluida en tu plan. Pregúntale a tu gestor de Onyxlink.
-        </p>
-      </div>
-    );
+  const entitlements = resolveEntitlements(workspaceFlagsRow);
+
+  if (!entitlements.hasGestion) {
+    return <PlanGate />;
   }
 
-  const hasWhiteboard = isWhiteboardEnabled(workspaceFlagsRow);
+  const hasWhiteboard = entitlements.hasWhiteboard;
 
   // Fase 1 (§3.2): sin vista seleccionada se muestra la biblioteca, que no
   // necesita ninguno de los datos de abajo — null en vez de un valor por

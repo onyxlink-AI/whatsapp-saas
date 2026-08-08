@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getActiveWorkspace } from "@/features/workspace/services/active-workspace";
 import { getVoiceCallMetrics, listVoiceCalls } from "@/features/voice-agent/services/voice-calls";
 import { VoiceAgentDashboard } from "@/features/voice-agent/components/voice-agent-dashboard";
+import { resolveEntitlements } from "@/features/entitlements/resolve";
+import { PlanGate } from "@/components/plan-gate";
 
 export const dynamic = "force-dynamic";
 
@@ -34,18 +36,12 @@ export default async function AsistenteAiPage() {
 
   const { data: workspace } = await supabase
     .from("workspaces")
-    .select("vapi_assistant_id, whatsapp_agent_enabled")
+    .select("vapi_assistant_id, product_package")
     .eq("id", membership.workspace_id)
     .maybeSingle();
 
-  if (workspace?.whatsapp_agent_enabled === false) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh] px-6 text-center">
-        <p className="text-muted-foreground text-sm max-w-sm">
-          Esta sección no está incluida en tu plan. Pregúntale a tu gestor de Onyxlink.
-        </p>
-      </div>
-    );
+  if (!resolveEntitlements(workspace).hasWhatsappAgent) {
+    return <PlanGate />;
   }
 
   if (!workspace?.vapi_assistant_id) {

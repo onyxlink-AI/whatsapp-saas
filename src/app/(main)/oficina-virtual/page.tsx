@@ -10,9 +10,10 @@ import OfficeVirtualApp from "@/features/office-virtual/client/OfficeVirtualApp"
 
 export const dynamic = "force-dynamic";
 
-// Server-side gate: office_virtual_enabled is read here on every request, so
-// a client who has it disabled can never reach OfficeVirtualApp by typing
-// the URL directly. Unlike asistente-ai/pipeline's own product gates, this
+// Server-side gate: product_package se lee aquí en cada petición (Fase 2 —
+// hasOfficeVirtual solo es true en el paquete Suite), así que un cliente sin
+// Suite nunca puede llegar a OfficeVirtualApp escribiendo la URL a mano.
+// Unlike asistente-ai/pipeline's own product gates, this
 // one does not render an explanatory screen when the flag is off — the
 // route itself redirects to that workspace's real default route, exactly
 // as if /oficina-virtual didn't exist for that client.
@@ -36,7 +37,7 @@ export default async function OficinaVirtualPage() {
 
   const { data: workspace } = await supabase
     .from("workspaces")
-    .select("office_virtual_enabled")
+    .select("product_package")
     .eq("id", membership.workspace_id)
     .maybeSingle();
 
