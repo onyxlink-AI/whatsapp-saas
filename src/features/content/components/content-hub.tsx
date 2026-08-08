@@ -58,7 +58,7 @@ export function ContentHub({ workspaceId, items, members }: Props) {
 
       {view === "pipeline" && <ContentPipeline workspaceId={workspaceId} items={items} members={members} />}
       {view === "ideas" && <IdeasView workspaceId={workspaceId} items={items} />}
-      {view === "scripts" && <ScriptsView items={items} members={members} />}
+      {view === "scripts" && <ScriptsView workspaceId={workspaceId} items={items} members={members} />}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -23,12 +23,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Loader2, Plus, Trash2, X, Presentation, Sparkles } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Trash2, X, Presentation, Sparkles, Wand2 } from "lucide-react";
 import {
   deleteContentItem,
   updateContentItem,
   type ContentInput,
 } from "@/features/content/services/content-actions";
+import { generateContentScript } from "@/features/content/services/content-script-ai";
 import {
   CONTENT_STATUS_LABELS,
   CONTENT_STATUSES,
@@ -92,6 +93,97 @@ export function ContentEditor({ workspaceId, item, members, initialProject, back
   const [structuresOpen, setStructuresOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiReplaceConfirmOpen, setAiReplaceConfirmOpen] = useState(false);
+  const hookFieldRef = useRef<HTMLTextAreaElement>(null);
+
+  // Campos destino que la IA rellenaría — usados tanto para detectar
+  // sustitución (§5.2) como para saber a cuáles se les debe enfocar tras
+  // generar.
+  function scriptFieldsWithContent(): string[] {
+    const labeled: [string, string][] = [
+      ["Hook", hook],
+      ["Desarrollo", body],
+      ["Cierre", closing],
+      ["CTA", cta],
+      ["Bullet points", bullets.join("")],
+      ["Referencias y enlaces", links.map((l) => l.url).join("")],
+      ["Luces", lighting],
+      ["Música", music],
+      ["Notas", notes],
+    ];
+    return labeled.filter(([, value]) => value.trim().length > 0).map(([label]) => label);
+  }
+
+  function applyGeneratedScript(result: Awaited<ReturnType<typeof generateContentScript>>) {
+    if (!result.ok) {
+      if (result.code === "openrouter_not_configured") {
+        // El botón sigue disponible, pero el mensaje conduce claramente a
+        // configurar OpenRouter en vez de un error genérico.
+        toast.error(result.error, {
+          action: { label: "Ir a Ajustes", onClick: () => router.push("/settings?tab=integraciones") },
+        });
+      } else {
+        toast.error(result.error ?? "No se pudo generar el guion");
+      }
+      return;
+    }
+    const g = result.data;
+    setHook(g.hook);
+    setBody(g.body);
+    setClosing(g.closing);
+    setCta(g.cta);
+    setBullets(g.bulletPoints);
+    setLinks(g.links);
+    setLighting(g.lighting);
+    setMusic(g.music);
+    setNotes(g.notes);
+    toast.success("Guion generado — revisa y edita todo antes de guardar");
+    // No autoguarda (§5.1) — solo llena el estado local; el usuario decide
+    // cuándo pulsar Guardar.
+    requestAnimationFrame(() => hookFieldRef.current?.focus());
+  }
+
+  function runGeneration() {
+    setAiGenerating(true);
+    startTransition(async () => {
+      try {
+        const result = await generateContentScript(workspaceId, {
+          mainIdea,
+          description,
+          contentType,
+          platform,
+          orientation: orientation === "none" ? null : orientation,
+          durationEstimate,
+          responsibleId: responsibleId === "none" ? null : responsibleId,
+          scheduledDate: scheduledDate || null,
+        });
+        applyGeneratedScript(result);
+      } catch (err) {
+        // Fallo inesperado (red, servidor) — nunca deja de estar controlado:
+        // el borrador previo no se toca, igual que un error normal de la
+        // acción de servidor.
+        console.error("[ContentEditor] Error al generar guion:", err);
+        toast.error("No se pudo generar el guion. Intenta de nuevo.");
+      } finally {
+        setAiGenerating(false);
+      }
+    });
+  }
+
+  function handleGenerateClick() {
+    if (scriptFieldsWithContent().length > 0) {
+      setAiReplaceConfirmOpen(true);
+      return;
+    }
+    runGeneration();
+  }
+
+  function handleConfirmReplace() {
+    setAiReplaceConfirmOpen(false);
+    runGeneration();
+  }
 
   function toInt(v: string): number | null {
     if (!v.trim()) return null;
@@ -283,16 +375,29 @@ export function ContentEditor({ workspaceId, item, members, initialProject, back
       </section>
 
       <section className="surface-card space-y-4 p-5">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-display text-sm font-semibold">Guion</h2>
-          <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setStructuresOpen(true)}>
-            <Sparkles className="h-3.5 w-3.5" />
-            Estructuras de guion
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 text-xs"
+              onClick={handleGenerateClick}
+              disabled={aiGenerating}
+              aria-busy={aiGenerating}
+            >
+              {aiGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+              Generar guion con IA
+            </Button>
+            <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setStructuresOpen(true)}>
+              <Sparkles className="h-3.5 w-3.5" />
+              Estructuras de guion
+            </Button>
+          </div>
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Hook</Label>
-          <Textarea value={hook} onChange={(e) => setHook(e.target.value)} className="min-h-12 text-sm" />
+          <Textarea ref={hookFieldRef} value={hook} onChange={(e) => setHook(e.target.value)} className="min-h-12 text-sm" />
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Desarrollo</Label>
@@ -435,6 +540,30 @@ export function ContentEditor({ workspaceId, item, members, initialProject, back
             <Button variant="destructive" onClick={handleDelete} disabled={isPending}>
               {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={aiReplaceConfirmOpen} onOpenChange={setAiReplaceConfirmOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Ya hay contenido en el guion</DialogTitle>
+            <DialogDescription>
+              Generar con IA sustituirá lo que ya está escrito en:
+            </DialogDescription>
+          </DialogHeader>
+          <ul className="space-y-1 text-sm text-foreground">
+            {scriptFieldsWithContent().map((field) => (
+              <li key={field}>• {field}</li>
+            ))}
+          </ul>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAiReplaceConfirmOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmReplace}>
+              Sustituir contenido existente
             </Button>
           </DialogFooter>
         </DialogContent>

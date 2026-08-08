@@ -1,9 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -11,7 +14,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileVideo, Search } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { FileVideo, Plus, Search } from "lucide-react";
+import { createContentItem, moveContentStatus } from "@/features/content/services/content-actions";
 import {
   CONTENT_STATUS_LABELS,
   CONTENT_STATUSES,
@@ -22,14 +33,44 @@ import {
 import type { WorkspaceMember } from "@/features/projects/services/project-actions";
 
 interface ScriptsViewProps {
+  workspaceId: string;
   items: ContentItemRow[];
   members: WorkspaceMember[];
 }
 
-export function ScriptsView({ items, members }: ScriptsViewProps) {
+export function ScriptsView({ workspaceId, items, members }: ScriptsViewProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ContentStatus | "all">("all");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [, startTransition] = useTransition();
+
+  // Fase 3 (§5.4): todavía no existía una creación completa de guion — se
+  // crea el registro mínimo (mismo camino que "Convertir a guion" en
+  // Ideas) y se abre el mismo editor compartido, donde vive el botón
+  // "Generar guion con IA".
+  function handleCreate() {
+    if (!newTitle.trim()) {
+      toast.error("El título es requerido");
+      return;
+    }
+    startTransition(async () => {
+      const created = await createContentItem(workspaceId, { title: newTitle.trim() });
+      if (!created.ok) {
+        toast.error(created.error ?? "Error al crear el guion");
+        return;
+      }
+      const moved = await moveContentStatus(workspaceId, created.data.id, "in_production", 0);
+      if (!moved.ok) {
+        toast.error(moved.error ?? "Error al crear el guion");
+        return;
+      }
+      setCreateOpen(false);
+      setNewTitle("");
+      router.push(`/contenido/${created.data.id}?from=scripts`);
+    });
+  }
 
   const filtered = useMemo(() => {
     let list = items;
@@ -66,6 +107,10 @@ export function ScriptsView({ items, members }: ScriptsViewProps) {
             ))}
           </SelectContent>
         </Select>
+        <Button size="sm" className="ml-auto h-9 gap-1.5 text-xs" onClick={() => setCreateOpen(true)}>
+          <Plus className="h-3.5 w-3.5" />
+          Nuevo guion
+        </Button>
       </div>
 
       {filtered.length === 0 ? (
@@ -101,6 +146,26 @@ export function ScriptsView({ items, members }: ScriptsViewProps) {
           })}
         </div>
       )}
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Nuevo guion</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Título</Label>
+            <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="h-8 text-sm" />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setCreateOpen(false)}>
+              Cancelar
+            </Button>
+            <Button size="sm" onClick={handleCreate}>
+              Crear guion
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
