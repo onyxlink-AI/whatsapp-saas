@@ -252,7 +252,7 @@ export function WhiteboardEditor({ board }: Props) {
       return;
     }
     startTransition(async () => {
-      const result = await renameWhiteboard(board.id, trimmed);
+      const result = await renameWhiteboard(board.workspace_id, board.id, trimmed);
       if (!result.ok) {
         toast.error(result.error ?? "Error al renombrar");
         setName(board.name);

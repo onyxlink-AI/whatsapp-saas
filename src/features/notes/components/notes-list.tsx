@@ -82,7 +82,7 @@ export function NotesList({ workspaceId, initialNotes }: NotesListProps) {
 
   function handleArchive(noteId: string, archived: boolean) {
     startTransition(async () => {
-      const result = await setNoteArchived(noteId, archived);
+      const result = await setNoteArchived(workspaceId, noteId, archived);
       if (!result.ok) {
         toast.error(result.error ?? "Error al archivar");
         return;

@@ -114,7 +114,7 @@ export function NoteEditor({ note }: Props) {
         startTransition(async () => {
           const json = editor?.getJSON();
           if (!json) return;
-          const result = await updateNoteContent(note.id, json as never);
+          const result = await updateNoteContent(note.workspace_id, note.id, json as never);
           if (!result.ok) {
             setSaveState("unsaved");
             toast.error(result.error ?? "Error al guardar el documento");
@@ -139,7 +139,7 @@ export function NoteEditor({ note }: Props) {
       return;
     }
     startTransition(async () => {
-      const result = await renameNote(note.id, trimmed);
+      const result = await renameNote(note.workspace_id, note.id, trimmed);
       if (!result.ok) {
         toast.error(result.error ?? "Error al renombrar");
         setTitle(note.title);

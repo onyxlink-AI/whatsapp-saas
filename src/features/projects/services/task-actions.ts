@@ -175,9 +175,12 @@ export async function createTasksBatch(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// updateTask
+// updateTask — Fase 4A: workspaceId ahora es obligatorio y se filtra en la
+// propia UPDATE (nunca solo confiar en RLS), con .select() + comprobación de
+// una única fila afectada — 0 filas nunca se trata como éxito.
 // ──────────────────────────────────────────────────────────────────────────────
 export async function updateTask(
+  workspaceId: string,
   taskId: string,
   data: UpdateTaskInput,
 ): Promise<ActionResult<{ id: string }>> {
@@ -218,12 +221,16 @@ export async function updateTask(
     .from("tasks")
     .update(patch)
     .eq("id", taskId)
+    .eq("workspace_id", workspaceId)
     .select("id")
-    .single();
+    .maybeSingle();
 
-  if (updateError || !updated) {
-    console.error("[updateTask] Supabase error:", updateError?.message);
+  if (updateError) {
+    console.error("[updateTask] Supabase error:", updateError.message);
     return { ok: false, error: "Error al actualizar la tarea" };
+  }
+  if (!updated) {
+    return { ok: false, error: "not_found_or_forbidden" };
   }
 
   return { ok: true, data: { id: updated.id as string } };
@@ -233,15 +240,19 @@ export async function updateTask(
 // completeTask
 // ──────────────────────────────────────────────────────────────────────────────
 export async function completeTask(
+  workspaceId: string,
   taskId: string,
 ): Promise<ActionResult<{ id: string }>> {
-  return updateTask(taskId, { status: "done" });
+  return updateTask(workspaceId, taskId, { status: "done" });
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// reassignTask
+// reassignTask — Fase 4A: workspaceId obligatorio + comprobación de que el
+// responsable tiene membership ACTIVA en ese mismo workspace, no solo que
+// exista como usuario — nunca se asigna a alguien ajeno a la empresa.
 // ──────────────────────────────────────────────────────────────────────────────
 export async function reassignTask(
+  workspaceId: string,
   taskId: string,
   userId: string,
 ): Promise<ActionResult<{ id: string }>> {
@@ -260,6 +271,21 @@ export async function reassignTask(
     return { ok: false, error: "Usuario inválido" };
   }
 
+  const { data: member, error: memberError } = await supabase
+    .from("memberships")
+    .select("user_id")
+    .eq("user_id", parsedUserId.data)
+    .eq("workspace_id", workspaceId)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (memberError) {
+    console.error("[reassignTask] Supabase error leyendo membership:", memberError.message);
+    return { ok: false, error: "Error al reasignar la tarea" };
+  }
+  if (!member) {
+    return { ok: false, error: "El responsable no pertenece a la empresa activa" };
+  }
+
   const { data: updated, error } = await supabase
     .from("tasks")
     .update({
@@ -267,12 +293,16 @@ export async function reassignTask(
       updated_at: new Date().toISOString(),
     })
     .eq("id", taskId)
+    .eq("workspace_id", workspaceId)
     .select("id")
-    .single();
+    .maybeSingle();
 
-  if (error || !updated) {
-    console.error("[reassignTask] Supabase error:", error?.message);
+  if (error) {
+    console.error("[reassignTask] Supabase error:", error.message);
     return { ok: false, error: "Error al reasignar la tarea" };
+  }
+  if (!updated) {
+    return { ok: false, error: "not_found_or_forbidden" };
   }
 
   return { ok: true, data: { id: updated.id as string } };

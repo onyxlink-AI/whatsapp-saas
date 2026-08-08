@@ -2,6 +2,10 @@ import { buildClientTools } from "./client-tools";
 import { buildPipelineTools } from "./pipeline-tools";
 import { buildProjectTools } from "./project-tools";
 import { buildWhiteboardTools } from "./whiteboard-tools";
+import { buildAgendaTools } from "./agenda-tools";
+import { buildNoteTools } from "./note-tools";
+import { buildContentTools } from "./content-tools";
+import { resolveEntitlements, canUseAssistantActions } from "@/features/entitlements/resolve";
 import type { HelpActionContext, HelpAssistantPlanContext } from "../../types";
 
 /**
@@ -9,18 +13,25 @@ import type { HelpActionContext, HelpAssistantPlanContext } from "../../types";
  * same "don't offer what they don't have contracted" rule already applied
  * to the text-only system prompt (see system-prompt.ts), now also applied
  * to what the assistant is even ABLE to do, not just what it talks about.
+ *
+ * Fase 4A: canWrite ya NO se recalcula a mano aquí — se deriva de
+ * canUseAssistantActions() (src/features/entitlements/resolve.ts), la
+ * misma función que usa system-prompt.ts y que cada tool vuelve a
+ * comprobar por su cuenta en assertHelpActionAccess(). Esto es solo un
+ * filtro de "qué tools construir/ofrecer al modelo" — la autorización real
+ * y definitiva ocurre dentro de cada tool, en cada ejecución.
  */
-export function buildActionTools(ctx: HelpActionContext, plan: HelpAssistantPlanContext) {
-  // Fase 1 del roadmap comercial: el "asistente de gestión" (con
-  // herramientas de escritura) es exclusivo de Paquete 2+ (Gestión +
-  // WhatsApp). Paquete 1 (Gestión sin WhatsApp) es el "asistente
-  // informativo": responde preguntas, nunca recibe herramientas de
-  // escritura, sin importar el toggle de superadmin actionsEnabled.
-  const canWrite = plan.gestionEnabled && plan.whatsappAgentEnabled;
+export function buildActionTools(ctx: HelpActionContext, plan: HelpAssistantPlanContext, actionsEnabled: boolean) {
+  const entitlements = resolveEntitlements({ product_package: plan.package });
+  const canWrite = canUseAssistantActions(actionsEnabled, entitlements);
+
   return {
     ...(canWrite ? buildClientTools(ctx) : {}),
     ...(canWrite ? buildPipelineTools(ctx) : {}),
     ...(canWrite ? buildProjectTools(ctx) : {}),
+    ...(canWrite ? buildAgendaTools(ctx) : {}),
+    ...(canWrite ? buildNoteTools(ctx) : {}),
+    ...(canWrite ? buildContentTools(ctx) : {}),
     ...(canWrite && plan.whiteboardEnabled ? buildWhiteboardTools(ctx) : {}),
   };
 }

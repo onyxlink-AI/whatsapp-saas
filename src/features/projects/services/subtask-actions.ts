@@ -47,7 +47,11 @@ const CreateSubtaskSchema = z.object({
   title: z.string().min(1, "El título es requerido"),
 });
 
+// Fase 4A: workspaceId ahora es obligatorio y se contrasta contra el
+// workspace real de la tarea padre — un task_id de otro workspace se
+// rechaza explícitamente en vez de heredar en silencio su workspace_id.
 export async function createSubtask(
+  workspaceId: string,
   input: z.infer<typeof CreateSubtaskSchema>,
 ): Promise<ActionResult<{ id: string }>> {
   const supabase = await createClient();
@@ -72,10 +76,15 @@ export async function createSubtask(
     .from("tasks")
     .select("workspace_id")
     .eq("id", parsed.data.task_id)
-    .single();
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
 
-  if (taskError || !task) {
-    return { ok: false, error: "Tarea no encontrada" };
+  if (taskError) {
+    console.error("[createSubtask] Supabase error leyendo la tarea:", taskError.message);
+    return { ok: false, error: "Error al crear la subtarea" };
+  }
+  if (!task) {
+    return { ok: false, error: "not_found_or_forbidden" };
   }
 
   const { count } = await supabase
@@ -87,7 +96,7 @@ export async function createSubtask(
     .from("subtasks")
     .insert({
       task_id: parsed.data.task_id,
-      workspace_id: (task as { workspace_id: string }).workspace_id,
+      workspace_id: workspaceId,
       title: parsed.data.title,
       position: count ?? 0,
     })
@@ -105,7 +114,10 @@ export async function createSubtask(
 // ──────────────────────────────────────────────────────────────────────────────
 // toggleSubtask
 // ──────────────────────────────────────────────────────────────────────────────
+// Fase 4A: workspaceId ahora es obligatorio y se filtra en la propia
+// UPDATE, con .select() + comprobación de una única fila afectada.
 export async function toggleSubtask(
+  workspaceId: string,
   subtaskId: string,
   done: boolean,
 ): Promise<ActionResult<null>> {
@@ -119,14 +131,20 @@ export async function toggleSubtask(
     return { ok: false, error: "No autorizado" };
   }
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("subtasks")
     .update({ done, updated_at: new Date().toISOString() })
-    .eq("id", subtaskId);
+    .eq("id", subtaskId)
+    .eq("workspace_id", workspaceId)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     console.error("[toggleSubtask] Supabase error:", error.message);
     return { ok: false, error: "Error al actualizar la subtarea" };
+  }
+  if (!updated) {
+    return { ok: false, error: "not_found_or_forbidden" };
   }
 
   return { ok: true, data: null };
@@ -167,7 +185,10 @@ const UpdateSubtaskSchema = z.object({
   due_at: z.string().nullable().optional(),
 });
 
+// Fase 4A: workspaceId ahora es obligatorio y se filtra en la propia
+// UPDATE, con .select() + comprobación de una única fila afectada.
 export async function updateSubtask(
+  workspaceId: string,
   subtaskId: string,
   input: z.infer<typeof UpdateSubtaskSchema>,
 ): Promise<ActionResult<null>> {
@@ -186,14 +207,20 @@ export async function updateSubtask(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("subtasks")
     .update({ ...parsed.data, updated_at: new Date().toISOString() })
-    .eq("id", subtaskId);
+    .eq("id", subtaskId)
+    .eq("workspace_id", workspaceId)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     console.error("[updateSubtask] Supabase error:", error.message);
     return { ok: false, error: "Error al actualizar la subtarea" };
+  }
+  if (!updated) {
+    return { ok: false, error: "not_found_or_forbidden" };
   }
 
   return { ok: true, data: null };

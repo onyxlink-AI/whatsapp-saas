@@ -35,7 +35,7 @@ export function AgendaTaskItem({ task, onEdit, onChanged }: AgendaTaskItemProps)
 
   function handleToggle() {
     startTransition(async () => {
-      const result = await toggleAgendaTaskDone(task.id, !task.done);
+      const result = await toggleAgendaTaskDone(task.workspace_id, task.id, !task.done);
       if (!result.ok) {
         toast.error(result.error ?? "Error al actualizar la tarea");
         return;

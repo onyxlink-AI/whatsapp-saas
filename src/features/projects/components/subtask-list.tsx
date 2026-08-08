@@ -40,6 +40,7 @@ import type { SubtaskRow } from "@/features/projects/types";
 import type { WorkspaceMember } from "@/features/projects/services/project-actions";
 
 interface SubtaskListProps {
+  workspaceId: string;
   taskId: string;
   members: WorkspaceMember[];
 }
@@ -161,7 +162,7 @@ function SubtaskItem({
   );
 }
 
-export function SubtaskList({ taskId, members }: SubtaskListProps) {
+export function SubtaskList({ workspaceId, taskId, members }: SubtaskListProps) {
   const [subtasks, setSubtasks] = useState<SubtaskRow[]>([]);
   const [title, setTitle] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -180,7 +181,7 @@ export function SubtaskList({ taskId, members }: SubtaskListProps) {
   function handleAdd() {
     if (!title.trim()) return;
     startTransition(async () => {
-      const result = await createSubtask({ task_id: taskId, title: title.trim() });
+      const result = await createSubtask(workspaceId, { task_id: taskId, title: title.trim() });
       if (!result.ok) {
         toast.error(result.error ?? "Error al crear la subtarea");
         return;
@@ -192,7 +193,7 @@ export function SubtaskList({ taskId, members }: SubtaskListProps) {
 
   function handleToggle(subtask: SubtaskRow) {
     startTransition(async () => {
-      const result = await toggleSubtask(subtask.id, !subtask.done);
+      const result = await toggleSubtask(workspaceId, subtask.id, !subtask.done);
       if (!result.ok) {
         toast.error(result.error ?? "Error al actualizar la subtarea");
         return;
@@ -203,7 +204,7 @@ export function SubtaskList({ taskId, members }: SubtaskListProps) {
 
   function handleAssign(subtaskId: string, userId: string | null) {
     startTransition(async () => {
-      const result = await updateSubtask(subtaskId, { assigned_to: userId });
+      const result = await updateSubtask(workspaceId, subtaskId, { assigned_to: userId });
       if (!result.ok) {
         toast.error(result.error ?? "Error al asignar");
         return;
@@ -214,7 +215,7 @@ export function SubtaskList({ taskId, members }: SubtaskListProps) {
 
   function handleDueDate(subtaskId: string, value: string | null) {
     startTransition(async () => {
-      const result = await updateSubtask(subtaskId, { due_at: value });
+      const result = await updateSubtask(workspaceId, subtaskId, { due_at: value });
       if (!result.ok) {
         toast.error(result.error ?? "Error al cambiar la fecha");
         return;

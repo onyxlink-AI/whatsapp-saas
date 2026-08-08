@@ -4,6 +4,7 @@ import { createDeal, updateDeal, getDealsForBoard } from "@/features/pipeline/se
 import { DealStageEnum } from "@/features/pipeline/services/deal-schemas";
 import { DEAL_PRODUCTS } from "@/features/pipeline/types";
 import { logAudit } from "@/features/audit/services/audit-log";
+import { assertHelpActionAccess, assistantAccessErrorMessage } from "../assistant-access";
 import type { HelpActionContext } from "../../types";
 
 /**
@@ -62,6 +63,9 @@ export function buildPipelineTools(ctx: HelpActionContext) {
         "Busca oportunidades del Pipeline por título, o por nombre/teléfono del cliente o lead. Úsalo antes de actualizar un negocio para obtener su deal_id.",
       inputSchema: zodSchema(SearchDealsSchema),
       execute: async ({ query }: z.infer<typeof SearchDealsSchema>) => {
+        const access = await assertHelpActionAccess(ctx, "pipeline");
+        if (!access.ok) return { ok: false, error: assistantAccessErrorMessage(access.reason) };
+
         const deals = await getDealsForBoard(ctx.workspaceId);
         const q = query.toLowerCase();
         return deals
@@ -90,6 +94,9 @@ export function buildPipelineTools(ctx: HelpActionContext) {
         "Crea una oportunidad nueva en el Pipeline. Necesitas identificar al cliente/lead de una de estas dos formas: (a) si ya existe como cliente, búscalo con search_clients y pasa su client_id como contact_id, o (b) si no existe, da al menos lead_name (el NOMBRE del negocio o persona) — teléfono, correo, red social y método de contacto son todos opcionales, usa los que el usuario te dé. El campo 'title' (Producto) es obligatorio — pregunta cuál de los tres si no lo dieron. Pregunta también el sector si no lo dieron.",
       inputSchema: zodSchema(CreateDealSchema),
       execute: async (args: z.infer<typeof CreateDealSchema>) => {
+        const access = await assertHelpActionAccess(ctx, "pipeline");
+        if (!access.ok) return { ok: false, error: assistantAccessErrorMessage(access.reason) };
+
         const result = await createDeal(ctx.workspaceId, args);
         if (!result.ok) return { ok: false, error: result.error };
 
@@ -111,6 +118,9 @@ export function buildPipelineTools(ctx: HelpActionContext) {
         "Actualiza una oportunidad existente: mover de etapa, cambiar valor, fecha de cierre, motivo de pérdida o notas. Necesitas su deal_id — búscalo antes con search_deals si no lo tienes.",
       inputSchema: zodSchema(UpdateDealSchema),
       execute: async ({ deal_id, ...patch }: z.infer<typeof UpdateDealSchema>) => {
+        const access = await assertHelpActionAccess(ctx, "pipeline");
+        if (!access.ok) return { ok: false, error: assistantAccessErrorMessage(access.reason) };
+
         const result = await updateDeal(deal_id, patch);
         if (!result.ok) return { ok: false, error: result.error };
 

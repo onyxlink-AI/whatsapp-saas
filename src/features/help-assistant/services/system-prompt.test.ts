@@ -3,6 +3,7 @@ import { buildHelpAssistantSystemPrompt, REFUSAL_MESSAGE, NO_DELETE_MESSAGE } fr
 import type { HelpAssistantPlanContext } from "../types";
 
 const fullPlan: HelpAssistantPlanContext = {
+  package: "suite",
   gestionEnabled: true,
   whatsappAgentEnabled: true,
   officeVirtualEnabled: true,
@@ -11,6 +12,7 @@ const fullPlan: HelpAssistantPlanContext = {
 };
 
 const gestionOnlyPlan: HelpAssistantPlanContext = {
+  package: "gestion",
   gestionEnabled: true,
   whatsappAgentEnabled: false,
   officeVirtualEnabled: false,
@@ -116,6 +118,7 @@ describe("buildHelpAssistantSystemPrompt plan-gating", () => {
   it("omits Clientes/Pipeline/Integraciones knowledge when the client has neither Gestión nor the WhatsApp agent", () => {
     const prompt = buildHelpAssistantSystemPrompt(
       {
+        package: "none",
         gestionEnabled: false,
         whatsappAgentEnabled: false,
         officeVirtualEnabled: false,
@@ -158,5 +161,32 @@ describe("buildHelpAssistantSystemPrompt — Fase 1: informativo (Paquete 1) vs 
   it("Paquete 2 with actions disabled by superadmin stays informational too", () => {
     const prompt = buildHelpAssistantSystemPrompt(fullPlan, false);
     expect(prompt).toMatch(/No tienes ninguna tool/);
+  });
+});
+
+describe("buildHelpAssistantSystemPrompt — Fase 4A: nuevas reglas de dominio, solo cuando las tools existen de verdad", () => {
+  it("con escritura activada, describe reglas reales de Agenda, Anotaciones y Contenido — nunca capacidades inexistentes (Zoom/Calendar/cancelar/borrado)", () => {
+    const prompt = buildHelpAssistantSystemPrompt(fullPlan, true);
+    expect(prompt).toMatch(/create_agenda_item/);
+    expect(prompt).toMatch(/archive_note/);
+    expect(prompt).toMatch(/generate_content_script/);
+    expect(prompt).toMatch(/No existe ninguna tool para reservar Zoom ni para sincronizar con Google Calendar/);
+    expect(prompt).toMatch(/Tampoco existe una tool de 'cancelar'/);
+    expect(prompt).toMatch(/NUNCA borra de verdad/);
+  });
+
+  it("generate_content_script: exige petición explícita, máximo una llamada, y nunca autoguarda sin confirmación", () => {
+    const prompt = buildHelpAssistantSystemPrompt(fullPlan, true);
+    expect(prompt).toMatch(/SOLO cuando el usuario lo pida explícitamente/);
+    expect(prompt).toMatch(/Como máximo UNA llamada a generate_content_script por cada petición/);
+    expect(prompt).toMatch(/nunca se guarda automáticamente/);
+    expect(prompt).toMatch(/solo si confirma, guárdala llamando a update_content_script/);
+  });
+
+  it("sin escritura (Paquete 1 informativo), ninguna de las reglas de dominio 4A aparece — el prompt no describe herramientas que no existen", () => {
+    const prompt = buildHelpAssistantSystemPrompt(gestionOnlyPlan, true);
+    expect(prompt).not.toMatch(/create_agenda_item/);
+    expect(prompt).not.toMatch(/archive_note/);
+    expect(prompt).not.toMatch(/generate_content_script/);
   });
 });

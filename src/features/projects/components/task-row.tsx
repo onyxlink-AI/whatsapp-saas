@@ -57,7 +57,7 @@ export function TaskRow({ task, workspaceId, members, onChanged }: TaskRowProps)
 
   function handleAssociate(project: ProjectOption) {
     startTransition(async () => {
-      const result = await updateTask(task.id, { project_id: project.id });
+      const result = await updateTask(workspaceId, task.id, { project_id: project.id });
       if (!result.ok) {
         toast.error(result.error ?? "Error al asociar el proyecto");
         return;
@@ -69,7 +69,7 @@ export function TaskRow({ task, workspaceId, members, onChanged }: TaskRowProps)
 
   function handleDisassociate() {
     startTransition(async () => {
-      const result = await updateTask(task.id, { project_id: null });
+      const result = await updateTask(workspaceId, task.id, { project_id: null });
       if (!result.ok) {
         toast.error(result.error ?? "Error al desasociar el proyecto");
         return;
@@ -80,7 +80,7 @@ export function TaskRow({ task, workspaceId, members, onChanged }: TaskRowProps)
 
   function handleToggle() {
     startTransition(async () => {
-      const result = await completeTask(task.id);
+      const result = await completeTask(workspaceId, task.id);
       if (!result.ok) {
         toast.error(result.error ?? "Error al completar la tarea");
         return;
@@ -91,7 +91,7 @@ export function TaskRow({ task, workspaceId, members, onChanged }: TaskRowProps)
 
   function handleReassign(userId: string) {
     startTransition(async () => {
-      const result = await reassignTask(task.id, userId);
+      const result = await reassignTask(workspaceId, task.id, userId);
       if (!result.ok) {
         toast.error(result.error ?? "Error al reasignar");
         return;
@@ -200,7 +200,7 @@ export function TaskRow({ task, workspaceId, members, onChanged }: TaskRowProps)
         </DropdownMenu>
       </div>
 
-      {expanded && <SubtaskList taskId={task.id} members={members} />}
+      {expanded && <SubtaskList workspaceId={workspaceId} taskId={task.id} members={members} />}
 
       <Dialog open={associateOpen} onOpenChange={setAssociateOpen}>
         <DialogContent className="sm:max-w-sm">

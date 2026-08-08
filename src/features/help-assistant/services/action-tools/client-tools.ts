@@ -6,6 +6,7 @@ import {
   listClients,
 } from "@/features/clients/services/client-actions";
 import { logAudit } from "@/features/audit/services/audit-log";
+import { assertHelpActionAccess, assistantAccessErrorMessage } from "../assistant-access";
 import type { HelpActionContext } from "../../types";
 
 /**
@@ -49,6 +50,9 @@ export function buildClientTools(ctx: HelpActionContext) {
         "Busca clientes existentes por nombre, teléfono o empresa. Úsalo antes de crear un cliente (para evitar duplicados) o antes de editar uno (para obtener su client_id).",
       inputSchema: zodSchema(SearchClientsSchema),
       execute: async ({ query }: z.infer<typeof SearchClientsSchema>) => {
+        const access = await assertHelpActionAccess(ctx, "clients");
+        if (!access.ok) return { ok: false, error: assistantAccessErrorMessage(access.reason) };
+
         const results = await listClients(ctx.workspaceId, { search: query });
         return results.slice(0, 10).map((c) => ({
           client_id: c.id,
@@ -65,6 +69,9 @@ export function buildClientTools(ctx: HelpActionContext) {
         "Crea un cliente nuevo en Clientes. Requiere solo el nombre — teléfono, correo, red social y método de contacto son todos opcionales, usa los que el usuario te dé (pregunta por ellos si quieres que el cliente quede más completo, pero no los exijas).",
       inputSchema: zodSchema(CreateClientSchema),
       execute: async (args: z.infer<typeof CreateClientSchema>) => {
+        const access = await assertHelpActionAccess(ctx, "clients");
+        if (!access.ok) return { ok: false, error: assistantAccessErrorMessage(access.reason) };
+
         const result = await createClientRecord(ctx.workspaceId, {
           name: args.name,
           phone: args.phone ?? "",
@@ -95,6 +102,9 @@ export function buildClientTools(ctx: HelpActionContext) {
         "Actualiza un cliente existente. Necesitas su client_id (búscalo antes con search_clients si no lo tienes). Este endpoint reemplaza todos los campos a la vez — incluye siempre el nombre y demás datos ACTUALES del cliente (los que te devolvió search_clients), no solo lo que quieres cambiar.",
       inputSchema: zodSchema(UpdateClientSchema),
       execute: async (args: z.infer<typeof UpdateClientSchema>) => {
+        const access = await assertHelpActionAccess(ctx, "clients");
+        if (!access.ok) return { ok: false, error: assistantAccessErrorMessage(access.reason) };
+
         const result = await updateClientRecord(args.client_id, {
           name: args.name,
           phone: args.phone ?? "",

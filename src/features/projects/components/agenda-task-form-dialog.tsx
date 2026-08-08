@@ -81,7 +81,7 @@ export function AgendaTaskFormDialog({
       };
 
       const result = task
-        ? await updateAgendaTask(task.id, input)
+        ? await updateAgendaTask(workspaceId, task.id, input)
         : await createAgendaTask(workspaceId, input);
 
       if (!result.ok) {

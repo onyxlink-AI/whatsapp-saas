@@ -6,6 +6,7 @@ import {
   renameWhiteboard,
 } from "@/features/whiteboard/services/whiteboard-actions";
 import { logAudit } from "@/features/audit/services/audit-log";
+import { assertHelpActionAccess, assistantAccessErrorMessage } from "../assistant-access";
 import type { HelpActionContext } from "../../types";
 
 /**
@@ -37,6 +38,9 @@ export function buildWhiteboardTools(ctx: HelpActionContext) {
         "Busca tableros de Board por nombre. Úsalo antes de renombrar uno para obtener su whiteboard_id.",
       inputSchema: zodSchema(SearchWhiteboardsSchema),
       execute: async ({ query }: z.infer<typeof SearchWhiteboardsSchema>) => {
+        const access = await assertHelpActionAccess(ctx, "whiteboard");
+        if (!access.ok) return { ok: false, error: assistantAccessErrorMessage(access.reason) };
+
         const boards = await listWhiteboards(ctx.workspaceId);
         const q = query.toLowerCase();
         return boards
@@ -51,6 +55,9 @@ export function buildWhiteboardTools(ctx: HelpActionContext) {
         "Crea un tablero nuevo y vacío en Board. El dibujo (formas, notas, flechas) lo hace el cliente después en el navegador — tú solo creas el tablero con un nombre, nunca dibujas contenido dentro.",
       inputSchema: zodSchema(CreateWhiteboardSchema),
       execute: async ({ name }: z.infer<typeof CreateWhiteboardSchema>) => {
+        const access = await assertHelpActionAccess(ctx, "whiteboard");
+        if (!access.ok) return { ok: false, error: assistantAccessErrorMessage(access.reason) };
+
         const result = await createWhiteboard(ctx.workspaceId, name);
         if (!result.ok) return { ok: false, error: result.error };
 
@@ -72,8 +79,13 @@ export function buildWhiteboardTools(ctx: HelpActionContext) {
         "Renombra un tablero existente de Board. Necesitas su whiteboard_id — búscalo antes con search_whiteboards si no lo tienes.",
       inputSchema: zodSchema(RenameWhiteboardSchema),
       execute: async ({ whiteboard_id, name }: z.infer<typeof RenameWhiteboardSchema>) => {
-        const result = await renameWhiteboard(whiteboard_id, name);
-        if (!result.ok) return { ok: false, error: result.error };
+        const access = await assertHelpActionAccess(ctx, "whiteboard");
+        if (!access.ok) return { ok: false, error: assistantAccessErrorMessage(access.reason) };
+
+        const result = await renameWhiteboard(ctx.workspaceId, whiteboard_id, name);
+        if (!result.ok) {
+          return { ok: false, error: result.error === "not_found_or_forbidden" ? "No encontré ese tablero en esta empresa" : result.error };
+        }
 
         void logAudit({
           workspaceId: ctx.workspaceId,

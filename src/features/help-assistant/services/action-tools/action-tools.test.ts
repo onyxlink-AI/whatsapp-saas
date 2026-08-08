@@ -30,10 +30,23 @@ vi.mock("@/features/projects/services/project-actions", () => ({
 const createTask = vi.fn();
 const updateTask = vi.fn();
 const listTasks = vi.fn();
+const reassignTask = vi.fn();
 vi.mock("@/features/projects/services/task-actions", () => ({
   createTask: (...args: unknown[]) => createTask(...args),
   updateTask: (...args: unknown[]) => updateTask(...args),
   listTasks: (...args: unknown[]) => listTasks(...args),
+  reassignTask: (...args: unknown[]) => reassignTask(...args),
+}));
+
+const createSubtask = vi.fn();
+const updateSubtask = vi.fn();
+const toggleSubtask = vi.fn();
+const listSubtasks = vi.fn();
+vi.mock("@/features/projects/services/subtask-actions", () => ({
+  createSubtask: (...args: unknown[]) => createSubtask(...args),
+  updateSubtask: (...args: unknown[]) => updateSubtask(...args),
+  toggleSubtask: (...args: unknown[]) => toggleSubtask(...args),
+  listSubtasks: (...args: unknown[]) => listSubtasks(...args),
 }));
 
 const createWhiteboard = vi.fn();
@@ -45,91 +58,166 @@ vi.mock("@/features/whiteboard/services/whiteboard-actions", () => ({
   listWhiteboards: (...args: unknown[]) => listWhiteboards(...args),
 }));
 
+const searchAgendaTasks = vi.fn();
+const createAgendaTask = vi.fn();
+const updateAgendaTask = vi.fn();
+const toggleAgendaTaskDone = vi.fn();
+vi.mock("@/features/projects/services/agenda-actions", () => ({
+  searchAgendaTasks: (...args: unknown[]) => searchAgendaTasks(...args),
+  createAgendaTask: (...args: unknown[]) => createAgendaTask(...args),
+  updateAgendaTask: (...args: unknown[]) => updateAgendaTask(...args),
+  toggleAgendaTaskDone: (...args: unknown[]) => toggleAgendaTaskDone(...args),
+}));
+
+const searchNotes = vi.fn();
+const createNote = vi.fn();
+const updateNote = vi.fn();
+const setNoteArchived = vi.fn();
+vi.mock("@/features/notes/services/note-actions", () => ({
+  searchNotes: (...args: unknown[]) => searchNotes(...args),
+  createNote: (...args: unknown[]) => createNote(...args),
+  updateNote: (...args: unknown[]) => updateNote(...args),
+  setNoteArchived: (...args: unknown[]) => setNoteArchived(...args),
+}));
+
+const searchContentItems = vi.fn();
+const getContentItem = vi.fn();
+const createContentItem = vi.fn();
+const updateContentItem = vi.fn();
+const moveContentStatus = vi.fn();
+vi.mock("@/features/content/services/content-actions", () => ({
+  searchContentItems: (...args: unknown[]) => searchContentItems(...args),
+  getContentItem: (...args: unknown[]) => getContentItem(...args),
+  createContentItem: (...args: unknown[]) => createContentItem(...args),
+  updateContentItem: (...args: unknown[]) => updateContentItem(...args),
+  moveContentStatus: (...args: unknown[]) => moveContentStatus(...args),
+}));
+
+const generateContentScript = vi.fn();
+vi.mock("@/features/content/services/content-script-ai", () => ({
+  generateContentScript: (...args: unknown[]) => generateContentScript(...args),
+}));
+
 const logAudit = vi.fn();
 vi.mock("@/features/audit/services/audit-log", () => ({
   logAudit: (...args: unknown[]) => logAudit(...args),
+}));
+
+// Fase 4A: cada tool ahora llama a assertHelpActionAccess() antes de hacer
+// nada. Se mockea "concedido" por defecto para que estas pruebas sigan
+// probando la lógica propia de cada tool — la puerta de acceso en sí se
+// prueba a fondo en assistant-access.test.ts.
+const assertHelpActionAccess = vi.fn();
+vi.mock("../assistant-access", () => ({
+  assertHelpActionAccess: (...args: unknown[]) => assertHelpActionAccess(...args),
+  assistantAccessErrorMessage: (reason: string) => `denied:${reason}`,
 }));
 
 const { buildClientTools } = await import("./client-tools");
 const { buildPipelineTools, CreateDealSchema } = await import("./pipeline-tools");
 const { buildProjectTools } = await import("./project-tools");
 const { buildWhiteboardTools } = await import("./whiteboard-tools");
+const { buildAgendaTools } = await import("./agenda-tools");
+const { buildNoteTools } = await import("./note-tools");
+const { buildContentTools } = await import("./content-tools");
 const { buildActionTools } = await import("./index");
 
 const ctx = { workspaceId: "ws1", actorUserId: "user1" };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  assertHelpActionAccess.mockResolvedValue({ ok: true, role: "admin" });
 });
 
 describe("buildActionTools plan gating", () => {
   it("returns no tools when the workspace has neither Gestión nor the WhatsApp agent", () => {
-    const tools = buildActionTools(ctx, {
-      gestionEnabled: false,
-      whatsappAgentEnabled: false,
-      officeVirtualEnabled: false,
-      hasVoiceAgent: false,
-      whiteboardEnabled: false,
-    });
+    const tools = buildActionTools(
+      ctx,
+      { package: "none", gestionEnabled: false, whatsappAgentEnabled: false, officeVirtualEnabled: false, hasVoiceAgent: false, whiteboardEnabled: false },
+      true,
+    );
     expect(Object.keys(tools)).toHaveLength(0);
   });
 
   it("Paquete 1 (Gestión sin WhatsApp) is the informational assistant — no write tools at all", () => {
-    const tools = buildActionTools(ctx, {
-      gestionEnabled: true,
-      whatsappAgentEnabled: false,
-      officeVirtualEnabled: false,
-      hasVoiceAgent: false,
-      whiteboardEnabled: true,
-    });
+    const tools = buildActionTools(
+      ctx,
+      { package: "gestion", gestionEnabled: true, whatsappAgentEnabled: false, officeVirtualEnabled: false, hasVoiceAgent: false, whiteboardEnabled: true },
+      true,
+    );
     expect(Object.keys(tools)).toHaveLength(0);
   });
 
-  it("WhatsApp without Gestión (legacy/inconsistent data) also gets no write tools", () => {
-    const tools = buildActionTools(ctx, {
-      gestionEnabled: false,
-      whatsappAgentEnabled: true,
-      officeVirtualEnabled: false,
-      hasVoiceAgent: false,
-      whiteboardEnabled: false,
-    });
+  it("kill switch off (actionsEnabled=false) means no write tools even on Suite", () => {
+    const tools = buildActionTools(
+      ctx,
+      { package: "suite", gestionEnabled: true, whatsappAgentEnabled: true, officeVirtualEnabled: true, hasVoiceAgent: false, whiteboardEnabled: true },
+      false,
+    );
     expect(Object.keys(tools)).toHaveLength(0);
   });
 
-  it("Paquete 2 (Gestión + WhatsApp) is the management assistant — full write tools", () => {
-    const tools = buildActionTools(ctx, {
-      gestionEnabled: true,
-      whatsappAgentEnabled: true,
-      officeVirtualEnabled: false,
-      hasVoiceAgent: false,
-      whiteboardEnabled: false,
-    });
+  it("Paquete 2 (whatsapp_gestion) is the management assistant — full write tools across every 4A domain", () => {
+    const tools = buildActionTools(
+      ctx,
+      { package: "whatsapp_gestion", gestionEnabled: true, whatsappAgentEnabled: true, officeVirtualEnabled: false, hasVoiceAgent: false, whiteboardEnabled: true },
+      true,
+    );
     expect(tools).toHaveProperty("create_client");
     expect(tools).toHaveProperty("create_project");
     expect(tools).toHaveProperty("create_deal");
-    expect(tools).not.toHaveProperty("create_whiteboard");
+    expect(tools).toHaveProperty("create_agenda_item");
+    expect(tools).toHaveProperty("search_agenda_items");
+    expect(tools).toHaveProperty("update_agenda_item");
+    expect(tools).toHaveProperty("complete_agenda_item");
+    expect(tools).toHaveProperty("create_note");
+    expect(tools).toHaveProperty("search_notes");
+    expect(tools).toHaveProperty("update_note");
+    expect(tools).toHaveProperty("archive_note");
+    expect(tools).toHaveProperty("search_content");
+    expect(tools).toHaveProperty("create_content_idea");
+    expect(tools).toHaveProperty("update_content_general");
+    expect(tools).toHaveProperty("update_content_script");
+    expect(tools).toHaveProperty("move_content_status");
+    expect(tools).toHaveProperty("update_content_metrics");
+    expect(tools).toHaveProperty("generate_content_script");
+    expect(tools).toHaveProperty("assign_task");
+    expect(tools).toHaveProperty("create_subtask");
+    expect(tools).toHaveProperty("update_subtask");
+    expect(tools).toHaveProperty("complete_subtask");
+    expect(tools).toHaveProperty("search_subtasks");
   });
 
-  it("includes whiteboard tools only when Gestión, WhatsApp AND Board are all enabled", () => {
-    const withoutWhiteboard = buildActionTools(ctx, {
-      gestionEnabled: true,
-      whatsappAgentEnabled: true,
-      officeVirtualEnabled: false,
-      hasVoiceAgent: false,
-      whiteboardEnabled: false,
-    });
+  it("suite: Gestión + Oficina (context) — mismas tools de escritura que whatsapp_gestion, Board incluido automáticamente", () => {
+    const tools = buildActionTools(
+      ctx,
+      { package: "suite", gestionEnabled: true, whatsappAgentEnabled: true, officeVirtualEnabled: true, hasVoiceAgent: false, whiteboardEnabled: true },
+      true,
+    );
+    expect(tools).toHaveProperty("create_client");
+    expect(tools).toHaveProperty("create_agenda_item");
+    expect(tools).toHaveProperty("create_whiteboard");
+    expect(tools).toHaveProperty("rename_whiteboard");
+  });
+
+  it("includes whiteboard tools only when Gestión, WhatsApp AND Board are all enabled — board itself stays search/create/rename only", () => {
+    const withoutWhiteboard = buildActionTools(
+      ctx,
+      { package: "whatsapp_gestion", gestionEnabled: true, whatsappAgentEnabled: true, officeVirtualEnabled: false, hasVoiceAgent: false, whiteboardEnabled: false },
+      true,
+    );
     expect(withoutWhiteboard).not.toHaveProperty("create_whiteboard");
 
-    const withWhiteboard = buildActionTools(ctx, {
-      gestionEnabled: true,
-      whatsappAgentEnabled: true,
-      officeVirtualEnabled: false,
-      hasVoiceAgent: false,
-      whiteboardEnabled: true,
-    });
+    const withWhiteboard = buildActionTools(
+      ctx,
+      { package: "whatsapp_gestion", gestionEnabled: true, whatsappAgentEnabled: true, officeVirtualEnabled: false, hasVoiceAgent: false, whiteboardEnabled: true },
+      true,
+    );
     expect(withWhiteboard).toHaveProperty("create_whiteboard");
     expect(withWhiteboard).toHaveProperty("rename_whiteboard");
     expect(withWhiteboard).toHaveProperty("search_whiteboards");
+    // Fase 4C todavía no ha empezado — nunca una tool de scene_data.
+    expect(Object.keys(withWhiteboard).some((k) => k.includes("scene"))).toBe(false);
   });
 });
 
@@ -160,9 +248,21 @@ describe("whiteboard-tools", () => {
     );
 
     expect(result).toEqual({ ok: true, whiteboard_id: "11111111-1111-4111-8111-111111111111" });
+    expect(renameWhiteboard).toHaveBeenCalledWith("ws1", "11111111-1111-4111-8111-111111111111", "Roadmap Q1");
     expect(logAudit).toHaveBeenCalledWith(
       expect.objectContaining({ action: "help_assistant.rename_whiteboard" }),
     );
+  });
+
+  it("rename_whiteboard translates not_found_or_forbidden into a clear message", async () => {
+    renameWhiteboard.mockResolvedValue({ ok: false, error: "not_found_or_forbidden" });
+    const tools = buildWhiteboardTools(ctx);
+
+    const result = await tools.rename_whiteboard.execute!(
+      { whiteboard_id: "11111111-1111-4111-8111-111111111111", name: "X" },
+      { toolCallId: "t1", messages: [] } as never,
+    );
+    expect(result).toEqual({ ok: false, error: "No encontré ese tablero en esta empresa" });
   });
 
   it("search_whiteboards filters by name", async () => {
@@ -178,6 +278,15 @@ describe("whiteboard-tools", () => {
     );
 
     expect(result).toEqual([{ whiteboard_id: "wb1", name: "Roadmap Q1", updated_at: "2026-08-01" }]);
+  });
+
+  it("denies access when assertHelpActionAccess rejects, without calling the underlying service", async () => {
+    assertHelpActionAccess.mockResolvedValue({ ok: false, reason: "role_not_allowed" });
+    const tools = buildWhiteboardTools(ctx);
+
+    const result = await tools.create_whiteboard.execute!({ name: "X" }, { toolCallId: "t1", messages: [] } as never);
+    expect(result).toEqual({ ok: false, error: "denied:role_not_allowed" });
+    expect(createWhiteboard).not.toHaveBeenCalled();
   });
 });
 
@@ -306,5 +415,310 @@ describe("project-tools", () => {
     expect(result).toEqual({ ok: true, task_id: "task1" });
     expect(createTask).toHaveBeenCalledWith("ws1", expect.objectContaining({ project_id: "p1", title: "Enviar propuesta" }));
     expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({ action: "help_assistant.create_task" }));
+  });
+
+  it("update_task now passes workspaceId as the hardened first argument", async () => {
+    updateTask.mockResolvedValue({ ok: true, data: { id: "task1" } });
+    const tools = buildProjectTools(ctx);
+
+    await tools.update_task.execute!({ task_id: "task1", status: "done" }, { toolCallId: "t1", messages: [] } as never);
+    expect(updateTask).toHaveBeenCalledWith("ws1", "task1", { status: "done" });
+  });
+
+  it("update_task translates not_found_or_forbidden into a clear message", async () => {
+    updateTask.mockResolvedValue({ ok: false, error: "not_found_or_forbidden" });
+    const tools = buildProjectTools(ctx);
+
+    const result = await tools.update_task.execute!({ task_id: "task1", status: "done" }, { toolCallId: "t1", messages: [] } as never);
+    expect(result).toEqual({ ok: false, error: "No encontré esa tarea en esta empresa" });
+  });
+
+  it("assign_task calls reassignTask with workspaceId and logs an audit entry", async () => {
+    reassignTask.mockResolvedValue({ ok: true, data: { id: "task1" } });
+    const tools = buildProjectTools(ctx);
+
+    const result = await tools.assign_task.execute!(
+      { task_id: "task1", user_id: "11111111-1111-4111-8111-111111111111" },
+      { toolCallId: "t1", messages: [] } as never,
+    );
+
+    expect(result).toEqual({ ok: true, task_id: "task1" });
+    expect(reassignTask).toHaveBeenCalledWith("ws1", "task1", "11111111-1111-4111-8111-111111111111");
+    expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({ action: "help_assistant.assign_task" }));
+  });
+
+  it("assign_task surfaces 'responsable no pertenece' without logging an audit entry", async () => {
+    reassignTask.mockResolvedValue({ ok: false, error: "El responsable no pertenece a la empresa activa" });
+    const tools = buildProjectTools(ctx);
+
+    const result = await tools.assign_task.execute!(
+      { task_id: "task1", user_id: "11111111-1111-4111-8111-111111111111" },
+      { toolCallId: "t1", messages: [] } as never,
+    );
+    expect(result).toEqual({ ok: false, error: "El responsable no pertenece a la empresa activa" });
+    expect(logAudit).not.toHaveBeenCalled();
+  });
+
+  it("create_subtask calls createSubtask with workspaceId and logs an audit entry", async () => {
+    createSubtask.mockResolvedValue({ ok: true, data: { id: "sub1" } });
+    const tools = buildProjectTools(ctx);
+
+    const result = await tools.create_subtask.execute!(
+      { task_id: "task1", title: "Revisar diseño" },
+      { toolCallId: "t1", messages: [] } as never,
+    );
+
+    expect(result).toEqual({ ok: true, subtask_id: "sub1" });
+    expect(createSubtask).toHaveBeenCalledWith("ws1", { task_id: "task1", title: "Revisar diseño" });
+    expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({ action: "help_assistant.create_subtask" }));
+  });
+
+  it("complete_subtask toggles done and logs an audit entry", async () => {
+    toggleSubtask.mockResolvedValue({ ok: true, data: null });
+    const tools = buildProjectTools(ctx);
+
+    const result = await tools.complete_subtask.execute!(
+      { subtask_id: "sub1", done: true },
+      { toolCallId: "t1", messages: [] } as never,
+    );
+
+    expect(result).toEqual({ ok: true, subtask_id: "sub1" });
+    expect(toggleSubtask).toHaveBeenCalledWith("ws1", "sub1", true);
+  });
+
+  it("search_subtasks filters returned rows to this workspace even if listSubtasks leaks a foreign row", async () => {
+    listSubtasks.mockResolvedValue([
+      { id: "sub1", workspace_id: "ws1", task_id: "task1", title: "Mía", done: false, assigned_to: null, position: 0, due_at: null, created_at: "", updated_at: "" },
+      { id: "sub2", workspace_id: "ws-other", task_id: "task1", title: "Ajena", done: false, assigned_to: null, position: 1, due_at: null, created_at: "", updated_at: "" },
+    ]);
+    const tools = buildProjectTools(ctx);
+
+    const result = await tools.search_subtasks.execute!({ task_id: "task1" }, { toolCallId: "t1", messages: [] } as never);
+    expect(result).toEqual([{ subtask_id: "sub1", title: "Mía", done: false, assigned_to: null }]);
+  });
+});
+
+describe("agenda-tools", () => {
+  it("create_agenda_item succeeds and logs an audit entry", async () => {
+    createAgendaTask.mockResolvedValue({ ok: true, data: { id: "a1" } });
+    const tools = buildAgendaTools(ctx);
+
+    const result = await tools.create_agenda_item.execute!(
+      { title: "Llamar a Ana", scheduled_date: "2026-08-10" },
+      { toolCallId: "t1", messages: [] } as never,
+    );
+
+    expect(result).toEqual({ ok: true, agenda_item_id: "a1" });
+    expect(createAgendaTask).toHaveBeenCalledWith("ws1", expect.objectContaining({ title: "Llamar a Ana", scheduled_date: "2026-08-10" }));
+    expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({ action: "help_assistant.create_agenda_item" }));
+  });
+
+  it("complete_agenda_item toggles done and translates not_found_or_forbidden", async () => {
+    toggleAgendaTaskDone.mockResolvedValue({ ok: false, error: "not_found_or_forbidden" });
+    const tools = buildAgendaTools(ctx);
+
+    const result = await tools.complete_agenda_item.execute!(
+      { agenda_item_id: "11111111-1111-4111-8111-111111111111", done: true },
+      { toolCallId: "t1", messages: [] } as never,
+    );
+    expect(result).toEqual({ ok: false, error: "No encontré esa tarea de agenda en esta empresa" });
+  });
+
+  it("search_agenda_items maps results to a minimal shape", async () => {
+    searchAgendaTasks.mockResolvedValue([
+      { id: "a1", title: "Llamar a Ana", scheduled_date: "2026-08-10", scheduled_week_start: null, done: false },
+    ]);
+    const tools = buildAgendaTools(ctx);
+
+    const result = await tools.search_agenda_items.execute!({ query: "Ana" }, { toolCallId: "t1", messages: [] } as never);
+    expect(result).toEqual([{ agenda_item_id: "a1", title: "Llamar a Ana", scheduled_date: "2026-08-10", scheduled_week_start: null, done: false }]);
+  });
+
+  it("denies access when assertHelpActionAccess rejects, without calling the underlying service", async () => {
+    assertHelpActionAccess.mockResolvedValue({ ok: false, reason: "plan_not_included" });
+    const tools = buildAgendaTools(ctx);
+
+    const result = await tools.create_agenda_item.execute!(
+      { title: "X", scheduled_date: "2026-08-10" },
+      { toolCallId: "t1", messages: [] } as never,
+    );
+    expect(result).toEqual({ ok: false, error: "denied:plan_not_included" });
+    expect(createAgendaTask).not.toHaveBeenCalled();
+  });
+});
+
+describe("note-tools", () => {
+  it("create_note succeeds and logs an audit entry", async () => {
+    createNote.mockResolvedValue({ ok: true, data: { id: "n1" } });
+    const tools = buildNoteTools(ctx);
+
+    const result = await tools.create_note.execute!(
+      { title: "Reunión kickoff" },
+      { toolCallId: "t1", messages: [] } as never,
+    );
+
+    expect(result).toEqual({ ok: true, note_id: "n1" });
+    expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({ action: "help_assistant.create_note" }));
+  });
+
+  it("archive_note never calls a delete function — only setNoteArchived", async () => {
+    setNoteArchived.mockResolvedValue({ ok: true, data: null });
+    const tools = buildNoteTools(ctx);
+
+    const result = await tools.archive_note.execute!(
+      { note_id: "11111111-1111-4111-8111-111111111111", archived: true },
+      { toolCallId: "t1", messages: [] } as never,
+    );
+    expect(result).toEqual({ ok: true, note_id: "11111111-1111-4111-8111-111111111111" });
+    expect(setNoteArchived).toHaveBeenCalledWith("ws1", "11111111-1111-4111-8111-111111111111", true);
+  });
+
+  it("update_note with content_text wraps it as a minimal valid Tiptap doc", async () => {
+    updateNote.mockResolvedValue({ ok: true, data: null });
+    const tools = buildNoteTools(ctx);
+
+    await tools.update_note.execute!(
+      { note_id: "11111111-1111-4111-8111-111111111111", content_text: "Hola mundo" },
+      { toolCallId: "t1", messages: [] } as never,
+    );
+    expect(updateNote).toHaveBeenCalledWith(
+      "ws1",
+      "11111111-1111-4111-8111-111111111111",
+      { title: undefined, content: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Hola mundo" }] }] } },
+    );
+  });
+
+  it("update_note with title and content_text together makes a single combined updateNote call, not two writes", async () => {
+    updateNote.mockResolvedValue({ ok: true, data: null });
+    const tools = buildNoteTools(ctx);
+
+    const result = await tools.update_note.execute!(
+      { note_id: "11111111-1111-4111-8111-111111111111", title: "Nuevo título", content_text: "Hola mundo" },
+      { toolCallId: "t1", messages: [] } as never,
+    );
+
+    expect(updateNote).toHaveBeenCalledTimes(1);
+    expect(updateNote).toHaveBeenCalledWith(
+      "ws1",
+      "11111111-1111-4111-8111-111111111111",
+      { title: "Nuevo título", content: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Hola mundo" }] }] } },
+    );
+    expect(result).toEqual({ ok: true, note_id: "11111111-1111-4111-8111-111111111111" });
+    expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({ action: "help_assistant.update_note" }));
+  });
+
+  it("update_note translates not_found_or_forbidden into a workspace-scoped Spanish message, and never audits on failure", async () => {
+    updateNote.mockResolvedValue({ ok: false, error: "not_found_or_forbidden" });
+    const tools = buildNoteTools(ctx);
+
+    const result = await tools.update_note.execute!(
+      { note_id: "11111111-1111-4111-8111-111111111111", title: "X" },
+      { toolCallId: "t1", messages: [] } as never,
+    );
+
+    expect(result).toEqual({ ok: false, error: "No encontré esa anotación en esta empresa" });
+    expect(logAudit).not.toHaveBeenCalled();
+  });
+});
+
+describe("content-tools", () => {
+  it("create_content_idea succeeds and logs an audit entry", async () => {
+    createContentItem.mockResolvedValue({ ok: true, data: { id: "ci1" } });
+    const tools = buildContentTools(ctx);
+
+    const result = await tools.create_content_idea.execute!(
+      { title: "Reel de automatizaciones" },
+      { toolCallId: "t1", messages: [] } as never,
+    );
+
+    expect(result).toEqual({ ok: true, content_item_id: "ci1" });
+    expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({ action: "help_assistant.create_content_idea" }));
+  });
+
+  it("move_content_status calls moveContentStatus with workspaceId and position 0", async () => {
+    moveContentStatus.mockResolvedValue({ ok: true, data: null });
+    const tools = buildContentTools(ctx);
+
+    const result = await tools.move_content_status.execute!(
+      { content_item_id: "11111111-1111-4111-8111-111111111111", status: "in_production" },
+      { toolCallId: "t1", messages: [] } as never,
+    );
+    expect(result).toEqual({ ok: true, content_item_id: "11111111-1111-4111-8111-111111111111", status: "in_production" });
+    expect(moveContentStatus).toHaveBeenCalledWith("ws1", "11111111-1111-4111-8111-111111111111", "in_production", 0);
+  });
+
+  it("generate_content_script returns a proposal without saving — never calls updateContentItem", async () => {
+    getContentItem.mockResolvedValue({
+      id: "ci1",
+      workspace_id: "ws1",
+      main_idea: "Automatizaciones",
+      description: "3 trucos",
+      content_type: "Reel",
+      platform: "Instagram",
+      orientation: "vertical",
+      duration_estimate: "30s",
+      responsible_id: null,
+      scheduled_date: null,
+    });
+    generateContentScript.mockResolvedValue({
+      ok: true,
+      data: { hook: "H", body: "B", closing: "C", cta: "CTA", bulletPoints: [], links: [], lighting: "L", music: "M", notes: "" },
+    });
+    const tools = buildContentTools(ctx);
+
+    const result = await tools.generate_content_script.execute!(
+      { content_item_id: "ci1" },
+      { toolCallId: "t1", messages: [] } as never,
+    );
+
+    expect(result).toMatchObject({ ok: true, content_item_id: "ci1" });
+    expect(updateContentItem).not.toHaveBeenCalled();
+    expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({ action: "help_assistant.generate_content_script" }));
+  });
+
+  it("generate_content_script rejects a content_item_id from another workspace", async () => {
+    getContentItem.mockResolvedValue({ id: "ci1", workspace_id: "ws-other" });
+    const tools = buildContentTools(ctx);
+
+    const result = await tools.generate_content_script.execute!(
+      { content_item_id: "ci1" },
+      { toolCallId: "t1", messages: [] } as never,
+    );
+    expect(result).toEqual({ ok: false, error: "No encontré esa pieza de contenido en esta empresa" });
+    expect(generateContentScript).not.toHaveBeenCalled();
+  });
+
+  it("generate_content_script allows at most one generation per buildContentTools() instance (one user petición)", async () => {
+    getContentItem.mockResolvedValue({ id: "ci1", workspace_id: "ws1", main_idea: "X", description: "", content_type: "", platform: "", orientation: null, duration_estimate: "", responsible_id: null, scheduled_date: null });
+    generateContentScript.mockResolvedValue({
+      ok: true,
+      data: { hook: "H", body: "B", closing: "C", cta: "CTA", bulletPoints: [], links: [], lighting: "L", music: "M", notes: "" },
+    });
+    const tools = buildContentTools(ctx);
+
+    const first = (await tools.generate_content_script.execute!({ content_item_id: "ci1" }, { toolCallId: "t1", messages: [] } as never)) as { ok: boolean };
+    expect(first.ok).toBe(true);
+    expect(generateContentScript).toHaveBeenCalledTimes(1);
+
+    const second = (await tools.generate_content_script.execute!({ content_item_id: "ci1" }, { toolCallId: "t2", messages: [] } as never)) as { ok: boolean };
+    expect(second.ok).toBe(false);
+    // Still only ever called once — the second attempt never reaches the provider.
+    expect(generateContentScript).toHaveBeenCalledTimes(1);
+  });
+
+  it("a NEW buildContentTools() call (new user petición) resets the once-per-request guard", async () => {
+    getContentItem.mockResolvedValue({ id: "ci1", workspace_id: "ws1", main_idea: "X", description: "", content_type: "", platform: "", orientation: null, duration_estimate: "", responsible_id: null, scheduled_date: null });
+    generateContentScript.mockResolvedValue({
+      ok: true,
+      data: { hook: "H", body: "B", closing: "C", cta: "CTA", bulletPoints: [], links: [], lighting: "L", music: "M", notes: "" },
+    });
+
+    const firstRequestTools = buildContentTools(ctx);
+    await firstRequestTools.generate_content_script.execute!({ content_item_id: "ci1" }, { toolCallId: "t1", messages: [] } as never);
+
+    const secondRequestTools = buildContentTools(ctx);
+    const result = (await secondRequestTools.generate_content_script.execute!({ content_item_id: "ci1" }, { toolCallId: "t2", messages: [] } as never)) as { ok: boolean };
+    expect(result.ok).toBe(true);
+    expect(generateContentScript).toHaveBeenCalledTimes(2);
   });
 });

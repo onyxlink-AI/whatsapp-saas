@@ -1,3 +1,5 @@
+import type { ProductPackage } from "@/features/entitlements/resolve";
+
 export type HelpAssistantTier = "gestion" | "completo" | "oficina";
 
 export interface HelpAssistantTierInfo {
@@ -13,6 +15,8 @@ export interface HelpAssistantTierInfo {
  * client has every module.
  */
 export interface HelpAssistantPlanContext {
+  /** Fase 4A: fuente única para reconstruir WorkspaceEntitlements y llamar a canUseAssistantActions() — nunca recalcular "canWrite" a mano en un segundo sitio. */
+  package: ProductPackage;
   gestionEnabled: boolean;
   whatsappAgentEnabled: boolean;
   officeVirtualEnabled: boolean;

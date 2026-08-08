@@ -114,7 +114,10 @@ export async function createWhiteboard(
 // ──────────────────────────────────────────────────────────────────────────────
 // renameWhiteboard
 // ──────────────────────────────────────────────────────────────────────────────
+// Fase 4A: workspaceId ahora es obligatorio y se filtra en la propia
+// UPDATE, con .select() + comprobación de una única fila afectada.
 export async function renameWhiteboard(
+  workspaceId: string,
   whiteboardId: string,
   name: string,
 ): Promise<ActionResult<null>> {
@@ -136,14 +139,20 @@ export async function renameWhiteboard(
     };
   }
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("whiteboards")
     .update({ name: parsed.data.name })
-    .eq("id", whiteboardId);
+    .eq("id", whiteboardId)
+    .eq("workspace_id", workspaceId)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     console.error("[renameWhiteboard] Supabase error:", error.message);
     return { ok: false, error: "Error al renombrar el tablero" };
+  }
+  if (!updated) {
+    return { ok: false, error: "not_found_or_forbidden" };
   }
 
   return { ok: true, data: null };

@@ -112,6 +112,34 @@ export async function listContentItems(workspaceId: string): Promise<ContentItem
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// searchContentItems — Fase 4A: búsqueda por título/idea principal, para el
+// Asistente de Ayuda (search_content).
+// ──────────────────────────────────────────────────────────────────────────────
+export async function searchContentItems(workspaceId: string, query: string): Promise<ContentItemRow[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("content_items")
+    .select(CONTENT_SELECT)
+    .eq("workspace_id", workspaceId)
+    .or(`title.ilike.%${query}%,main_idea.ilike.%${query}%`)
+    .order("updated_at", { ascending: false })
+    .limit(10);
+
+  if (error || !data) {
+    console.error("[searchContentItems] Supabase error:", error?.message);
+    return [];
+  }
+
+  return data as unknown as ContentItemRow[];
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // getContentItem
 // ──────────────────────────────────────────────────────────────────────────────
 export async function getContentItem(id: string): Promise<ContentItemRow | null> {

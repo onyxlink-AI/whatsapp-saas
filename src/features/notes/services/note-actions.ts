@@ -60,6 +60,36 @@ export async function listNotes(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// searchNotes — Fase 4A: búsqueda por título, para el Asistente de Ayuda
+// (search_notes). Nunca incluye anotaciones archivadas — igual que la lista
+// por defecto del panel.
+// ──────────────────────────────────────────────────────────────────────────────
+export async function searchNotes(workspaceId: string, query: string): Promise<NoteRow[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("notes")
+    .select(NOTE_SELECT)
+    .eq("workspace_id", workspaceId)
+    .is("archived_at", null)
+    .ilike("title", `%${query}%`)
+    .order("updated_at", { ascending: false })
+    .limit(10);
+
+  if (error || !data) {
+    console.error("[searchNotes] Supabase error:", error?.message);
+    return [];
+  }
+
+  return data as unknown as NoteRow[];
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // getNote
 // ──────────────────────────────────────────────────────────────────────────────
 export async function getNote(noteId: string): Promise<NoteRow | null> {
@@ -123,9 +153,10 @@ export async function createNote(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// renameNote
+// renameNote — Fase 4A: workspaceId ahora es obligatorio y se filtra en la
+// propia UPDATE, con .select() + comprobación de una única fila afectada.
 // ──────────────────────────────────────────────────────────────────────────────
-export async function renameNote(noteId: string, title: string): Promise<ActionResult<null>> {
+export async function renameNote(workspaceId: string, noteId: string, title: string): Promise<ActionResult<null>> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -141,20 +172,30 @@ export async function renameNote(noteId: string, title: string): Promise<ActionR
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
-  const { error } = await supabase.from("notes").update({ title: parsed.data.title }).eq("id", noteId);
+  const { data: updated, error } = await supabase
+    .from("notes")
+    .update({ title: parsed.data.title })
+    .eq("id", noteId)
+    .eq("workspace_id", workspaceId)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     console.error("[renameNote] Supabase error:", error.message);
     return { ok: false, error: "Error al renombrar el documento" };
+  }
+  if (!updated) {
+    return { ok: false, error: "not_found_or_forbidden" };
   }
 
   return { ok: true, data: null };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// updateNoteContent — called from the editor's debounced autosave.
+// updateNoteContent — called from the editor's debounced autosave. Fase 4A:
+// mismo endurecimiento que renameNote.
 // ──────────────────────────────────────────────────────────────────────────────
-export async function updateNoteContent(noteId: string, content: NoteContent): Promise<ActionResult<null>> {
+export async function updateNoteContent(workspaceId: string, noteId: string, content: NoteContent): Promise<ActionResult<null>> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -170,11 +211,84 @@ export async function updateNoteContent(noteId: string, content: NoteContent): P
     return { ok: false, error: "Contenido del documento inválido" };
   }
 
-  const { error } = await supabase.from("notes").update({ content: parsed.data }).eq("id", noteId);
+  const { data: updated, error } = await supabase
+    .from("notes")
+    .update({ content: parsed.data })
+    .eq("id", noteId)
+    .eq("workspace_id", workspaceId)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     console.error("[updateNoteContent] Supabase error:", error.message);
     return { ok: false, error: "Error al guardar el documento" };
+  }
+  if (!updated) {
+    return { ok: false, error: "not_found_or_forbidden" };
+  }
+
+  return { ok: true, data: null };
+}
+
+const UpdateNoteSchema = z
+  .object({
+    title: z.string().min(1, "El título es requerido").optional(),
+    content: ContentSchema.optional(),
+  })
+  .refine((v) => v.title !== undefined || v.content !== undefined, {
+    message: "Indica al menos un campo a actualizar",
+  });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// updateNote — Fase 4A revisión correctiva: título y contenido en UNA sola
+// sentencia UPDATE, workspace-scoped, con comprobación de fila afectada.
+// Existe porque el Asistente de Ayuda (update_note) recibe título y
+// contenido en la MISMA llamada de herramienta — encadenar renameNote() +
+// updateNoteContent() como dos escrituras separadas podía dejar una
+// modificación a medias si la segunda fallaba tras el éxito de la primera.
+// renameNote/updateNoteContent SIGUEN existiendo tal cual para el editor de
+// la UI, que sí son dos interacciones de usuario genuinamente separadas
+// (título al perder el foco, contenido en autoguardado con debounce) — no
+// una sola acción lógica que deba ser atómica.
+// ──────────────────────────────────────────────────────────────────────────────
+export async function updateNote(
+  workspaceId: string,
+  noteId: string,
+  input: { title?: string; content?: NoteContent },
+): Promise<ActionResult<null>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { ok: false, error: "No autorizado" };
+  }
+
+  const parsed = UpdateNoteSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+
+  const patch: Record<string, unknown> = {};
+  if (parsed.data.title !== undefined) patch.title = parsed.data.title;
+  if (parsed.data.content !== undefined) patch.content = parsed.data.content;
+
+  const { data: updated, error } = await supabase
+    .from("notes")
+    .update(patch)
+    .eq("id", noteId)
+    .eq("workspace_id", workspaceId)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    console.error("[updateNote] Supabase error:", error.message);
+    return { ok: false, error: "Error al guardar el documento" };
+  }
+  if (!updated) {
+    return { ok: false, error: "not_found_or_forbidden" };
   }
 
   return { ok: true, data: null };
@@ -228,9 +342,11 @@ export async function duplicateNote(noteId: string): Promise<ActionResult<{ id: 
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// setNoteArchived — "Archivar" / restaurar.
+// setNoteArchived — "Archivar" / restaurar. Fase 4A: workspaceId ahora es
+// obligatorio y se filtra en la propia UPDATE, con .select() + comprobación
+// de una única fila afectada.
 // ──────────────────────────────────────────────────────────────────────────────
-export async function setNoteArchived(noteId: string, archived: boolean): Promise<ActionResult<null>> {
+export async function setNoteArchived(workspaceId: string, noteId: string, archived: boolean): Promise<ActionResult<null>> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -241,14 +357,20 @@ export async function setNoteArchived(noteId: string, archived: boolean): Promis
     return { ok: false, error: "No autorizado" };
   }
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("notes")
     .update({ archived_at: archived ? new Date().toISOString() : null })
-    .eq("id", noteId);
+    .eq("id", noteId)
+    .eq("workspace_id", workspaceId)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     console.error("[setNoteArchived] Supabase error:", error.message);
     return { ok: false, error: "Error al archivar el documento" };
+  }
+  if (!updated) {
+    return { ok: false, error: "not_found_or_forbidden" };
   }
 
   return { ok: true, data: null };

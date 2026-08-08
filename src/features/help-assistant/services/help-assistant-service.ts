@@ -46,6 +46,7 @@ export async function askHelpAssistant(opts: {
   }
 
   const planContext: HelpAssistantPlanContext = {
+    package: entitlements.package,
     gestionEnabled: entitlements.hasGestion,
     whatsappAgentEnabled: entitlements.hasWhatsappAgent,
     officeVirtualEnabled: entitlements.hasOfficeVirtual,
@@ -55,12 +56,19 @@ export async function askHelpAssistant(opts: {
 
   const actionCtx: HelpActionContext = { workspaceId: opts.workspaceId, actorUserId: opts.userId };
 
+  // buildActionTools ya decide internamente (vía canUseAssistantActions) si
+  // hay algo que devolver — nunca una segunda copia de esa condición aquí.
+  // Cada tool, además, vuelve a comprobar todo desde cero en su propia
+  // ejecución (assertHelpActionAccess) — esto solo evita construir/ofrecer
+  // tools que la conversación no podría usar de todas formas.
+  const tools = buildActionTools(actionCtx, planContext, actionsEnabled);
+
   let reply;
   try {
     reply = await generateHelpAssistantReply({
       systemPrompt: buildHelpAssistantSystemPrompt(planContext, actionsEnabled),
       messages: [...opts.history, { role: "user", content: opts.message }],
-      tools: actionsEnabled ? buildActionTools(actionCtx, planContext) : undefined,
+      tools: Object.keys(tools).length > 0 ? tools : undefined,
     });
   } catch (error) {
     console.error("[help-assistant] generateHelpAssistantReply error:", error);
