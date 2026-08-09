@@ -7,7 +7,8 @@
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import type { WhiteboardRow, WhiteboardSceneData } from "@/features/whiteboard/types";
+import type { WhiteboardRow, WhiteboardSceneData, WhiteboardCasResult, WhiteboardAppStateResult } from "@/features/whiteboard/types";
+import { MAX_ELEMENTS_PER_SCENE, MAX_SCENE_BYTES, MAX_APP_STATE_BYTES, PERSISTABLE_APP_STATE_KEYS } from "@/features/whiteboard/services/scene-adapter";
 
 export type ActionResult<T> =
   | { ok: true; data: T; error?: never }
@@ -17,10 +18,17 @@ const RenameSchema = z.object({
   name: z.string().min(1, "El nombre es requerido"),
 });
 
-const SceneDataSchema = z.object({
-  elements: z.array(z.unknown()),
-  appState: z.record(z.string(), z.unknown()),
-});
+const ElementsSchema = z.array(z.unknown()).max(MAX_ELEMENTS_PER_SCENE);
+
+// Revisión correctiva: mismo whitelist EXACTO que la propia función SQL —
+// una clave fuera de esta lista se rechaza aquí en Node antes de gastar un
+// viaje a la base de datos (la función también la rechaza igual, defensa
+// en profundidad).
+const AppStateSchema = z
+  .record(z.string(), z.unknown())
+  .refine((v) => Object.keys(v).every((k) => (PERSISTABLE_APP_STATE_KEYS as readonly string[]).includes(k)), {
+    message: "appState contiene una clave no permitida",
+  });
 
 // ──────────────────────────────────────────────────────────────────────────────
 // listWhiteboards
@@ -37,7 +45,7 @@ export async function listWhiteboards(
 
   const { data, error } = await supabase
     .from("whiteboards")
-    .select("id, workspace_id, name, scene_data, created_by, created_at, updated_at")
+    .select("id, workspace_id, name, scene_data, version, created_by, created_at, updated_at")
     .eq("workspace_id", workspaceId)
     .order("updated_at", { ascending: false });
 
@@ -64,7 +72,7 @@ export async function getWhiteboard(
 
   const { data, error } = await supabase
     .from("whiteboards")
-    .select("id, workspace_id, name, scene_data, created_by, created_at, updated_at")
+    .select("id, workspace_id, name, scene_data, version, created_by, created_at, updated_at")
     .eq("id", whiteboardId)
     .maybeSingle();
 
@@ -205,12 +213,24 @@ export async function duplicateWhiteboard(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// updateWhiteboardScene — called from the editor's debounced autosave.
+// updateWhiteboardSceneCas — Fase 4C: ÚNICA vía de escritura de
+// scene_data.elements, tanto para el autoguardado del editor como para
+// las tools del asistente. Recibe SOLO el array de elementos — revisión
+// correctiva: nunca el blob {elements, appState} completo, para que esta
+// escritura no pueda pisar con una copia vieja un appState más fresco que
+// otra pestaña/el propio usuario acaba de guardar (ver
+// updateWhiteboardAppState, que es la única vía para appState). Delega
+// TODO (filtro de workspace, comparación atómica de versión, límites de
+// tamaño) a update_whiteboard_scene_cas() — nunca un UPDATE directo desde
+// aquí. SECURITY INVOKER: se llama con el cliente de sesión (RLS activa),
+// nunca con service_role.
 // ──────────────────────────────────────────────────────────────────────────────
-export async function updateWhiteboardScene(
+export async function updateWhiteboardSceneCas(
+  workspaceId: string,
   whiteboardId: string,
-  sceneData: WhiteboardSceneData,
-): Promise<ActionResult<null>> {
+  expectedVersion: number,
+  elements: unknown[],
+): Promise<ActionResult<WhiteboardCasResult>> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -221,22 +241,77 @@ export async function updateWhiteboardScene(
     return { ok: false, error: "No autorizado" };
   }
 
-  const parsed = SceneDataSchema.safeParse(sceneData);
+  const parsed = ElementsSchema.safeParse(elements);
   if (!parsed.success) {
     return { ok: false, error: "Datos del tablero inválidos" };
   }
 
-  const { error } = await supabase
-    .from("whiteboards")
-    .update({ scene_data: parsed.data })
-    .eq("id", whiteboardId);
+  const elementsBytes = new TextEncoder().encode(JSON.stringify(parsed.data)).length;
+  if (elementsBytes > MAX_SCENE_BYTES) {
+    return { ok: true, data: { result: "scene_too_large", element_count: parsed.data.length, size_bytes: elementsBytes } };
+  }
+
+  const { data, error } = await supabase.rpc("update_whiteboard_scene_cas", {
+    p_workspace_id: workspaceId,
+    p_whiteboard_id: whiteboardId,
+    p_expected_version: expectedVersion,
+    p_elements: parsed.data,
+  });
 
   if (error) {
-    console.error("[updateWhiteboardScene] Supabase error:", error.message);
+    console.error("[updateWhiteboardSceneCas] Supabase error:", error.message);
     return { ok: false, error: "Error al guardar el tablero" };
   }
 
-  return { ok: true, data: null };
+  return { ok: true, data: data as WhiteboardCasResult };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// updateWhiteboardAppState — Fase 4C revisión correctiva: única vía de
+// escritura de scene_data.appState. Nunca toca `elements`, nunca
+// incrementa `version` — el viewport/zoom/scroll no es contenido de la
+// escena, no debe poder generar un conflicto de edición ni gastar
+// versión. Sin expected_version a propósito: dos cambios de cámara nunca
+// necesitan resolverse con más cuidado que "gana el último". Mismo
+// whitelist de claves que pickPersistableAppState() en el editor.
+// ──────────────────────────────────────────────────────────────────────────────
+export async function updateWhiteboardAppState(
+  workspaceId: string,
+  whiteboardId: string,
+  appState: Record<string, unknown>,
+): Promise<ActionResult<WhiteboardAppStateResult>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { ok: false, error: "No autorizado" };
+  }
+
+  const parsed = AppStateSchema.safeParse(appState);
+  if (!parsed.success) {
+    return { ok: false, error: "Datos de vista inválidos" };
+  }
+
+  const appStateBytes = new TextEncoder().encode(JSON.stringify(parsed.data)).length;
+  if (appStateBytes > MAX_APP_STATE_BYTES) {
+    return { ok: true, data: { result: "scene_too_large" } };
+  }
+
+  const { data, error } = await supabase.rpc("update_whiteboard_app_state", {
+    p_workspace_id: workspaceId,
+    p_whiteboard_id: whiteboardId,
+    p_app_state: parsed.data,
+  });
+
+  if (error) {
+    console.error("[updateWhiteboardAppState] Supabase error:", error.message);
+    return { ok: false, error: "Error al guardar la vista del tablero" };
+  }
+
+  return { ok: true, data: data as WhiteboardAppStateResult };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

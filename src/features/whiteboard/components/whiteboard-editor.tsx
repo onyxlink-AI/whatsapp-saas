@@ -15,9 +15,14 @@ import {
 import {
   duplicateWhiteboard,
   renameWhiteboard,
-  updateWhiteboardScene,
+  updateWhiteboardSceneCas,
+  updateWhiteboardAppState,
+  getWhiteboard,
 } from "@/features/whiteboard/services/whiteboard-actions";
+import { elementVersionsById, mergeDisjointChanges, onlyAppStateChanged, type ElementVersionMap } from "@/features/whiteboard/services/scene-merge";
+import { PERSISTABLE_APP_STATE_KEYS, type BoardElementUnknown } from "@/features/whiteboard/services/scene-adapter";
 import type { WhiteboardRow } from "@/features/whiteboard/types";
+import { WhiteboardConflictBanner } from "./whiteboard-conflict-banner";
 import type * as ExcalidrawModuleType from "@excalidraw/excalidraw";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import "@excalidraw/excalidraw/index.css";
@@ -40,20 +45,8 @@ const TIPS = [
   "Usa \"+ Nota adhesiva\" para añadir un post-it listo para escribir en un clic.",
   "Selecciona una nota y usa \"+ Nota conectada\" para crear otra ya unida con una flecha.",
   "Con 2 o más formas seleccionadas, el panel izquierdo muestra alinear y distribuir.",
+  "El Asistente de Ayuda también puede añadir notas, formas y conexiones a este tablero si se lo pides.",
 ];
-
-// Only the handful of appState fields worth persisting across reloads — the
-// rest (collaborators, which is a non-serializable Map, cursor position,
-// which panel is open, etc.) is either transient UI state or not JSON-safe.
-const PERSISTABLE_APP_STATE_KEYS = [
-  "viewBackgroundColor",
-  "currentItemStrokeColor",
-  "currentItemBackgroundColor",
-  "zoom",
-  "scrollX",
-  "scrollY",
-  "gridSize",
-] as const;
 
 function pickPersistableAppState(
   appState: Record<string, unknown>,
@@ -66,20 +59,45 @@ function pickPersistableAppState(
 }
 
 const SAVE_DEBOUNCE_MS = 2000;
+const MERGE_RETRY_ATTEMPTS = 3;
 
 interface Props {
   board: WhiteboardRow;
 }
 
-export function WhiteboardEditor({ board }: Props) {
+interface ConflictState {
+  conflictingIds: string[];
+  remoteBoard: WhiteboardRow;
+}
+
+export function WhiteboardEditor({ board: initialBoard }: Props) {
   const router = useRouter();
-  const [name, setName] = useState(board.name);
+  const [name, setName] = useState(initialBoard.name);
   const [saveState, setSaveState] = useState<"saved" | "saving" | "unsaved">("saved");
   const [mod, setMod] = useState<LoadedExcalidraw | null>(null);
   const [duplicating, setDuplicating] = useState(false);
+  const [conflict, setConflict] = useState<ConflictState | null>(null);
+  const [resolvingConflict, setResolvingConflict] = useState(false);
   const [, startTransition] = useTransition();
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const elementsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const appStateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const excalidrawApiRef = useRef<ExcalidrawImperativeAPI | null>(null);
+
+  // Fase 4C: "board" vive en un ref además de en estado — el debounce del
+  // autoguardado necesita SIEMPRE la versión más reciente conocida, nunca
+  // una capturada por el closure del render en el que se disparó el timer.
+  const boardRef = useRef<WhiteboardRow>(initialBoard);
+  // Última base sincronizada (id -> version de cada elemento) — el punto
+  // de comparación para saber qué cambió "en local" y qué cambió "en
+  // remoto" desde la última vez que ambos lados coincidieron.
+  const baseVersionsRef = useRef<ElementVersionMap>(elementVersionsById(initialBoard.scene_data.elements as BoardElementUnknown[]));
+  // true mientras hay un conflicto del MISMO elemento sin resolver — el
+  // autoguardado de ELEMENTOS se pausa por completo (nunca sigue
+  // escribiendo por su cuenta ni recarga destruyendo cambios locales). El
+  // guardado de appState (revisión correctiva, §4) es independiente y
+  // sigue funcionando aunque esto esté en pausa — el viewport no es
+  // contenido en conflicto con nada.
+  const pausedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,7 +111,8 @@ export function WhiteboardEditor({ board }: Props) {
 
   useEffect(() => {
     return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (elementsTimeoutRef.current) clearTimeout(elementsTimeoutRef.current);
+      if (appStateTimeoutRef.current) clearTimeout(appStateTimeoutRef.current);
     };
   }, []);
 
@@ -214,7 +233,7 @@ export function WhiteboardEditor({ board }: Props) {
   function handleDuplicateBoard() {
     setDuplicating(true);
     startTransition(async () => {
-      const result = await duplicateWhiteboard(board.id);
+      const result = await duplicateWhiteboard(boardRef.current.id);
       setDuplicating(false);
       if (!result.ok) {
         toast.error(result.error ?? "Error al duplicar el tablero");
@@ -225,45 +244,208 @@ export function WhiteboardEditor({ board }: Props) {
     });
   }
 
-  function handleSceneChange(elements: readonly unknown[], appState: unknown) {
-    setSaveState("unsaved");
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => {
-      setSaveState("saving");
-      startTransition(async () => {
-        const result = await updateWhiteboardScene(board.id, {
-          elements: [...elements],
-          appState: pickPersistableAppState(appState as Record<string, unknown>),
-        });
-        if (!result.ok) {
-          setSaveState("unsaved");
-          toast.error(result.error ?? "Error al guardar el tablero");
-          return;
-        }
+  /**
+   * Fase 4C — única función que escribe scene_data.elements. Nunca pisa a
+   * ciegas:
+   * - Si el CAS choca (`conflict`), relee el tablero fresco y decide:
+   *   cambios disjuntos → fusiona y reintenta (hasta MERGE_RETRY_ATTEMPTS);
+   *   mismo elemento en ambos lados → pausa el autoguardado y muestra el
+   *   banner, nunca recarga ni pisa por su cuenta.
+   * Nunca toca appState — updateWhiteboardSceneCas() solo escribe
+   * `elements` (ver revisión correctiva §4), así que esta función no
+   * puede pisar un zoom/scroll más fresco que el que otra pestaña o el
+   * propio guardado de appState (más abajo) acaba de persistir.
+   */
+  async function attemptSaveElements(localElements: BoardElementUnknown[]) {
+    if (pausedRef.current) return;
+
+    setSaveState("saving");
+    let elementsToWrite = localElements;
+    let expectedVersion = boardRef.current.version;
+
+    for (let attempt = 0; attempt < MERGE_RETRY_ATTEMPTS; attempt++) {
+      const cas = await updateWhiteboardSceneCas(boardRef.current.workspace_id, boardRef.current.id, expectedVersion, elementsToWrite);
+
+      if (!cas.ok) {
+        setSaveState("unsaved");
+        toast.error(cas.error ?? "Error al guardar el tablero");
+        return;
+      }
+
+      if (cas.data.result === "updated") {
+        baseVersionsRef.current = elementVersionsById(elementsToWrite);
+        boardRef.current = { ...boardRef.current, version: cas.data.version, scene_data: { ...boardRef.current.scene_data, elements: elementsToWrite } };
         setSaveState("saved");
+        return;
+      }
+
+      if (cas.data.result === "not_found_or_forbidden") {
+        setSaveState("unsaved");
+        toast.error("Ya no tienes acceso a este tablero");
+        return;
+      }
+
+      if (cas.data.result === "scene_too_large") {
+        setSaveState("unsaved");
+        toast.error("Este tablero llegó al límite de tamaño o número de elementos");
+        return;
+      }
+
+      // result === "conflict": otro escritor (probablemente el Asistente
+      // de Ayuda) ganó desde que se cargó esta página. Releer y decidir.
+      const remote = await getWhiteboard(boardRef.current.id);
+      if (!remote) {
+        setSaveState("unsaved");
+        toast.error("Ya no tienes acceso a este tablero");
+        return;
+      }
+
+      const merge = mergeDisjointChanges({
+        baseVersions: baseVersionsRef.current,
+        localElements,
+        remoteElements: remote.scene_data.elements as BoardElementUnknown[],
       });
+
+      if (merge.kind === "same_element_conflict") {
+        // NUNCA recargar ni pisar por su cuenta — pausa y deja que decida el usuario.
+        pausedRef.current = true;
+        setConflict({ conflictingIds: merge.conflictingIds, remoteBoard: remote });
+        setSaveState("unsaved");
+        return;
+      }
+
+      // Cambios disjuntos: reintenta el CAS con la versión remota fresca.
+      elementsToWrite = merge.elements;
+      expectedVersion = remote.version;
+    }
+
+    // Se agotaron los reintentos — el tablero cambia muy rápido. Deja el
+    // estado como "sin guardar" (nunca se pierde nada: el próximo tick del
+    // debounce, o el propio usuario editando de nuevo, volverá a intentarlo).
+    setSaveState("unsaved");
+    toast.error("El tablero está cambiando muy rápido — tus cambios se reintentarán en el próximo guardado.");
+  }
+
+  /**
+   * Fase 4C revisión correctiva (§4) — guarda SOLO scene_data.appState.
+   * Independiente del guardado de elementos: nunca se bloquea por una
+   * pausa de conflicto de elementos, nunca compite por `version`, nunca
+   * envía una copia de `elements` (evita pisar ediciones ajenas con una
+   * copia vieja). Best-effort silencioso salvo pérdida real de acceso.
+   */
+  async function attemptSaveAppState(appState: Record<string, unknown>) {
+    const result = await updateWhiteboardAppState(boardRef.current.workspace_id, boardRef.current.id, appState);
+    if (!result.ok) {
+      console.error("[WhiteboardEditor] error guardando la vista del tablero:", result.error);
+      return;
+    }
+    if (result.data.result === "not_found_or_forbidden") {
+      toast.error("Ya no tienes acceso a este tablero");
+      return;
+    }
+    boardRef.current = { ...boardRef.current, scene_data: { ...boardRef.current.scene_data, appState } };
+  }
+
+  function handleSceneChange(elements: readonly unknown[], appState: unknown) {
+    const snapshot = [...elements] as BoardElementUnknown[];
+    const appStateSnapshot = pickPersistableAppState(appState as Record<string, unknown>);
+
+    // El guardado de appState es SIEMPRE independiente — nunca lo bloquea
+    // una pausa por conflicto de elementos, nunca gasta version.
+    if (appStateTimeoutRef.current) clearTimeout(appStateTimeoutRef.current);
+    appStateTimeoutRef.current = setTimeout(() => {
+      startTransition(() => void attemptSaveAppState(appStateSnapshot));
     }, SAVE_DEBOUNCE_MS);
+
+    if (pausedRef.current) return;
+    // Ningún elemento cambió de versión -> el único cambio posible fue de
+    // cámara/color activo, ya cubierto arriba. No hay nada de contenido
+    // que guardar ni ningún motivo para tocar `elements`/`version`.
+    if (onlyAppStateChanged(baseVersionsRef.current, snapshot)) return;
+
+    setSaveState("unsaved");
+    if (elementsTimeoutRef.current) clearTimeout(elementsTimeoutRef.current);
+    elementsTimeoutRef.current = setTimeout(() => {
+      startTransition(() => void attemptSaveElements(snapshot));
+    }, SAVE_DEBOUNCE_MS);
+  }
+
+  function handleReloadRemote() {
+    if (!conflict) return;
+    const api = excalidrawApiRef.current;
+    const remoteElements = conflict.remoteBoard.scene_data.elements as BoardElementUnknown[];
+    api?.updateScene({ elements: remoteElements as never, appState: conflict.remoteBoard.scene_data.appState as never });
+    baseVersionsRef.current = elementVersionsById(remoteElements);
+    boardRef.current = conflict.remoteBoard;
+    setConflict(null);
+    pausedRef.current = false;
+    setSaveState("saved");
+    toast.success("Se recargaron los cambios más recientes del tablero");
+  }
+
+  function handleKeepMyChanges() {
+    if (!conflict) return;
+    const api = excalidrawApiRef.current;
+    if (!api) return;
+
+    setResolvingConflict(true);
+    startTransition(async () => {
+      const localElements = [...api.getSceneElements()] as unknown as BoardElementUnknown[];
+      const merge = mergeDisjointChanges({
+        baseVersions: baseVersionsRef.current,
+        localElements,
+        remoteElements: conflict.remoteBoard.scene_data.elements as BoardElementUnknown[],
+        preferLocalForIds: new Set(conflict.conflictingIds),
+      });
+
+      if (merge.kind !== "merged") {
+        // No debería ocurrir — preferLocalForIds cubre exactamente los ids
+        // conflictivos — pero si de algún modo persiste, no se arriesga
+        // nada: se deja el banner tal cual para que el usuario reintente.
+        setResolvingConflict(false);
+        return;
+      }
+
+      const cas = await updateWhiteboardSceneCas(boardRef.current.workspace_id, boardRef.current.id, conflict.remoteBoard.version, merge.elements);
+
+      setResolvingConflict(false);
+
+      if (!cas.ok || cas.data.result !== "updated") {
+        toast.error("El tablero volvió a cambiar — inténtalo de nuevo");
+        return;
+      }
+
+      baseVersionsRef.current = elementVersionsById(merge.elements);
+      boardRef.current = { ...boardRef.current, version: cas.data.version };
+      api.updateScene({ elements: merge.elements as never });
+      setConflict(null);
+      pausedRef.current = false;
+      setSaveState("saved");
+      toast.success("Tus cambios se guardaron, conservando los tuyos en los elementos en conflicto");
+    });
   }
 
   function handleRename() {
     const trimmed = name.trim();
-    if (!trimmed || trimmed === board.name) {
-      setName(board.name);
+    if (!trimmed || trimmed === boardRef.current.name) {
+      setName(boardRef.current.name);
       return;
     }
     startTransition(async () => {
-      const result = await renameWhiteboard(board.workspace_id, board.id, trimmed);
+      const result = await renameWhiteboard(boardRef.current.workspace_id, boardRef.current.id, trimmed);
       if (!result.ok) {
         toast.error(result.error ?? "Error al renombrar");
-        setName(board.name);
+        setName(boardRef.current.name);
+      } else {
+        boardRef.current = { ...boardRef.current, name: trimmed };
       }
     });
   }
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col">
-      <div className="flex items-center gap-3 border-b border-border/60 px-4 py-2">
-        <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+      <div className="flex flex-wrap items-center gap-3 border-b border-border/60 px-4 py-2">
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" asChild>
           <Link href="/proyectos?view=board" aria-label="Volver a Board">
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -272,15 +454,15 @@ export function WhiteboardEditor({ board }: Props) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           onBlur={handleRename}
-          className="h-8 max-w-xs text-sm font-medium"
+          className="h-8 min-w-0 max-w-xs flex-1 text-sm font-medium"
         />
-        <span className="text-xs text-muted-foreground">
+        <span className="shrink-0 text-xs text-muted-foreground">
           {saveState === "saving" && "Guardando…"}
           {saveState === "saved" && "Guardado"}
           {saveState === "unsaved" && "Cambios sin guardar"}
         </span>
 
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="ml-auto flex flex-wrap items-center gap-1.5">
           <Button
             variant="outline"
             size="sm"
@@ -332,6 +514,16 @@ export function WhiteboardEditor({ board }: Props) {
           </Popover>
         </div>
       </div>
+
+      {conflict && (
+        <WhiteboardConflictBanner
+          conflictingCount={conflict.conflictingIds.length}
+          onReloadRemote={handleReloadRemote}
+          onKeepMyChanges={handleKeepMyChanges}
+          resolving={resolvingConflict}
+        />
+      )}
+
       <div className="flex-1">
         {mod && (
           <mod.Excalidraw
@@ -339,8 +531,8 @@ export function WhiteboardEditor({ board }: Props) {
               excalidrawApiRef.current = api;
             }}
             initialData={{
-              elements: board.scene_data.elements as never,
-              appState: board.scene_data.appState as never,
+              elements: initialBoard.scene_data.elements as never,
+              appState: initialBoard.scene_data.appState as never,
             }}
             onChange={handleSceneChange}
           >

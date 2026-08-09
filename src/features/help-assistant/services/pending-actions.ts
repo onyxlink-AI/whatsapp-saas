@@ -51,6 +51,14 @@ export const PENDING_ACTION_TTL_SECONDS = 300;
 // ──────────────────────────────────────────────────────────────────────────────
 const PENDING_ACTION_PAYLOAD_SCHEMAS = {
   cancel_agenda_item: z.object({ agenda_task_id: z.string().uuid() }),
+  // Fase 4C: element_id NO es un UUID — Excalidraw genera ids propios
+  // (ver scene-adapter.ts) — se valida como string acotado, igual que la
+  // función SQL (resolve_assistant_pending_action, rama delete_board_element).
+  delete_board_element: z.object({
+    whiteboard_id: z.string().uuid(),
+    element_id: z.string().min(1).max(100),
+    expected_element_version: z.number().int().positive(),
+  }),
 } as const;
 
 export type PendingActionType = keyof typeof PENDING_ACTION_PAYLOAD_SCHEMAS;

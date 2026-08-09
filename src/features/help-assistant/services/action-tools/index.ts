@@ -2,6 +2,7 @@ import { buildClientTools } from "./client-tools";
 import { buildPipelineTools } from "./pipeline-tools";
 import { buildProjectTools } from "./project-tools";
 import { buildWhiteboardTools } from "./whiteboard-tools";
+import { buildBoardTools } from "./board-tools";
 import { buildAgendaTools } from "./agenda-tools";
 import { buildNoteTools } from "./note-tools";
 import { buildContentTools } from "./content-tools";
@@ -41,6 +42,12 @@ export function buildActionTools(ctx: HelpActionContext, plan: HelpAssistantPlan
     ...(canWrite ? buildNoteTools(ctx) : {}),
     ...(canWrite ? buildContentTools(ctx) : {}),
     ...(canWrite && plan.whiteboardEnabled ? buildWhiteboardTools(ctx) : {}),
+    // Fase 4C: edición interna de Board — mismo gate que las tools de
+    // tablero de 4A (canWrite && whiteboardEnabled), comparte el MISMO
+    // confirmationSlot que Agenda para que "máximo una preparación
+    // confirmable por petición" sea real entre TODAS las capacidades, no
+    // solo dentro de Board.
+    ...(canWrite && plan.whiteboardEnabled ? buildBoardTools(ctx, confirmationSlot) : {}),
   };
 
   return { tools, confirmationSlot };

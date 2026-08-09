@@ -152,6 +152,22 @@ describe("POST .../help-assistant/confirm", () => {
     );
   });
 
+  it("Fase 4C: confirmación de un delete_board_element pasa su resultado (whiteboard_id/element_id) tal cual como metadata, genérico para cualquier action_type futuro", async () => {
+    resolveConfirmableAction.mockResolvedValue({
+      ok: true,
+      code: "executed",
+      result: { whiteboard_id: "wb-1", element_id: "el-1" },
+      pendingActionId: "pending-3",
+    });
+    const res = await POST(req({ token: VALID_TOKEN, decision: "confirm" }), params("ws1"));
+    const body = await res.json();
+
+    expect(body).toEqual({ ok: true, code: "executed" });
+    expect(logAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "help_assistant.action_executed", targetId: "pending-3", metadata: { whiteboard_id: "wb-1", element_id: "el-1" } }),
+    );
+  });
+
   it("cancelación exitosa -> 200, code cancelled, audita help_assistant.action_cancelled con pendingActionId como targetId", async () => {
     resolveConfirmableAction.mockResolvedValue({ ok: true, code: "cancelled", pendingActionId: "pending-2" });
     const res = await POST(req({ token: VALID_TOKEN, decision: "cancel" }), params("ws1"));

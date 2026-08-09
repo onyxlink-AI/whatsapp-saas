@@ -99,7 +99,10 @@ export async function POST(
         targetType: "assistant_pending_action",
         targetId: resolved.pendingActionId,
         summary: "El usuario confirmó una acción preparada por el Asistente de Ayuda",
-        metadata: typeof resolved.result?.agenda_task_id === "string" ? { agenda_task_id: resolved.result.agenda_task_id } : undefined,
+        // El resultado ya es un objeto estructurado y controlado por el
+        // servidor (agenda_task_id, o whiteboard_id+element_id para
+        // Fase 4C) — nunca contenido arbitrario, seguro de pasar tal cual.
+        metadata: resolved.result,
       });
     } else {
       void logAudit({
