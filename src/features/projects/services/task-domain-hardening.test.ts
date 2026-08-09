@@ -25,6 +25,7 @@ const lastWrite: Record<string, Record<string, unknown>> = {};
 function chain(result: Result) {
   const node: Record<string, unknown> = {
     eq: () => node,
+    not: () => node,
     select: () => node,
     maybeSingle: () => Promise.resolve(result),
     single: () => Promise.resolve(result.data ? result : { data: null, error: result.error ?? { message: "no rows" } }),
@@ -48,7 +49,7 @@ const sessionClient = {
 };
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => sessionClient }));
 
-const { createAgendaTask, updateAgendaTask, toggleAgendaTaskDone } = await import("./agenda-actions");
+const { createAgendaTask, updateAgendaTask, toggleAgendaTaskDone, restoreAgendaTask } = await import("./agenda-actions");
 const { updateTask, completeTask, reassignTask } = await import("./task-actions");
 const { createSubtask, toggleSubtask, updateSubtask } = await import("./subtask-actions");
 
@@ -189,6 +190,32 @@ describe("agenda-actions — endurecimiento", () => {
       expect(result.error).not.toContain("connection reset");
     }
     expect(lastWrite.agenda_tasks).toBeUndefined();
+  });
+
+  // Fase 4B — restoreAgendaTask: reversible, se ejecuta directamente (sin
+  // el flujo de confirmación), pero sigue el mismo endurecimiento que
+  // cualquier UPDATE de esta fase — 0 filas nunca es éxito.
+  it("restoreAgendaTask: 0 filas (tarea de otro workspace, o ya no está cancelada) nunca es éxito", async () => {
+    results.agenda_tasks = { data: null, error: null };
+    const result = await restoreAgendaTask(WORKSPACE_A, FOREIGN_ID);
+    expect(result).toEqual({ ok: false, error: "not_found_or_forbidden" });
+  });
+
+  it("restoreAgendaTask: error real de BD nunca se confunde con not_found_or_forbidden", async () => {
+    results.agenda_tasks = { data: null, error: { message: "connection reset" } };
+    const result = await restoreAgendaTask(WORKSPACE_A, FOREIGN_ID);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).not.toBe("not_found_or_forbidden");
+      expect(result.error).not.toContain("connection reset");
+    }
+  });
+
+  it("restoreAgendaTask: 1 fila afectada es éxito y limpia cancelled_at/cancelled_by", async () => {
+    results.agenda_tasks = { data: { id: FOREIGN_ID }, error: null };
+    const result = await restoreAgendaTask(WORKSPACE_A, FOREIGN_ID);
+    expect(result).toEqual({ ok: true, data: { id: FOREIGN_ID } });
+    expect(lastWrite.agenda_tasks).toEqual(expect.objectContaining({ cancelled_at: null, cancelled_by: null }));
   });
 });
 

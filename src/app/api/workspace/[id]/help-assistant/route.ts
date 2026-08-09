@@ -45,5 +45,10 @@ export async function POST(
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 
-  return NextResponse.json({ text: result.text, used: result.used, limit: result.limit });
+  return NextResponse.json({
+    text: result.text,
+    used: result.used,
+    limit: result.limit,
+    ...(result.pendingConfirmation ? { pendingConfirmation: result.pendingConfirmation } : {}),
+  });
 }

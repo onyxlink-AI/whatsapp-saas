@@ -6,6 +6,7 @@ import { buildAgendaTools } from "./agenda-tools";
 import { buildNoteTools } from "./note-tools";
 import { buildContentTools } from "./content-tools";
 import { resolveEntitlements, canUseAssistantActions } from "@/features/entitlements/resolve";
+import { createPendingConfirmationSlot, type PendingConfirmationSlot } from "../pending-actions";
 import type { HelpActionContext, HelpAssistantPlanContext } from "../../types";
 
 /**
@@ -20,18 +21,29 @@ import type { HelpActionContext, HelpAssistantPlanContext } from "../../types";
  * comprobar por su cuenta en assertHelpActionAccess(). Esto es solo un
  * filtro de "qué tools construir/ofrecer al modelo" — la autorización real
  * y definitiva ocurre dentro de cada tool, en cada ejecución.
+ *
+ * Fase 4B: confirmationSlot es un único objeto mutable compartido por
+ * TODAS las tools confirmables construidas para esta petición — impone
+ * "máximo una preparación confirmable por petición" y es el canal por el
+ * que el token en claro sale hacia help-assistant-service.ts sin pasar
+ * nunca por el propio texto del modelo (ver pending-actions.ts).
  */
 export function buildActionTools(ctx: HelpActionContext, plan: HelpAssistantPlanContext, actionsEnabled: boolean) {
   const entitlements = resolveEntitlements({ product_package: plan.package });
   const canWrite = canUseAssistantActions(actionsEnabled, entitlements);
+  const confirmationSlot = createPendingConfirmationSlot();
 
-  return {
+  const tools = {
     ...(canWrite ? buildClientTools(ctx) : {}),
     ...(canWrite ? buildPipelineTools(ctx) : {}),
     ...(canWrite ? buildProjectTools(ctx) : {}),
-    ...(canWrite ? buildAgendaTools(ctx) : {}),
+    ...(canWrite ? buildAgendaTools(ctx, confirmationSlot) : {}),
     ...(canWrite ? buildNoteTools(ctx) : {}),
     ...(canWrite ? buildContentTools(ctx) : {}),
     ...(canWrite && plan.whiteboardEnabled ? buildWhiteboardTools(ctx) : {}),
   };
+
+  return { tools, confirmationSlot };
 }
+
+export type { PendingConfirmationSlot };

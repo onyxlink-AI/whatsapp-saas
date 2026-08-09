@@ -103,6 +103,9 @@ export interface AgendaTaskRow {
   assigned_to: string | null;
   created_by: string | null;
   completed_at: string | null;
+  /** Fase 4B: cancelación reversible desde el Asistente de Ayuda — nunca borrado físico. */
+  cancelled_at: string | null;
+  cancelled_by: string | null;
   created_at: string;
   updated_at: string;
 }

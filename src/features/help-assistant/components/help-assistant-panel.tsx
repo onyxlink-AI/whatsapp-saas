@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useHelpAssistantChat } from "@/features/help-assistant/hooks/use-help-assistant-chat";
+import { ConfirmationCard } from "./confirmation-card";
 
 interface HelpAssistantPanelProps {
   workspaceId: string;
@@ -22,7 +23,7 @@ interface HelpAssistantPanelProps {
 }
 
 export function HelpAssistantPanel({ workspaceId, open, onOpenChange }: HelpAssistantPanelProps) {
-  const { messages, quota, blocked, isPending, sendMessage } = useHelpAssistantChat(workspaceId);
+  const { messages, quota, blocked, isPending, sendMessage, resolveConfirmation } = useHelpAssistantChat(workspaceId);
   const [draft, setDraft] = useState("");
 
   function handleSend() {
@@ -56,19 +57,27 @@ export function HelpAssistantPanel({ workspaceId, open, onOpenChange }: HelpAssi
                 Pregúntame cómo usar el panel de Onyxlink — por ejemplo, «¿cómo creo un cliente?» o «¿cómo agrego un negocio al pipeline?».
               </p>
             )}
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={cn(
-                  "max-w-[85%] rounded-lg px-3 py-2 text-sm",
-                  message.role === "user"
-                    ? "ml-auto bg-[hsl(var(--electric-lime)/0.15)] text-foreground"
-                    : "mr-auto bg-muted text-foreground",
-                )}
-              >
-                {message.content}
-              </div>
-            ))}
+            {messages.map((message) =>
+              message.kind === "confirmation" ? (
+                <ConfirmationCard
+                  key={message.id}
+                  card={message}
+                  onResolve={(decision) => resolveConfirmation(message.id, decision)}
+                />
+              ) : (
+                <div
+                  key={message.id}
+                  className={cn(
+                    "max-w-[85%] rounded-lg px-3 py-2 text-sm",
+                    message.role === "user"
+                      ? "ml-auto bg-[hsl(var(--electric-lime)/0.15)] text-foreground"
+                      : "mr-auto bg-muted text-foreground",
+                  )}
+                >
+                  {message.content}
+                </div>
+              ),
+            )}
             {isPending && (
               <div className="mr-auto max-w-[85%] rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
                 Escribiendo...

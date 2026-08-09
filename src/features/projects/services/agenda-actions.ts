@@ -92,6 +92,7 @@ export async function listAgendaTasksForDay(
     .select("*")
     .eq("workspace_id", workspaceId)
     .eq("scheduled_date", date)
+    .is("cancelled_at", null)
     .order("created_at", { ascending: true });
 
   if (error || !data) {
@@ -127,6 +128,7 @@ export async function listAgendaTasksForWeek(
     .or(
       `scheduled_week_start.eq.${weekStart},and(scheduled_date.gte.${weekStart},scheduled_date.lte.${weekEnd})`,
     )
+    .is("cancelled_at", null)
     .order("created_at", { ascending: true });
 
   if (error || !data) {
@@ -158,6 +160,7 @@ export async function searchAgendaTasks(
     .select("*")
     .eq("workspace_id", workspaceId)
     .ilike("title", `%${query}%`)
+    .is("cancelled_at", null)
     .order("scheduled_date", { ascending: true, nullsFirst: false })
     .limit(10);
 
@@ -167,6 +170,105 @@ export async function searchAgendaTasks(
   }
 
   return data as AgendaTaskRow[];
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// getAgendaTaskById — Fase 4B: lectura workspace-scoped de UNA tarea por ID,
+// incluidas las ya canceladas (a diferencia de list/search de arriba) —
+// la usa cancel_agenda_item para construir el resumen exacto antes de
+// preparar la confirmación, y restore_agenda_item para comprobar que de
+// verdad está cancelada antes de restaurarla.
+// ──────────────────────────────────────────────────────────────────────────────
+export async function getAgendaTaskById(workspaceId: string, taskId: string): Promise<AgendaTaskRow | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from("agenda_tasks")
+    .select("*")
+    .eq("id", taskId)
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
+
+  if (error || !data) {
+    if (error) console.error("[getAgendaTaskById] Supabase error:", error.message);
+    return null;
+  }
+
+  return data as AgendaTaskRow;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// listCancelledAgendaTasks — Fase 4B: vista de recuperación. Las canceladas
+// desaparecen de listAgendaTasksForDay/Week y searchAgendaTasks (arriba) —
+// esta es la única vía para volver a verlas y restaurarlas.
+// ──────────────────────────────────────────────────────────────────────────────
+export async function listCancelledAgendaTasks(workspaceId: string): Promise<AgendaTaskRow[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("agenda_tasks")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .not("cancelled_at", "is", null)
+    .order("cancelled_at", { ascending: false })
+    .limit(50);
+
+  if (error || !data) {
+    console.error("[listCancelledAgendaTasks] Supabase error:", error?.message);
+    return [];
+  }
+
+  return data as AgendaTaskRow[];
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// restoreAgendaTask — Fase 4B: revierte una cancelación. Reversible sobre
+// una operación ya reversible — se ejecuta directamente (sin el flujo de
+// confirmación de dos pasos), igual que cualquier otra mutación reversible
+// de Fase 4A. La cancelación en sí NUNCA se hace desde aquí ni desde ningún
+// otro código de Node — solo ocurre dentro de resolve_assistant_pending_action()
+// (pending-actions.ts), la única vía autorizada para ejecutar una acción
+// confirmable.
+// ──────────────────────────────────────────────────────────────────────────────
+export async function restoreAgendaTask(workspaceId: string, taskId: string): Promise<ActionResult<{ id: string }>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { ok: false, error: "No autorizado" };
+  }
+
+  const { data: updated, error } = await supabase
+    .from("agenda_tasks")
+    .update({ cancelled_at: null, cancelled_by: null, updated_at: new Date().toISOString() })
+    .eq("id", taskId)
+    .eq("workspace_id", workspaceId)
+    .not("cancelled_at", "is", null)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    console.error("[restoreAgendaTask] Supabase error:", error.message);
+    return { ok: false, error: "Error al restaurar la tarea" };
+  }
+  if (!updated) {
+    return { ok: false, error: "not_found_or_forbidden" };
+  }
+
+  return { ok: true, data: { id: updated.id as string } };
 }
 
 function addDaysToIsoDate(isoDate: string, days: number): string {

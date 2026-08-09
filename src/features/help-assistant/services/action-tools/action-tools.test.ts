@@ -62,12 +62,28 @@ const searchAgendaTasks = vi.fn();
 const createAgendaTask = vi.fn();
 const updateAgendaTask = vi.fn();
 const toggleAgendaTaskDone = vi.fn();
+const getAgendaTaskById = vi.fn();
+const restoreAgendaTask = vi.fn();
 vi.mock("@/features/projects/services/agenda-actions", () => ({
   searchAgendaTasks: (...args: unknown[]) => searchAgendaTasks(...args),
   createAgendaTask: (...args: unknown[]) => createAgendaTask(...args),
   updateAgendaTask: (...args: unknown[]) => updateAgendaTask(...args),
   toggleAgendaTaskDone: (...args: unknown[]) => toggleAgendaTaskDone(...args),
+  getAgendaTaskById: (...args: unknown[]) => getAgendaTaskById(...args),
+  restoreAgendaTask: (...args: unknown[]) => restoreAgendaTask(...args),
 }));
+
+// prepareConfirmableAction se mockea; createPendingConfirmationSlot/tipos se
+// mantienen reales (vía importOriginal) — es lógica pura ({remaining:1,
+// prepared:null}), probarla contra un doble no aportaría nada.
+const prepareConfirmableAction = vi.fn();
+vi.mock("../pending-actions", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../pending-actions")>();
+  return {
+    ...actual,
+    prepareConfirmableAction: (...args: unknown[]) => prepareConfirmableAction(...args),
+  };
+});
 
 const searchNotes = vi.fn();
 const createNote = vi.fn();
@@ -121,6 +137,7 @@ const { buildAgendaTools } = await import("./agenda-tools");
 const { buildNoteTools } = await import("./note-tools");
 const { buildContentTools } = await import("./content-tools");
 const { buildActionTools } = await import("./index");
+const { createPendingConfirmationSlot } = await import("../pending-actions");
 
 const ctx = { workspaceId: "ws1", actorUserId: "user1" };
 
@@ -131,7 +148,7 @@ beforeEach(() => {
 
 describe("buildActionTools plan gating", () => {
   it("returns no tools when the workspace has neither Gestión nor the WhatsApp agent", () => {
-    const tools = buildActionTools(
+    const { tools } = buildActionTools(
       ctx,
       { package: "none", gestionEnabled: false, whatsappAgentEnabled: false, officeVirtualEnabled: false, hasVoiceAgent: false, whiteboardEnabled: false },
       true,
@@ -140,7 +157,7 @@ describe("buildActionTools plan gating", () => {
   });
 
   it("Paquete 1 (Gestión sin WhatsApp) is the informational assistant — no write tools at all", () => {
-    const tools = buildActionTools(
+    const { tools } = buildActionTools(
       ctx,
       { package: "gestion", gestionEnabled: true, whatsappAgentEnabled: false, officeVirtualEnabled: false, hasVoiceAgent: false, whiteboardEnabled: true },
       true,
@@ -149,7 +166,7 @@ describe("buildActionTools plan gating", () => {
   });
 
   it("kill switch off (actionsEnabled=false) means no write tools even on Suite", () => {
-    const tools = buildActionTools(
+    const { tools } = buildActionTools(
       ctx,
       { package: "suite", gestionEnabled: true, whatsappAgentEnabled: true, officeVirtualEnabled: true, hasVoiceAgent: false, whiteboardEnabled: true },
       false,
@@ -157,8 +174,8 @@ describe("buildActionTools plan gating", () => {
     expect(Object.keys(tools)).toHaveLength(0);
   });
 
-  it("Paquete 2 (whatsapp_gestion) is the management assistant — full write tools across every 4A domain", () => {
-    const tools = buildActionTools(
+  it("Paquete 2 (whatsapp_gestion) is the management assistant — full write tools across every 4A domain, plus 4B's cancel/restore agenda", () => {
+    const { tools } = buildActionTools(
       ctx,
       { package: "whatsapp_gestion", gestionEnabled: true, whatsappAgentEnabled: true, officeVirtualEnabled: false, hasVoiceAgent: false, whiteboardEnabled: true },
       true,
@@ -170,6 +187,8 @@ describe("buildActionTools plan gating", () => {
     expect(tools).toHaveProperty("search_agenda_items");
     expect(tools).toHaveProperty("update_agenda_item");
     expect(tools).toHaveProperty("complete_agenda_item");
+    expect(tools).toHaveProperty("cancel_agenda_item");
+    expect(tools).toHaveProperty("restore_agenda_item");
     expect(tools).toHaveProperty("create_note");
     expect(tools).toHaveProperty("search_notes");
     expect(tools).toHaveProperty("update_note");
@@ -189,7 +208,7 @@ describe("buildActionTools plan gating", () => {
   });
 
   it("suite: Gestión + Oficina (context) — mismas tools de escritura que whatsapp_gestion, Board incluido automáticamente", () => {
-    const tools = buildActionTools(
+    const { tools } = buildActionTools(
       ctx,
       { package: "suite", gestionEnabled: true, whatsappAgentEnabled: true, officeVirtualEnabled: true, hasVoiceAgent: false, whiteboardEnabled: true },
       true,
@@ -201,14 +220,14 @@ describe("buildActionTools plan gating", () => {
   });
 
   it("includes whiteboard tools only when Gestión, WhatsApp AND Board are all enabled — board itself stays search/create/rename only", () => {
-    const withoutWhiteboard = buildActionTools(
+    const { tools: withoutWhiteboard } = buildActionTools(
       ctx,
       { package: "whatsapp_gestion", gestionEnabled: true, whatsappAgentEnabled: true, officeVirtualEnabled: false, hasVoiceAgent: false, whiteboardEnabled: false },
       true,
     );
     expect(withoutWhiteboard).not.toHaveProperty("create_whiteboard");
 
-    const withWhiteboard = buildActionTools(
+    const { tools: withWhiteboard } = buildActionTools(
       ctx,
       { package: "whatsapp_gestion", gestionEnabled: true, whatsappAgentEnabled: true, officeVirtualEnabled: false, hasVoiceAgent: false, whiteboardEnabled: true },
       true,
@@ -218,6 +237,15 @@ describe("buildActionTools plan gating", () => {
     expect(withWhiteboard).toHaveProperty("search_whiteboards");
     // Fase 4C todavía no ha empezado — nunca una tool de scene_data.
     expect(Object.keys(withWhiteboard).some((k) => k.includes("scene"))).toBe(false);
+  });
+
+  it("returns a fresh confirmationSlot per call, starting with remaining=1 and prepared=null", () => {
+    const { confirmationSlot } = buildActionTools(
+      ctx,
+      { package: "whatsapp_gestion", gestionEnabled: true, whatsappAgentEnabled: true, officeVirtualEnabled: false, hasVoiceAgent: false, whiteboardEnabled: true },
+      true,
+    );
+    expect(confirmationSlot).toEqual({ remaining: 1, prepared: null });
   });
 });
 
@@ -501,7 +529,7 @@ describe("project-tools", () => {
 describe("agenda-tools", () => {
   it("create_agenda_item succeeds and logs an audit entry", async () => {
     createAgendaTask.mockResolvedValue({ ok: true, data: { id: "a1" } });
-    const tools = buildAgendaTools(ctx);
+    const tools = buildAgendaTools(ctx, createPendingConfirmationSlot());
 
     const result = await tools.create_agenda_item.execute!(
       { title: "Llamar a Ana", scheduled_date: "2026-08-10" },
@@ -515,7 +543,7 @@ describe("agenda-tools", () => {
 
   it("complete_agenda_item toggles done and translates not_found_or_forbidden", async () => {
     toggleAgendaTaskDone.mockResolvedValue({ ok: false, error: "not_found_or_forbidden" });
-    const tools = buildAgendaTools(ctx);
+    const tools = buildAgendaTools(ctx, createPendingConfirmationSlot());
 
     const result = await tools.complete_agenda_item.execute!(
       { agenda_item_id: "11111111-1111-4111-8111-111111111111", done: true },
@@ -528,7 +556,7 @@ describe("agenda-tools", () => {
     searchAgendaTasks.mockResolvedValue([
       { id: "a1", title: "Llamar a Ana", scheduled_date: "2026-08-10", scheduled_week_start: null, done: false },
     ]);
-    const tools = buildAgendaTools(ctx);
+    const tools = buildAgendaTools(ctx, createPendingConfirmationSlot());
 
     const result = await tools.search_agenda_items.execute!({ query: "Ana" }, { toolCallId: "t1", messages: [] } as never);
     expect(result).toEqual([{ agenda_item_id: "a1", title: "Llamar a Ana", scheduled_date: "2026-08-10", scheduled_week_start: null, done: false }]);
@@ -536,7 +564,7 @@ describe("agenda-tools", () => {
 
   it("denies access when assertHelpActionAccess rejects, without calling the underlying service", async () => {
     assertHelpActionAccess.mockResolvedValue({ ok: false, reason: "plan_not_included" });
-    const tools = buildAgendaTools(ctx);
+    const tools = buildAgendaTools(ctx, createPendingConfirmationSlot());
 
     const result = await tools.create_agenda_item.execute!(
       { title: "X", scheduled_date: "2026-08-10" },
@@ -544,6 +572,121 @@ describe("agenda-tools", () => {
     );
     expect(result).toEqual({ ok: false, error: "denied:plan_not_included" });
     expect(createAgendaTask).not.toHaveBeenCalled();
+  });
+
+  const AGENDA_TASK_ID = "11111111-1111-4111-8111-111111111111";
+
+  describe("cancel_agenda_item — Fase 4B: prepara, nunca ejecuta directamente", () => {
+    it("prepares a confirmable action from the real row, without mutating agenda_tasks and without leaking the token to the model", async () => {
+      getAgendaTaskById.mockResolvedValue({
+        id: AGENDA_TASK_ID,
+        title: "Llamar a Ana",
+        scheduled_date: "2026-08-10",
+        scheduled_week_start: null,
+        cancelled_at: null,
+      });
+      prepareConfirmableAction.mockResolvedValue({ token: "raw-token-should-never-leak", expiresInSeconds: 300, pendingActionId: "pending-42" });
+      const slot = createPendingConfirmationSlot();
+      const tools = buildAgendaTools(ctx, slot);
+
+      const result = await tools.cancel_agenda_item.execute!(
+        { agenda_item_id: AGENDA_TASK_ID },
+        { toolCallId: "t1", messages: [] } as never,
+      );
+
+      expect(result).toEqual({
+        ok: true,
+        requiresConfirmation: true,
+        summary: "Vas a cancelar «Llamar a Ana», prevista para el 2026-08-10. Podrás restaurarla después.",
+        expiresInSeconds: 300,
+      });
+      // El token NUNCA aparece en lo que la tool devuelve (lo que el modelo ve),
+      // ni tampoco pendingActionId — no aporta nada a la interfaz.
+      expect(JSON.stringify(result)).not.toContain("raw-token-should-never-leak");
+      expect(JSON.stringify(result)).not.toContain("pending-42");
+      // Sale únicamente por el slot compartido, para que help-assistant-service.ts lo lea sin pasar por OpenRouter.
+      expect(slot.prepared).toEqual({ token: "raw-token-should-never-leak", expiresInSeconds: 300, summary: expect.stringContaining("Llamar a Ana") });
+      expect(prepareConfirmableAction).toHaveBeenCalledWith(
+        expect.objectContaining({ actionType: "cancel_agenda_item", payload: { agenda_task_id: AGENDA_TASK_ID } }),
+      );
+      // targetId es el ID de la fila pendiente (identificador común de
+      // auditoría con executed/cancelled) — el ID de Agenda queda solo en metadata.
+      expect(logAudit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "help_assistant.action_prepared",
+          targetType: "assistant_pending_action",
+          targetId: "pending-42",
+          metadata: expect.objectContaining({ agenda_task_id: AGENDA_TASK_ID }),
+        }),
+      );
+    });
+
+    it("enforces at most one confirmable preparation per request", async () => {
+      getAgendaTaskById.mockResolvedValue({ id: AGENDA_TASK_ID, title: "X", scheduled_date: "2026-08-10", scheduled_week_start: null, cancelled_at: null });
+      const slot = createPendingConfirmationSlot();
+      slot.remaining = 0;
+      const tools = buildAgendaTools(ctx, slot);
+
+      const result = await tools.cancel_agenda_item.execute!(
+        { agenda_item_id: AGENDA_TASK_ID },
+        { toolCallId: "t1", messages: [] } as never,
+      );
+
+      expect(result).toEqual({ ok: false, error: expect.stringContaining("otra acción esperando confirmación") });
+      expect(prepareConfirmableAction).not.toHaveBeenCalled();
+    });
+
+    it("refuses to prepare a cancellation for a task that's already cancelled", async () => {
+      getAgendaTaskById.mockResolvedValue({ id: AGENDA_TASK_ID, title: "X", scheduled_date: "2026-08-10", scheduled_week_start: null, cancelled_at: "2026-08-01T00:00:00Z" });
+      const tools = buildAgendaTools(ctx, createPendingConfirmationSlot());
+
+      const result = await tools.cancel_agenda_item.execute!(
+        { agenda_item_id: AGENDA_TASK_ID },
+        { toolCallId: "t1", messages: [] } as never,
+      );
+
+      expect(result).toEqual({ ok: false, error: "Esa tarea ya está cancelada" });
+      expect(prepareConfirmableAction).not.toHaveBeenCalled();
+    });
+
+    it("never mutates agenda_tasks directly — preparing is read-only", async () => {
+      getAgendaTaskById.mockResolvedValue({ id: AGENDA_TASK_ID, title: "X", scheduled_date: "2026-08-10", scheduled_week_start: null, cancelled_at: null });
+      prepareConfirmableAction.mockResolvedValue({ token: "t", expiresInSeconds: 300, pendingActionId: "pending-1" });
+      const tools = buildAgendaTools(ctx, createPendingConfirmationSlot());
+
+      await tools.cancel_agenda_item.execute!({ agenda_item_id: AGENDA_TASK_ID }, { toolCallId: "t1", messages: [] } as never);
+
+      expect(updateAgendaTask).not.toHaveBeenCalled();
+      expect(toggleAgendaTaskDone).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("restore_agenda_item — reversible, se ejecuta directamente sin confirmación", () => {
+    it("restores and logs an audit entry", async () => {
+      restoreAgendaTask.mockResolvedValue({ ok: true, data: { id: AGENDA_TASK_ID } });
+      const tools = buildAgendaTools(ctx, createPendingConfirmationSlot());
+
+      const result = await tools.restore_agenda_item.execute!(
+        { agenda_item_id: AGENDA_TASK_ID },
+        { toolCallId: "t1", messages: [] } as never,
+      );
+
+      expect(result).toEqual({ ok: true, agenda_item_id: AGENDA_TASK_ID });
+      expect(restoreAgendaTask).toHaveBeenCalledWith("ws1", AGENDA_TASK_ID);
+      expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({ action: "help_assistant.restore_agenda_item" }));
+    });
+
+    it("translates not_found_or_forbidden and never confuses it with a generic DB error", async () => {
+      restoreAgendaTask.mockResolvedValue({ ok: false, error: "not_found_or_forbidden" });
+      const tools = buildAgendaTools(ctx, createPendingConfirmationSlot());
+
+      const result = await tools.restore_agenda_item.execute!(
+        { agenda_item_id: AGENDA_TASK_ID },
+        { toolCallId: "t1", messages: [] } as never,
+      );
+
+      expect(result).toEqual({ ok: false, error: "No encontré esa tarea de agenda cancelada en esta empresa" });
+    });
   });
 });
 

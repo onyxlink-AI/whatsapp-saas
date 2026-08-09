@@ -6,6 +6,7 @@ import type { AgendaScheduleMode } from "@/features/projects/types";
 import { DayView } from "./day-view";
 import { WeekView } from "./week-view";
 import { GoogleCalendarPanel } from "./google-calendar-panel";
+import { AgendaCancelledPanel } from "./agenda-cancelled-panel";
 
 interface AgendaViewProps {
   workspaceId: string;
@@ -19,12 +20,15 @@ export function AgendaView({ workspaceId }: AgendaViewProps) {
 
   return (
     <div className="flex flex-col h-full gap-3">
-      <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as AgendaScheduleMode)}>
-        <TabsList>
-          <TabsTrigger value="day">Día</TabsTrigger>
-          <TabsTrigger value="week">Semana</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="flex items-center gap-2 flex-wrap">
+        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as AgendaScheduleMode)}>
+          <TabsList>
+            <TabsTrigger value="day">Día</TabsTrigger>
+            <TabsTrigger value="week">Semana</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <AgendaCancelledPanel workspaceId={workspaceId} />
+      </div>
 
       <div className="flex-1 overflow-y-auto">
         {viewMode === "day" ? (

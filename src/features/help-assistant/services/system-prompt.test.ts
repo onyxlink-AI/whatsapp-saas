@@ -165,14 +165,23 @@ describe("buildHelpAssistantSystemPrompt — Fase 1: informativo (Paquete 1) vs 
 });
 
 describe("buildHelpAssistantSystemPrompt — Fase 4A: nuevas reglas de dominio, solo cuando las tools existen de verdad", () => {
-  it("con escritura activada, describe reglas reales de Agenda, Anotaciones y Contenido — nunca capacidades inexistentes (Zoom/Calendar/cancelar/borrado)", () => {
+  it("con escritura activada, describe reglas reales de Agenda, Anotaciones y Contenido — nunca capacidades inexistentes (Zoom/Calendar/borrado)", () => {
     const prompt = buildHelpAssistantSystemPrompt(fullPlan, true);
     expect(prompt).toMatch(/create_agenda_item/);
     expect(prompt).toMatch(/archive_note/);
     expect(prompt).toMatch(/generate_content_script/);
     expect(prompt).toMatch(/No existe ninguna tool para reservar Zoom ni para sincronizar con Google Calendar/);
-    expect(prompt).toMatch(/Tampoco existe una tool de 'cancelar'/);
     expect(prompt).toMatch(/NUNCA borra de verdad/);
+  });
+
+  it("Fase 4B: cancel_agenda_item se describe como reversible y pendiente de confirmación del usuario, nunca instantánea", () => {
+    const prompt = buildHelpAssistantSystemPrompt(fullPlan, true);
+    expect(prompt).toMatch(/cancel_agenda_item/);
+    expect(prompt).toMatch(/restore_agenda_item/);
+    expect(prompt).toMatch(/DISTINTO de borrar/);
+    expect(prompt).toMatch(/nunca se elimina de verdad/);
+    expect(prompt).toMatch(/NUNCA cancela al instante/);
+    expect(prompt).toMatch(/no repitas la llamada ni la des por hecha/);
   });
 
   it("generate_content_script: exige petición explícita, máximo una llamada, y nunca autoguarda sin confirmación", () => {

@@ -14,8 +14,14 @@ function svc() {
   );
 }
 
+export interface PendingConfirmationView {
+  token: string;
+  summary: string;
+  expiresInSeconds: number;
+}
+
 export type AskHelpAssistantResult =
-  | { ok: true; text: string; used: number; limit: number }
+  | { ok: true; text: string; used: number; limit: number; pendingConfirmation?: PendingConfirmationView }
   | { ok: false; code: "quota_exceeded"; used: number; limit: number }
   | { ok: false; code: "internal_error" };
 
@@ -61,7 +67,12 @@ export async function askHelpAssistant(opts: {
   // Cada tool, además, vuelve a comprobar todo desde cero en su propia
   // ejecución (assertHelpActionAccess) — esto solo evita construir/ofrecer
   // tools que la conversación no podría usar de todas formas.
-  const tools = buildActionTools(actionCtx, planContext, actionsEnabled);
+  //
+  // Fase 4B: confirmationSlot es el único canal por el que un token de
+  // confirmación en claro puede salir de esta petición — la tool que lo
+  // generó (cancel_agenda_item) nunca lo devuelve como parte de su
+  // resultado, así que nunca pasa por generateHelpAssistantReply/OpenRouter.
+  const { tools, confirmationSlot } = buildActionTools(actionCtx, planContext, actionsEnabled);
 
   let reply;
   try {
@@ -85,5 +96,11 @@ export async function askHelpAssistant(opts: {
     completionTokens: reply.completionTokens,
   });
 
-  return { ok: true, text: reply.text, used: quota.used + 1, limit: quota.limit };
+  return {
+    ok: true,
+    text: reply.text,
+    used: quota.used + 1,
+    limit: quota.limit,
+    ...(confirmationSlot.prepared ? { pendingConfirmation: confirmationSlot.prepared } : {}),
+  };
 }
