@@ -11,6 +11,10 @@ Este protocolo hace que código, producción, datos y accesos se mantengan
 recuperables. No se considera terminado un trabajo hasta revisar los puntos que
 le correspondan y comunicar su estado.
 
+Desde el primer cliente real, cualquier despliegue debe cumplir además
+`docs/ONYXLINK-PROTOCOLO-ACTUALIZACIONES-SIN-DOWNTIME.md`, especialmente el
+patrón compatible **expandir → convivir → retirar**.
+
 ## 2. Prerrequisitos
 
 - Acceso autorizado al repositorio y a la rama de trabajo.

@@ -9,7 +9,10 @@
     "lint": "eslint src/ middleware.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:ci": "vitest run --no-file-parallelism",
     "test:watch": "vitest",
+    "validate": "npm run typecheck && npm run lint && npm run test:ci && npm run build && git diff --check",
+    "preflight:board": "tsx scripts/whiteboard-scene-preflight.ts",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed"
   },

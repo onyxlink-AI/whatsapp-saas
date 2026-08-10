@@ -1,0 +1,76 @@
+name: Validación continua
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Typecheck, lint, tests y build
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Descargar el commit exacto
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.111.0
+
+      - name: Instalar dependencias reproducibles
+        run: npm ci
+
+      - name: Arrancar Supabase local y aplicar todas las migraciones
+        shell: bash
+        run: |
+          supabase start
+          status="$(supabase status --output json)"
+          echo "NEXT_PUBLIC_SUPABASE_URL=$(jq -r '.API_URL' <<<"$status")" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$(jq -r '.ANON_KEY' <<<"$status")" >> "$GITHUB_ENV"
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(jq -r '.SERVICE_ROLE_KEY' <<<"$status")" >> "$GITHUB_ENV"
+
+      - name: Variables no productivas para build y tests
+        shell: bash
+        run: |
+          echo "NEXT_PUBLIC_APP_URL=http://127.0.0.1:3000" >> "$GITHUB_ENV"
+          echo "ENCRYPTION_KEY=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=" >> "$GITHUB_ENV"
+          echo "ENCRYPTION_KEY_VERSION=1" >> "$GITHUB_ENV"
+
+      - name: Preflight local de Board
+        run: npm run preflight:board
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests
+        run: npm run test:ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Integridad del diff
+        run: git diff --check
+
+      - name: Detener Supabase local
+        if: always()
+        run: supabase stop --no-backup

@@ -1,0 +1,101 @@
+name: Preparar staging semanal
+
+on:
+  schedule:
+    # 05:30 UTC del martes. GitHub trabaja en UTC; la verificación termina
+    # antes de la franja de aprobación humana en España.
+    - cron: "30 5 * * 2"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: SHA o rama que se quiere validar
+        required: true
+        default: main
+
+concurrency:
+  group: onyxlink-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  staging:
+    if: vars.STAGING_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: staging
+
+    steps:
+      - name: Descargar candidato
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || 'main' }}
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.111.0
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Crear Supabase local efímero para las pruebas
+        shell: bash
+        run: |
+          supabase start
+          status="$(supabase status --output json)"
+          echo "NEXT_PUBLIC_SUPABASE_URL=$(jq -r '.API_URL' <<<"$status")" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$(jq -r '.ANON_KEY' <<<"$status")" >> "$GITHUB_ENV"
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(jq -r '.SERVICE_ROLE_KEY' <<<"$status")" >> "$GITHUB_ENV"
+
+      - name: Validar candidato otra vez
+        env:
+          NEXT_PUBLIC_APP_URL: https://staging.onyxlinkpanel.com
+          ENCRYPTION_KEY: ${{ secrets.STAGING_ENCRYPTION_KEY }}
+          ENCRYPTION_KEY_VERSION: ${{ secrets.STAGING_ENCRYPTION_KEY_VERSION }}
+        run: npm run validate
+
+      - name: Detener Supabase local de pruebas
+        run: supabase stop --no-backup
+
+      - name: Enlazar Supabase de staging
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase link --project-ref "${{ secrets.STAGING_SUPABASE_PROJECT_REF }}" --password "${{ secrets.STAGING_SUPABASE_DB_PASSWORD }}"
+
+      - name: Aplicar migraciones a staging
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase db push --linked
+
+      - name: Preflight de Board en staging
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+        run: npm run preflight:board
+
+      - name: Desplegar preview de Vercel
+        id: deploy
+        shell: bash
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npm install --global vercel@58.4.4
+          url="$(vercel deploy --yes --token "${{ secrets.VERCEL_TOKEN }}" --scope "${{ secrets.VERCEL_ORG_ID }}" --meta gitCommitSha="${GITHUB_SHA}")"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Staging desplegado en: $url" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Health check de staging
+        run: curl --fail --show-error --silent --retry 5 --retry-delay 5 "${{ steps.deploy.outputs.url }}/login" > /dev/null
+
+      - name: Detener Supabase local si un paso anterior falló
+        if: always()
+        run: supabase stop --no-backup || true
