@@ -1,0 +1,3 @@
+scripts/check-secret-prefix.ts
+scripts/diagnose-ycloud-live-webhook.ts
+scripts/diagnose-ycloud.ts
