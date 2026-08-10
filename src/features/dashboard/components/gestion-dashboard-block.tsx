@@ -148,6 +148,7 @@ export function GestionDashboardBlock({ metrics, upcomingAgenda, stalledDeals, h
           value={metrics.projectsActiveCount.toLocaleString("es")}
           helper={`Progreso medio: ${metrics.projectsAvgProgress}%`}
           icon={FolderKanban}
+          href="/proyectos?view=projects"
         />
         <KpiCard
           index={1}
@@ -156,6 +157,7 @@ export function GestionDashboardBlock({ metrics, upcomingAgenda, stalledDeals, h
           helper={metrics.tasksOverdue > 0 ? `${metrics.tasksOverdue} vencidas` : "Ninguna vencida"}
           icon={ListChecks}
           tone={metrics.tasksOverdue > 0 ? "warning" : "neutral"}
+          href="/proyectos?view=tasks"
         />
         <KpiCard
           index={2}
@@ -164,6 +166,7 @@ export function GestionDashboardBlock({ metrics, upcomingAgenda, stalledDeals, h
           helper={formatCurrency(metrics.dealsOpenValue)}
           icon={Workflow}
           tone="primary"
+          href="/pipeline"
         />
         <KpiCard
           index={3}
@@ -171,6 +174,7 @@ export function GestionDashboardBlock({ metrics, upcomingAgenda, stalledDeals, h
           value={metrics.contentPendingCount.toLocaleString("es")}
           helper="Ideas, guiones y pendientes de publicar."
           icon={Lightbulb}
+          href="/contenido"
         />
       </section>
 

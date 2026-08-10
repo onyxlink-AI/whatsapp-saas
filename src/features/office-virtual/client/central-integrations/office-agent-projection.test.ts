@@ -162,3 +162,30 @@ describe('previewOfficeAgents — superadmin preview still filters to enabled se
     expect(result.projection.seats.map((s) => s.agentId)).toEqual(['specialist-1']);
   });
 });
+
+// Fase 3 — coreSeatDisplayNames: solo NOMBRES pasan a la proyección pública
+// (sin privacidad que proteger ahí — nunca función/objetivo/color/
+// instrucciones de un puesto fijo, que siguen viniendo del SaaS real, no
+// de este documento).
+describe('coreSeatDisplayNames en la proyección pública', () => {
+  it('pasa tal cual los overrides configurados, sin inventar ni completar los puestos ausentes', () => {
+    const doc: OfficeConfigurationDocument = { ...baseDocument('workspace-a'), coreSeatDisplayNames: { coordinator: 'Pepe', chatbot: 'Nova' } };
+    const result = projectPublishedOfficeAgents(doc, 'workspace-a');
+    if (!result.success) throw new Error(result.code);
+    expect(result.projection.coreSeatDisplayNames).toEqual({ coordinator: 'Pepe', chatbot: 'Nova' });
+  });
+
+  it('un documento sin coreSeatDisplayNames (persistido antes de esta fase) proyecta un objeto vacío, nunca undefined', () => {
+    const doc = baseDocument('workspace-a'); // baseDocument no fija coreSeatDisplayNames — documento "legado"
+    const result = projectPublishedOfficeAgents(doc, 'workspace-a');
+    if (!result.success) throw new Error(result.code);
+    expect(result.projection.coreSeatDisplayNames).toEqual({});
+  });
+
+  it('no se filtra ningún campo privado a través de coreSeatDisplayNames (es solo Record<seatId,string>, no puede contener nada más)', () => {
+    const doc: OfficeConfigurationDocument = { ...baseDocument('workspace-a'), coreSeatDisplayNames: { strategy: 'Contenido' } };
+    const result = projectPublishedOfficeAgents(doc, 'workspace-a');
+    if (!result.success) throw new Error(result.code);
+    expect(Object.values(result.projection.coreSeatDisplayNames)).toEqual(['Contenido']);
+  });
+});

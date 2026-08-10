@@ -118,9 +118,9 @@ export function ContentEditor({ workspaceId, item, members, initialProject, back
 
   function applyGeneratedScript(result: Awaited<ReturnType<typeof generateContentScript>>) {
     if (!result.ok) {
-      if (result.code === "openrouter_not_configured") {
+      if (result.code === "openrouter_not_configured" || result.code === "openrouter_disabled") {
         // El botón sigue disponible, pero el mensaje conduce claramente a
-        // configurar OpenRouter en vez de un error genérico.
+        // revisar la integración en vez de un error genérico.
         toast.error(result.error, {
           action: { label: "Ir a Ajustes", onClick: () => router.push("/settings?tab=integraciones") },
         });

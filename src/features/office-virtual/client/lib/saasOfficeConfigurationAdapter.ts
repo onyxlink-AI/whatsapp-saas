@@ -1,5 +1,5 @@
 import type { OfficeConfigurationDocument, OfficeConfigurationStatus, SpecialistPatch } from '../central-integrations/configuration';
-import type { OfficeSeatId } from '../central-integrations/specialist-seats';
+import type { FixedOfficeSeatId, OfficeSeatId } from '../central-integrations/specialist-seats';
 import type { VerticalId } from '../central-integrations/specialist-verticals';
 import type { OpenRouterStatus, RealIntegrationStatusMap } from '../central-integrations/real-integrations';
 
@@ -10,6 +10,7 @@ export type OfficeConfiguratorCommandInput =
   | { type: 'update_office'; displayName: string }
   | { type: 'update_specialist'; agentId: OfficeSeatId; patch: SpecialistPatch }
   | { type: 'reset_specialist'; agentId: OfficeSeatId }
+  | { type: 'update_core_seat_name'; agentId: FixedOfficeSeatId; name: string | null }
   | { type: 'apply_vertical'; verticalId: VerticalId | null }
   | { type: 'publish' }
   | { type: 'restore_revision'; revision: number };

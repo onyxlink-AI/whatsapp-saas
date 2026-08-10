@@ -18,19 +18,19 @@ interface KpiCardProps {
   icon: LucideIcon;
   tone?: "neutral" | "primary" | "warning";
   index?: number;
+  href?: string;
 }
 
-export function KpiCard({ label, value, helper, icon: Icon, tone = "neutral", index = 0 }: KpiCardProps) {
-  return (
-    <div
-      className={cn(
-        "surface-card min-h-36 p-5 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md",
+export function KpiCard({ label, value, helper, icon: Icon, tone = "neutral", index = 0, href }: KpiCardProps) {
+  const className = cn(
+        "surface-card block min-h-36 p-5 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md",
         motionClasses.fadeInUp,
+        href && "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         tone === "primary" && "border-primary/20 bg-gradient-to-br from-primary/[0.1] via-card to-card",
         tone === "warning" && "border-warning/25 bg-gradient-to-br from-warning/[0.12] via-card to-card",
-      )}
-      style={{ animationDelay: `${index * 50}ms` }}
-    >
+      );
+  const content = (
+    <>
       <div className="flex items-start justify-between gap-3">
         <p className="max-w-[12rem] text-xs font-medium leading-5 text-muted-foreground">{label}</p>
         <div
@@ -46,8 +46,14 @@ export function KpiCard({ label, value, helper, icon: Icon, tone = "neutral", in
       </div>
       <p className="mt-5 font-display text-2xl font-semibold tracking-tight text-foreground tabular-nums">{value}</p>
       <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{helper}</p>
-    </div>
+    </>
   );
+
+  if (href) {
+    return <Link href={href} className={className} style={{ animationDelay: `${index * 50}ms` }}>{content}</Link>;
+  }
+
+  return <div className={className} style={{ animationDelay: `${index * 50}ms` }}>{content}</div>;
 }
 
 interface PriorityRowProps {

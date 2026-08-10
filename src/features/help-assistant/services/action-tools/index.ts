@@ -40,7 +40,10 @@ export function buildActionTools(ctx: HelpActionContext, plan: HelpAssistantPlan
     ...(canWrite ? buildProjectTools(ctx) : {}),
     ...(canWrite ? buildAgendaTools(ctx, confirmationSlot) : {}),
     ...(canWrite ? buildNoteTools(ctx) : {}),
-    ...(canWrite ? buildContentTools(ctx) : {}),
+    // Fase 4: comparte el MISMO confirmationSlot — sustituir contenido ya
+    // existente pide confirmación igual que Board/Agenda, con el mismo
+    // límite de "máximo una preparación por petición" entre todas.
+    ...(canWrite ? buildContentTools(ctx, confirmationSlot) : {}),
     ...(canWrite && plan.whiteboardEnabled ? buildWhiteboardTools(ctx) : {}),
     // Fase 4C: edición interna de Board — mismo gate que las tools de
     // tablero de 4A (canWrite && whiteboardEnabled), comparte el MISMO

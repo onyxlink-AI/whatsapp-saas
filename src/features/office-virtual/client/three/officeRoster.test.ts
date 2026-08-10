@@ -151,3 +151,57 @@ describe('office room slots — an inactive/unavailable seat carries NO real dat
     expect(ready.room.department).toBe('Chatbot');
   });
 });
+
+// Fase 3 — nombre visible configurable en los 4 puestos fijos, con
+// fallback al nombre por defecto cuando no hay override (compatibilidad
+// con configuraciones existentes).
+describe('office room slots — nombre visible configurable de los puestos fijos, con fallback', () => {
+  it('sin ningún override, cada puesto fijo ocupado usa su nombre por defecto de siempre', () => {
+    const roster: OfficeAgentSeatProjection[] = [{ agentId: 'specialist-1', name: 'Ana', function: 'Gestión', objective: 'x', color: '#2563eb' }];
+    const readiness = { whatsappReady: true, voiceReady: true, chatbotReady: true };
+    const slots = buildOfficeRoomSlots(roster, readiness, {});
+
+    expect(slots.find((s) => s.seatId === 'coordinator')?.occupant?.name).toBe('Orquestador');
+    expect(slots.find((s) => s.seatId === 'lead-intake')?.occupant?.name).toBe('Sofía');
+    expect(slots.find((s) => s.seatId === 'strategy')?.occupant?.name).toBe('Elena');
+    expect(slots.find((s) => s.seatId === 'chatbot')?.occupant?.name).toBe('Chatbot');
+  });
+
+  it('un override configurado sustituye el nombre visible del puesto ocupado, sin tocar su función/color/estado', () => {
+    const roster: OfficeAgentSeatProjection[] = [{ agentId: 'specialist-1', name: 'Ana', function: 'Gestión', objective: 'x', color: '#2563eb' }];
+    const readiness = { whatsappReady: true, voiceReady: true, chatbotReady: true };
+    const withDefault = buildOfficeRoomSlots(roster, readiness, {}).find((s) => s.seatId === 'lead-intake')!.occupant!;
+    const withOverride = buildOfficeRoomSlots(roster, readiness, { 'lead-intake': 'Pepe' }).find((s) => s.seatId === 'lead-intake')!.occupant!;
+
+    expect(withOverride.name).toBe('Pepe');
+    expect(withOverride.department).toBe(withDefault.department);
+    expect(withOverride.color).toBe(withDefault.color);
+    expect(withOverride.status).toBe(withDefault.status);
+  });
+
+  it('un puesto fijo VACÍO nunca revela el nombre configurado — la privacidad de "puesto vacío" sigue aplicando aunque haya un override guardado', () => {
+    // El puesto WhatsApp tiene un nombre configurado, pero el canal no está listo.
+    const slots = buildOfficeRoomSlots([], { ...NO_READINESS, whatsappReady: false }, { 'lead-intake': 'Pepe' });
+    const seat = slots.find((s) => s.seatId === 'lead-intake')!;
+    expect(seat.occupant).toBeNull();
+    expect(seat.room.name).toBe(EMPTY_SEAT_LABEL);
+    expect(JSON.stringify(seat.room)).not.toMatch(/pepe/i);
+  });
+
+  it('permite configurar los 4 puestos fijos de forma independiente entre sí', () => {
+    const readiness = { whatsappReady: true, voiceReady: true, chatbotReady: true };
+    const roster: OfficeAgentSeatProjection[] = [{ agentId: 'specialist-1', name: 'Ana', function: 'Gestión', objective: 'x', color: '#2563eb' }];
+    const slots = buildOfficeRoomSlots(roster, readiness, { coordinator: 'Uno', 'lead-intake': 'Dos', strategy: 'Tres', chatbot: 'Cuatro' });
+
+    expect(slots.find((s) => s.seatId === 'coordinator')?.occupant?.name).toBe('Uno');
+    expect(slots.find((s) => s.seatId === 'lead-intake')?.occupant?.name).toBe('Dos');
+    expect(slots.find((s) => s.seatId === 'strategy')?.occupant?.name).toBe('Tres');
+    expect(slots.find((s) => s.seatId === 'chatbot')?.occupant?.name).toBe('Cuatro');
+  });
+
+  it('sin argumento coreSeatDisplayNames (llamada existente sin actualizar), sigue funcionando igual que antes — compatibilidad', () => {
+    const roster: OfficeAgentSeatProjection[] = [{ agentId: 'specialist-1', name: 'Ana', function: 'Gestión', objective: 'x', color: '#2563eb' }];
+    const slots = buildOfficeRoomSlots(roster, { whatsappReady: true, voiceReady: true, chatbotReady: true });
+    expect(slots.find((s) => s.seatId === 'coordinator')?.occupant?.name).toBe('Orquestador');
+  });
+});

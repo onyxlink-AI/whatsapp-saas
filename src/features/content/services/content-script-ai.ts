@@ -13,10 +13,13 @@
  * src/features/inbox/services/openrouter.ts (usado por el agente de
  * WhatsApp y otras 9 funciones, cuyo comportamiento de fallback NO se ha
  * tocado ni auditado para cambiarlo aquí). getWorkspaceOpenRouterCredential()
- * más abajo es un resolvedor propio, estricto, solo para esta función. Si
- * el workspace no tiene su integración configurada y habilitada, no se
- * llama a ningún proveedor — se devuelve un estado controlado que la UI
- * traduce en un mensaje claro para conectar OpenRouter.
+ * (openrouter-credential.ts) es el resolvedor estricto compartido — también
+ * lo usa el chat real de la Oficina Virtual
+ * (office-virtual/chat/route.ts), que por el mismo motivo NUNCA usa
+ * generateChatReply() de openrouter.ts para las llamadas del Orquestador/
+ * especialistas. Si el workspace no tiene su integración configurada y
+ * habilitada, no se llama a ningún proveedor — se devuelve un estado
+ * controlado que la UI traduce en un mensaje claro para conectar OpenRouter.
  *
  * La generación NUNCA muta content_items — solo devuelve una propuesta
  * para el estado local del formulario. El cliente decide si la conserva,
@@ -30,11 +33,29 @@ import { createClient as createSbClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveWorkspace } from "@/features/workspace/services/active-workspace";
 import { resolveEntitlements } from "@/features/entitlements/resolve";
-import { decryptCredentials } from "@/shared/lib/crypto";
+import { getWorkspaceOpenRouterCredential } from "./openrouter-credential";
+
+/**
+ * Revisión correctiva — códigos distintos para cada causa real de fallo
+ * (BLOQUEO 2, punto 13): antes todo lo que no fuera "sin configurar" caía
+ * en el mismo mensaje genérico, y un fallo real de descifrado de la
+ * credencial ni siquiera se capturaba (excepción sin controlar). El texto
+ * (`error`) ya era distinto en la mayoría de casos; `code` existe para que
+ * la UI/las pruebas puedan diferenciar sin depender de comparar cadenas.
+ */
+export type GenerateScriptErrorCode =
+  | "openrouter_not_configured"
+  | "openrouter_disabled"
+  | "credential_decrypt_error"
+  | "rate_limited"
+  | "transient_error"
+  | "network_error"
+  | "invalid_model_response"
+  | "missing_info";
 
 export type ActionResult<T> =
   | { ok: true; data: T; error?: never; code?: never }
-  | { ok: false; data?: never; error: string; code?: "openrouter_not_configured" };
+  | { ok: false; data?: never; error: string; code?: GenerateScriptErrorCode };
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Esquemas — entrada (información de General) y salida (§5.5, textual)
@@ -84,42 +105,13 @@ function svc() {
 const TRANSIENT_ERROR = "No se pudo comprobar tu acceso en este momento. Inténtalo de nuevo en unos segundos.";
 const OPENROUTER_NOT_CONFIGURED_MESSAGE =
   "Conecta tu cuenta de OpenRouter en Ajustes → Integraciones para generar guiones con IA.";
-
-// ──────────────────────────────────────────────────────────────────────────────
-// getWorkspaceOpenRouterCredential — resolvedor estricto, exclusivo de esta
-// función. Nunca lee OPENROUTER_API_KEY (la clave de plataforma). Devuelve
-// un estado controlado en vez de una cadena vacía/undefined para que el
-// caller nunca pueda confundir "sin configurar" con "error transitorio".
-// ──────────────────────────────────────────────────────────────────────────────
-
-type WorkspaceOpenRouterCredential =
-  | { status: "ready"; apiKey: string }
-  | { status: "not_configured" }
-  | { status: "error" };
-
-async function getWorkspaceOpenRouterCredential(workspaceId: string): Promise<WorkspaceOpenRouterCredential> {
-  const { data, error } = await svc()
-    .from("integrations")
-    .select("enabled, credentials")
-    .eq("workspace_id", workspaceId)
-    .eq("provider", "openrouter")
-    .maybeSingle();
-
-  if (error) {
-    console.error("[content-script-ai] error leyendo la integración OpenRouter del workspace:", error.message);
-    return { status: "error" };
-  }
-  if (!data || data.enabled !== true) {
-    return { status: "not_configured" };
-  }
-
-  const creds = await decryptCredentials(data.credentials as Record<string, unknown> | null);
-  const apiKey = creds.openrouter_api_key;
-  if (typeof apiKey !== "string" || apiKey.length === 0) {
-    return { status: "not_configured" };
-  }
-  return { status: "ready", apiKey };
-}
+const OPENROUTER_DISABLED_MESSAGE =
+  "La integración de OpenRouter de esta empresa está desactivada. Actívala en Ajustes → Integraciones para generar guiones con IA.";
+const CREDENTIAL_DECRYPT_ERROR_MESSAGE =
+  "No se pudo leer la clave de OpenRouter guardada. Vuelve a introducirla en Ajustes → Integraciones.";
+const RATE_LIMITED_MESSAGE = "Has alcanzado el límite de generaciones por hora. Intenta de nuevo más tarde.";
+const NETWORK_ERROR_MESSAGE = "No se pudo contactar con el modelo de IA. Revisa tu conexión e inténtalo de nuevo.";
+const INVALID_MODEL_RESPONSE_MESSAGE = "El modelo no devolvió un guion con el formato esperado. Inténtalo de nuevo.";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // reserveGeneration — reserva atómica del cupo (migración
@@ -245,7 +237,7 @@ export async function generateContentScript(
     .maybeSingle();
   if (workspaceError) {
     console.error("[content-script-ai] error leyendo el paquete del workspace:", workspaceError.message);
-    return { ok: false, error: TRANSIENT_ERROR };
+    return { ok: false, error: TRANSIENT_ERROR, code: "transient_error" };
   }
   if (!resolveEntitlements(workspaceRow).hasGestion) {
     return { ok: false, error: "Esta función no está incluida en tu plan" };
@@ -258,7 +250,7 @@ export async function generateContentScript(
   const input = parsed.data;
 
   if (!input.mainIdea?.trim() && !input.description?.trim()) {
-    return { ok: false, error: "Añade una idea principal o una descripción antes de generar" };
+    return { ok: false, error: "Añade una idea principal o una descripción antes de generar", code: "missing_info" };
   }
 
   let responsibleName: string | null = null;
@@ -272,7 +264,7 @@ export async function generateContentScript(
       .maybeSingle();
     if (memberError) {
       console.error("[content-script-ai] error leyendo la membership del responsable:", memberError.message);
-      return { ok: false, error: TRANSIENT_ERROR };
+      return { ok: false, error: TRANSIENT_ERROR, code: "transient_error" };
     }
     if (!memberRow) {
       return { ok: false, error: "El responsable no pertenece a la empresa activa" };
@@ -288,7 +280,13 @@ export async function generateContentScript(
   // gastar cupo de rate limit ni intentar ninguna llamada a OpenRouter.
   const credential = await getWorkspaceOpenRouterCredential(workspaceId);
   if (credential.status === "error") {
-    return { ok: false, error: TRANSIENT_ERROR };
+    return { ok: false, error: TRANSIENT_ERROR, code: "transient_error" };
+  }
+  if (credential.status === "decrypt_error") {
+    return { ok: false, error: CREDENTIAL_DECRYPT_ERROR_MESSAGE, code: "credential_decrypt_error" };
+  }
+  if (credential.status === "disabled") {
+    return { ok: false, error: OPENROUTER_DISABLED_MESSAGE, code: "openrouter_disabled" };
   }
   if (credential.status === "not_configured") {
     return { ok: false, error: OPENROUTER_NOT_CONFIGURED_MESSAGE, code: "openrouter_not_configured" };
@@ -297,10 +295,10 @@ export async function generateContentScript(
   const reservation = await reserveGeneration(workspaceId, user.id);
   if (reservation.status === "error") {
     // Fail-closed: una función con coste real nunca "falla abierta".
-    return { ok: false, error: TRANSIENT_ERROR };
+    return { ok: false, error: TRANSIENT_ERROR, code: "transient_error" };
   }
   if (!reservation.allowed) {
-    return { ok: false, error: "Has alcanzado el límite de generaciones por hora. Intenta de nuevo más tarde." };
+    return { ok: false, error: RATE_LIMITED_MESSAGE, code: "rate_limited" };
   }
 
   try {
@@ -328,9 +326,21 @@ export async function generateContentScript(
 
     return { ok: true, data: sanitized };
   } catch (err) {
-    // Log técnico sin contenido del guion generado ni claves.
-    const reason = NoObjectGeneratedError.isInstance(err) ? "salida no válida del modelo" : "fallo de generación";
-    console.error("[content-script-ai] generateContentScript error:", reason, err instanceof Error ? err.message : err);
+    // Log técnico sin contenido del guion generado ni claves. El mensaje
+    // VISIBLE también se diferencia — no solo el log — para que el
+    // usuario sepa si reintentar tiene sentido (red/timeout) o si el
+    // modelo simplemente no devolvió un guion válido esta vez.
+    if (NoObjectGeneratedError.isInstance(err)) {
+      console.error("[content-script-ai] generateContentScript error: salida no válida del modelo");
+      return { ok: false, error: INVALID_MODEL_RESPONSE_MESSAGE, code: "invalid_model_response" };
+    }
+    const isAbortOrNetwork =
+      err instanceof Error && (err.name === "AbortError" || err.name === "TimeoutError" || /fetch|network|ECONNRESET|ETIMEDOUT/i.test(err.message));
+    if (isAbortOrNetwork) {
+      console.error("[content-script-ai] generateContentScript error: red/timeout", err instanceof Error ? err.message : err);
+      return { ok: false, error: NETWORK_ERROR_MESSAGE, code: "network_error" };
+    }
+    console.error("[content-script-ai] generateContentScript error: fallo de generación", err instanceof Error ? err.message : err);
     return { ok: false, error: "No se pudo generar el guion. Intenta de nuevo en unos segundos." };
   }
 }

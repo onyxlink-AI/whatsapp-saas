@@ -34,7 +34,7 @@ export async function GET(
     if (error) throw error;
 
     if (!data) {
-      return NextResponse.json({ projection: { workspaceId, officeDisplayName: 'Oficina Virtual', revision: 0, seats: [] } });
+      return NextResponse.json({ projection: { workspaceId, officeDisplayName: 'Oficina Virtual', revision: 0, seats: [], coreSeatDisplayNames: {} } });
     }
 
     const document = data.document as OfficeConfigurationDocument;
@@ -42,7 +42,7 @@ export async function GET(
     if (!result.success) {
       // Not yet published, or a workspace mismatch (shouldn't happen) — an
       // honest empty roster, never a fabricated one.
-      return NextResponse.json({ projection: { workspaceId, officeDisplayName: document.officeDisplayName, revision: document.revision, seats: [] } });
+      return NextResponse.json({ projection: { workspaceId, officeDisplayName: document.officeDisplayName, revision: document.revision, seats: [], coreSeatDisplayNames: {} } });
     }
 
     return NextResponse.json({ projection: result.projection });

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { STANDARD_OFFICE_PRESET } from '../central-integrations/preset';
-import { CONFIGURABLE_AGENT_IDS, type ConfigurableOfficeAgentId } from '../central-integrations/specialist-seats';
+import { CONFIGURABLE_AGENT_IDS, type ConfigurableOfficeAgentId, type FixedOfficeSeatId } from '../central-integrations/specialist-seats';
 import type {
   OfficeConfigurationDocument,
   OfficeConfigurationStatus,
@@ -74,6 +74,7 @@ function emptyDocument(workspaceId: string): OfficeConfigurationDocument {
     officeDisplayName: STANDARD_OFFICE_PRESET.displayName,
     sectorId: null,
     specialists,
+    coreSeatDisplayNames: {},
     updatedAt: new Date(0).toISOString(),
     updatedBy: 'system',
   };
@@ -96,8 +97,11 @@ export type OfficeConfigurator = {
   realIntegrations: RealIntegrationStatusMap;
   /** OpenRouter's own canonical status — not a boolean, see real-integrations.ts. */
   openRouterStatus: OpenRouterStatus;
+  /** Fase 3 — nombre visible configurado de los 4 puestos fijos; una clave ausente usa el nombre por defecto. */
+  coreSeatDisplayNames: Partial<Record<FixedOfficeSeatId, string>>;
   updateSpecialistDraft: (agentId: ConfigurableOfficeAgentId, patch: Partial<SpecialistDraft>) => void;
   resetSpecialist: (agentId: ConfigurableOfficeAgentId) => void;
+  updateCoreSeatName: (agentId: FixedOfficeSeatId, name: string | null) => void;
   lastResult: OfficeConfiguratorCommandResult | null;
   hasUnsavedChanges: boolean;
   save: () => void;
@@ -236,6 +240,13 @@ export function useOfficeConfigurator(workspaceId: string, enabled = true): Offi
     await runCommand({ type: 'reset_specialist', agentId }, saved.revision);
   };
 
+  /** Fase 3 — SOLO el nombre visible de un puesto fijo (Orquestador/WhatsApp/Voz/Chatbot). `name: null` vuelve al nombre por defecto. */
+  const updateCoreSeatName = async (agentId: FixedOfficeSeatId, name: string | null) => {
+    const saved = await save();
+    if (!saved) return;
+    await runCommand({ type: 'update_core_seat_name', agentId, name }, saved.revision);
+  };
+
   const previewVertical = (verticalId: VerticalId): VerticalApplicationPlan | null => {
     const appliedTemplateByAgent = Object.fromEntries(
       CONFIGURABLE_AGENT_IDS.map((id) => [id, document.specialists[id].templateId ?? undefined]),
@@ -273,8 +284,10 @@ export function useOfficeConfigurator(workspaceId: string, enabled = true): Offi
     specialistDrafts,
     realIntegrations,
     openRouterStatus,
+    coreSeatDisplayNames: document.coreSeatDisplayNames ?? {},
     updateSpecialistDraft,
     resetSpecialist,
+    updateCoreSeatName,
     lastResult,
     hasUnsavedChanges,
     save,

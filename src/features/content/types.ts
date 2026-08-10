@@ -67,6 +67,8 @@ export interface ContentItemRow {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  /** Fase 4 — token de concurrencia (CAS). Sube en CUALQUIER UPDATE, humano o del asistente, por igual. */
+  version: number;
 }
 
 /** Las 8 estructuras de guion de referencia — solo inspiran, de solo lectura. */

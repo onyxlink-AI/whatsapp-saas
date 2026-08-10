@@ -55,6 +55,24 @@ export type OfficeSceneAgent = {
   appearance: CharacterAppearance;
 };
 
+/**
+ * Real two-step confirmation for a content substitution proposed by the
+ * "Creador de Contenido" specialist — backed by the SAME `assistant_pending_actions`
+ * infra and `/api/workspace/[id]/help-assistant/confirm` endpoint the
+ * Asistente de Ayuda already uses (see use-help-assistant-chat.ts). Kept as
+ * optional fields on the flat ChatMessage shape, matching this file's
+ * existing `approvalStatus` convention rather than introducing a separate
+ * discriminated message union.
+ */
+export type ContentConfirmation = {
+  token: string;
+  summary: string;
+  expiresAt: number;
+  status: 'pending' | 'resolving' | 'resolved' | 'error' | 'retryable';
+  lastDecision?: 'confirm' | 'cancel';
+  resultText?: string;
+};
+
 export type ChatMessage = {
   id: string;
   role: 'user' | 'agent';
@@ -63,4 +81,5 @@ export type ChatMessage = {
   /** Set when this reply represents a gated action awaiting a human decision. */
   approvalRequestId?: string;
   approvalStatus?: 'pending' | 'approved' | 'rejected';
+  contentConfirmation?: ContentConfirmation;
 };

@@ -16,6 +16,9 @@ export const SPECIALIST_ACTION_LABEL_ES: Record<OfficeSpecialistAction, string> 
   update_pipeline: 'Actualizar pipeline',
   schedule_call: 'Agendar llamadas',
   request_handoff: 'Solicitar handoff',
+  read_content: 'Leer guiones de contenido',
+  create_content_draft: 'Crear borradores de guion',
+  update_content_draft: 'Actualizar guiones de contenido',
 };
 
 export const APPROVAL_POLICY_LABEL_ES: Record<OfficeApprovalPolicy, string> = {

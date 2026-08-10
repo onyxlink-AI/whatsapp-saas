@@ -321,15 +321,26 @@ export default function OfficeCharacter({
         {(!presentation || hovered || isSelected) && (
           <Html position={[0, 2.55, 0]} center distanceFactor={9} occlude={false} zIndexRange={[10, 0]}>
             <div className="flex flex-col items-center pointer-events-none select-none">
+              {/* Fase 3: sobre el personaje SOLO el nombre visible corto —
+                  compacto, ancho limitado, truncado con "…" si no cabe.
+                  Nunca la función/objetivo aquí, aunque el nombre sea largo. */}
               <div
-                className="px-2 py-0.5 rounded-full text-[11px] font-medium text-slate-100 bg-slate-900/85 border whitespace-nowrap shadow-lg"
+                className="max-w-[8.5rem] overflow-hidden text-ellipsis px-2 py-0.5 rounded-full text-[11px] font-medium text-slate-100 bg-slate-900/85 border whitespace-nowrap shadow-lg"
                 style={{ borderColor: isSelected ? '#ffffff' : agent.color }}
+                title={agent.name}
               >
                 {agent.name}
               </div>
+              {/* La función completa y el estado solo aparecen al pasar el
+                  ratón o seleccionar — nunca de forma permanente. */}
               {(hovered || isSelected) && (
-                <div className="mt-0.5 text-[9px] text-slate-300 bg-slate-900/70 px-1.5 rounded-full whitespace-nowrap">
-                  {STATUS_LABEL[agent.status]}
+                <div className="mt-0.5 flex flex-col items-center gap-0.5">
+                  <div className="max-w-[10rem] overflow-hidden text-ellipsis text-[9px] text-slate-300 bg-slate-900/70 px-1.5 rounded-full whitespace-nowrap" title={agent.department}>
+                    {agent.department}
+                  </div>
+                  <div className="text-[9px] text-slate-300 bg-slate-900/70 px-1.5 rounded-full whitespace-nowrap">
+                    {STATUS_LABEL[agent.status]}
+                  </div>
                 </div>
               )}
             </div>

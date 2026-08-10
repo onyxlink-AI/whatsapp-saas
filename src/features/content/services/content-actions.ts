@@ -54,7 +54,7 @@ const ContentInputSchema = z.object({
 export type ContentInput = z.infer<typeof ContentInputSchema>;
 
 const CONTENT_SELECT =
-  "id, workspace_id, project_id, responsible_id, title, main_idea, description, content_type, platform, orientation, script_hook, script_body, script_closing, script_cta, bullet_points, reference_links, notes, lighting_notes, music_notes, duration_estimate, status, position, scheduled_date, published_at, metric_views, metric_reach, metric_likes, metric_comments, metric_shares, metric_saves, metric_clicks, metric_leads, metric_notes, created_by, created_at, updated_at";
+  "id, workspace_id, project_id, responsible_id, title, main_idea, description, content_type, platform, orientation, script_hook, script_body, script_closing, script_cta, bullet_points, reference_links, notes, lighting_notes, music_notes, duration_estimate, status, position, scheduled_date, published_at, metric_views, metric_reach, metric_likes, metric_comments, metric_shares, metric_saves, metric_clicks, metric_leads, metric_notes, created_by, created_at, updated_at, version";
 
 async function validateWorkspaceRelations(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -202,8 +202,22 @@ export async function createContentItem(
       title: parsed.data.title?.trim() || "Sin título",
       main_idea: parsed.data.main_idea || null,
       description: parsed.data.description || null,
+      content_type: parsed.data.content_type || null,
+      platform: parsed.data.platform || null,
+      orientation: parsed.data.orientation ?? null,
       project_id: parsed.data.project_id ?? null,
       responsible_id: parsed.data.responsible_id ?? null,
+      script_hook: parsed.data.script_hook || null,
+      script_body: parsed.data.script_body || null,
+      script_closing: parsed.data.script_closing || null,
+      script_cta: parsed.data.script_cta || null,
+      bullet_points: parsed.data.bullet_points ?? [],
+      reference_links: parsed.data.reference_links ?? [],
+      notes: parsed.data.notes || null,
+      lighting_notes: parsed.data.lighting_notes || null,
+      music_notes: parsed.data.music_notes || null,
+      duration_estimate: parsed.data.duration_estimate || null,
+      scheduled_date: parsed.data.scheduled_date ?? null,
       status: "idea",
       position: count ?? 0,
       created_by: user.id,
@@ -268,6 +282,87 @@ export async function updateContentItem(
   }
 
   return { ok: true, data: null };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// updateContentItemFieldsCas — Fase 4: ÚNICA vía de escritura CON control de
+// concurrencia real (compare-and-swap) para content_items, usada por las
+// tools del Asistente de Ayuda (nunca por el editor humano, que sigue
+// usando updateContentItem — el trigger de versión sube igual para ambos).
+// Delega TODO (whitelist de columnas, verificación de responsable
+// workspace-scoped, comparación atómica de versión) a
+// update_content_item_fields_cas() — nunca un UPDATE directo desde aquí.
+// SECURITY INVOKER: se llama con el cliente de sesión (RLS activa), nunca
+// con service_role.
+// ──────────────────────────────────────────────────────────────────────────────
+export type ContentItemCasResult =
+  | { result: "updated"; version: number }
+  | { result: "conflict" }
+  | { result: "not_found_or_forbidden" }
+  | { result: "invalid_responsible" };
+
+const ContentItemPatchSchema = z
+  .object({
+    title: z.string().min(1),
+    main_idea: z.string().nullable(),
+    description: z.string().nullable(),
+    content_type: z.string().nullable(),
+    platform: z.string().nullable(),
+    orientation: OrientationEnum.nullable(),
+    responsible_id: z.string().uuid().nullable(),
+    scheduled_date: z.string().nullable(),
+    script_hook: z.string().nullable(),
+    script_body: z.string().nullable(),
+    script_closing: z.string().nullable(),
+    script_cta: z.string().nullable(),
+    bullet_points: z.array(z.string()),
+    reference_links: z.array(ReferenceLinkSchema),
+    notes: z.string().nullable(),
+    lighting_notes: z.string().nullable(),
+    music_notes: z.string().nullable(),
+    duration_estimate: z.string().nullable(),
+  })
+  .partial()
+  .refine((v) => Object.keys(v).length > 0, { message: "El parche no puede estar vacío" });
+
+export type ContentItemPatch = z.infer<typeof ContentItemPatchSchema>;
+
+export async function updateContentItemFieldsCas(
+  workspaceId: string,
+  contentItemId: string,
+  expectedVersion: number,
+  patch: ContentItemPatch,
+): Promise<ActionResult<ContentItemCasResult>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { ok: false, error: "No autorizado" };
+  }
+
+  const parsed = ContentItemPatchSchema.safeParse(patch);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+
+  const { data, error } = await supabase.rpc("update_content_item_fields_cas", {
+    p_workspace_id: workspaceId,
+    p_content_item_id: contentItemId,
+    p_expected_version: expectedVersion,
+    p_patch: parsed.data,
+  });
+
+  if (error) {
+    // Un error de base de datos NUNCA se reinterpreta como "no encontrado"
+    // ni como cualquier otro resultado estructurado — se informa tal cual.
+    console.error("[updateContentItemFieldsCas] Supabase error:", error.message);
+    return { ok: false, error: "Error al guardar el contenido" };
+  }
+
+  return { ok: true, data: data as ContentItemCasResult };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

@@ -26,6 +26,12 @@ function formatScheduledDate(isoDate: string): string {
   return `${day}/${month}/${year}`;
 }
 
+type ContentDelegationOutcome =
+  | { kind: 'created'; contentItemId: string; title: string; status: string; version: number; href: string }
+  | { kind: 'updated'; contentItemId: string; version: number }
+  | { kind: 'requires_confirmation'; token: string; expiresInSeconds: number; summary: string }
+  | { kind: 'error'; error: string };
+
 type CoordinatorChatResponse = {
   coordinatorText: string;
   delegation:
@@ -36,6 +42,7 @@ type CoordinatorChatResponse = {
         agendaTask:
           | { title: string; scheduledDate: string; startTime: string | null; endTime: string | null; meetingLink: string | null }
           | null;
+        content: ContentDelegationOutcome | null;
       }
     | null;
 };
@@ -105,6 +112,45 @@ export function useAgentChat(workspaceId: string, realChat: boolean) {
             id: crypto.randomUUID(),
             role: 'agent',
             text: `📅 Guardado en tu Agenda: "${title}" — ${formatScheduledDate(scheduledDate)}${time}${link}`,
+            timestamp: Date.now(),
+          });
+        }
+        const content = body.delegation.content;
+        if (content?.kind === 'created') {
+          // Solo se afirma "guardado" aquí porque la escritura real ya
+          // terminó del lado del servidor — nunca por la sola respuesta de
+          // texto del modelo (ver real-chat-service.ts/office-virtual/chat).
+          replies.push({
+            id: crypto.randomUUID(),
+            role: 'agent',
+            text: `✅ Guion guardado como borrador: "${content.title}"\n🔗 ${content.href}`,
+            timestamp: Date.now(),
+          });
+        } else if (content?.kind === 'updated') {
+          replies.push({
+            id: crypto.randomUUID(),
+            role: 'agent',
+            text: '✅ Guion actualizado.',
+            timestamp: Date.now(),
+          });
+        } else if (content?.kind === 'requires_confirmation') {
+          replies.push({
+            id: crypto.randomUUID(),
+            role: 'agent',
+            text: content.summary,
+            timestamp: Date.now(),
+            contentConfirmation: {
+              token: content.token,
+              summary: content.summary,
+              expiresAt: Date.now() + content.expiresInSeconds * 1000,
+              status: 'pending',
+            },
+          });
+        } else if (content?.kind === 'error') {
+          replies.push({
+            id: crypto.randomUUID(),
+            role: 'agent',
+            text: `⚠️ ${content.error}`,
             timestamp: Date.now(),
           });
         }
@@ -179,5 +225,61 @@ export function useAgentChat(workspaceId: string, realChat: boolean) {
     });
   }, [engine]);
 
-  return { messagesByAgent, sendMessage, decideApproval, typingAgentId, pendingApproval };
+  /**
+   * Confirms/cancels a content substitution proposed by the Creador de
+   * Contenido specialist — hits the SAME `/help-assistant/confirm` route
+   * the Asistente de Ayuda already uses (resolveConfirmableAction is
+   * action-type-agnostic), never a duplicate endpoint. Mirrors
+   * use-help-assistant-chat.ts's resolveConfirmation exactly: a transport
+   * failure (fetch threw, or the response wasn't valid JSON) keeps the
+   * token and marks the card 'retryable'; any complete HTTP response,
+   * success or not, is terminal ('resolved' or 'error') and clears the
+   * token so it's never reused.
+   */
+  const resolveContentConfirmation = useCallback(async (agent: Agent, messageId: string, decision: 'confirm' | 'cancel') => {
+    const message = (messagesByAgent[agent.id] ?? []).find((m) => m.id === messageId);
+    const card = message?.contentConfirmation;
+    if (!card || (card.status !== 'pending' && card.status !== 'retryable')) return;
+
+    const setCard = (patch: Partial<ChatMessage['contentConfirmation']>) => {
+      setMessagesByAgent((prev) => ({
+        ...prev,
+        [agent.id]: (prev[agent.id] ?? []).map((m) =>
+          m.id === messageId && m.contentConfirmation ? { ...m, contentConfirmation: { ...m.contentConfirmation, ...patch } } : m,
+        ),
+      }));
+    };
+
+    setCard({ status: 'resolving', lastDecision: decision });
+
+    let response: Response;
+    try {
+      response = await fetch(`/api/workspace/${encodeURIComponent(workspaceId)}/help-assistant/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: card.token, decision }),
+      });
+    } catch {
+      setCard({ status: 'retryable', resultText: 'No se pudo conectar. Puedes reintentar.' });
+      return;
+    }
+
+    let data: { ok?: boolean; error?: string };
+    try {
+      data = await response.json();
+    } catch {
+      setCard({ status: 'retryable', resultText: 'No se pudo conectar. Puedes reintentar.' });
+      return;
+    }
+
+    const resultText = response.ok
+      ? decision === 'confirm'
+        ? 'Guion actualizado.'
+        : 'Cambio cancelado.'
+      : (data.error ?? 'No se pudo procesar tu respuesta.');
+
+    setCard({ status: response.ok ? 'resolved' : 'error', resultText, token: '' });
+  }, [messagesByAgent, workspaceId]);
+
+  return { messagesByAgent, sendMessage, decideApproval, resolveContentConfirmation, typingAgentId, pendingApproval };
 }

@@ -7,7 +7,7 @@
 // configured allowedActions grant it — never just because it emitted the tag.
 
 import { describe, expect, it, vi } from 'vitest';
-import { handleCoordinatorMessage, type AgendaPorts, type RealChatServicePorts } from './real-chat-service';
+import { handleCoordinatorMessage, type AgendaPorts, type ContentPorts, type ContentSearchResult, type RealChatServicePorts } from './real-chat-service';
 import type { OfficeConfigurationHead, OfficeConfigurationStore } from './office-configuration-service';
 import type { OrchestratorStore } from './orchestrator-service';
 import type { OfficeConfigurationDocument, OfficeSpecialistConfiguration } from '../client/central-integrations/configuration';
@@ -59,6 +59,7 @@ function fakePorts(opts: {
   /** Mirrors orchestrator-service.ts's overlay: this is the ONLY thing that decides hasApiKey/status — the raw binding's own values are always superseded. */
   realOpenRouterStatus?: 'not_configured' | 'needs_attention' | 'configured' | 'verified';
   agenda?: AgendaPorts;
+  content?: ContentPorts;
   nowContext?: string;
 }): RealChatServicePorts {
   const configStore: OfficeConfigurationStore = {
@@ -92,6 +93,11 @@ function fakePorts(opts: {
     orchestrator: { store: orchestratorStore, resolveRealOpenRouterStatus: async () => opts.realOpenRouterStatus ?? 'configured' },
     generateReply: vi.fn(async ({ systemPrompt }) => ({ text: opts.reply(systemPrompt) })),
     agenda: opts.agenda ?? { createTask: vi.fn(async () => ({ meetingLink: null })) },
+    content: opts.content ?? {
+      search: vi.fn(async (): Promise<ContentSearchResult[]> => []),
+      create: vi.fn(async () => ({ kind: 'error' as const, error: 'not wired in this test' })),
+      update: vi.fn(async () => ({ kind: 'error' as const, error: 'not wired in this test' })),
+    },
     resolveNowContext: async () => opts.nowContext ?? NOW_CONTEXT,
   };
 }
@@ -212,6 +218,7 @@ describe('real chat service — delegation', () => {
       specialistName: 'Marco',
       text: 'Aquí tienes la propuesta redactada para el cliente X.',
       agendaTask: null,
+      content: null,
     });
   });
 
@@ -455,5 +462,330 @@ describe('real chat service — real Agenda tool', () => {
     if (!result.success) return;
     expect(result.delegation?.agendaTask).toBeNull();
     expect(createTask).not.toHaveBeenCalled();
+  });
+});
+
+// BLOQUEO 1 — Creador de Contenido. Igual que el bloque de Agenda de arriba:
+// gated EXCLUSIVAMENTE en las allowedActions realmente persistidas del
+// especialista objetivo (nunca en su templateId, nombre visible o lo que el
+// modelo diga de sí mismo) — mismo patrón de "defensa en profundidad" que
+// canManageAgenda/AGENDA_TASK_TAG.
+describe('real chat service — Creador de Contenido (read_content/create_content_draft/update_content_draft)', () => {
+  function contentSpecialistDoc(allowedActions: string[] = ['read_memory', 'create_task', 'request_handoff', 'read_content', 'create_content_draft', 'update_content_draft']) {
+    return document({
+      specialists: {
+        ...document().specialists,
+        'specialist-1': specialist('specialist-1', {
+          enabled: true,
+          name: 'Lucía',
+          function: 'Creación de contenido',
+          allowedActions: allowedActions as OfficeSpecialistConfiguration['allowedActions'],
+        }),
+      },
+    });
+  }
+
+  it('really creates a content draft when the specialist has create_content_draft and emits the tag', async () => {
+    const create = vi.fn(async () => ({
+      kind: 'created' as const,
+      contentItemId: 'content-1',
+      title: 'Reel de automatizaciones',
+      status: 'idea',
+      version: 1,
+      href: '/contenido/content-1?from=scripts',
+    }));
+    const ports = fakePorts({
+      doc: contentSpecialistDoc(),
+      binding: binding(),
+      content: { search: vi.fn(async () => []), create, update: vi.fn(async () => ({ kind: 'error' as const, error: 'n/a' })) },
+      reply: (systemPrompt) =>
+        systemPrompt.includes('Eres el Orquestador')
+          ? 'Se lo paso a Lucía.\n<delegate agent="specialist-1">Guarda un guion sobre automatizaciones</delegate>'
+          : 'Guion guardado.\n<content_draft>{"title":"Reel de automatizaciones","script_hook":"Hook fuerte"}</content_draft>',
+    });
+
+    const result = await handleCoordinatorMessage('workspace-a', [], 'Guarda un guion sobre automatizaciones', 'user-1', ports);
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(create).toHaveBeenCalledWith('workspace-a', 'user-1', { title: 'Reel de automatizaciones', script_hook: 'Hook fuerte' });
+    expect(result.delegation?.content).toEqual({
+      kind: 'created',
+      contentItemId: 'content-1',
+      title: 'Reel de automatizaciones',
+      status: 'idea',
+      version: 1,
+      href: '/contenido/content-1?from=scripts',
+    });
+    expect(result.delegation?.text).toBe('Guion guardado.'); // tag stripped from what the user sees
+  });
+
+  it('returns the exact /contenido/{id}?from=scripts link the port produced, never inventing one', async () => {
+    const create = vi.fn(async () => ({
+      kind: 'created' as const,
+      contentItemId: 'abc-123',
+      title: 'X',
+      status: 'idea',
+      version: 1,
+      href: '/contenido/abc-123?from=scripts',
+    }));
+    const ports = fakePorts({
+      doc: contentSpecialistDoc(),
+      binding: binding(),
+      content: { search: vi.fn(async () => []), create, update: vi.fn() as never },
+      reply: (systemPrompt) =>
+        systemPrompt.includes('Eres el Orquestador')
+          ? '<delegate agent="specialist-1">crea un guion</delegate>'
+          : '<content_draft>{"title":"X"}</content_draft>',
+    });
+
+    const result = await handleCoordinatorMessage('workspace-a', [], 'crea un guion', 'user-1', ports);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.delegation?.content?.kind).toBe('created');
+    if (result.delegation?.content?.kind === 'created') {
+      expect(result.delegation.content.href).toBe('/contenido/abc-123?from=scripts');
+    }
+  });
+
+  it('searches real content BEFORE generating the specialist reply, and injects the results into its own system prompt', async () => {
+    const search = vi.fn(async () => [{ id: 'c-1', title: 'Guion de verano', status: 'idea', version: 3 }]);
+    let sawCatalog = false;
+    const ports = fakePorts({
+      doc: contentSpecialistDoc(),
+      binding: binding(),
+      content: { search, create: vi.fn() as never, update: vi.fn() as never },
+      reply: (systemPrompt) => {
+        if (!systemPrompt.includes('Eres el Orquestador')) {
+          sawCatalog = systemPrompt.includes('c-1') && systemPrompt.includes('Guion de verano') && systemPrompt.includes('expected_version="3"');
+          return 'ok';
+        }
+        return '<delegate agent="specialist-1">actualiza el guion de verano</delegate>';
+      },
+    });
+
+    await handleCoordinatorMessage('workspace-a', [], 'actualiza el guion de verano', 'user-1', ports);
+
+    expect(search).toHaveBeenCalledWith('workspace-a', 'actualiza el guion de verano');
+    expect(sawCatalog).toBe(true);
+  });
+
+  it('never searches content for a specialist without read_content, even if it can create/update drafts', async () => {
+    const search = vi.fn(async () => []);
+    const ports = fakePorts({
+      doc: contentSpecialistDoc(['create_content_draft', 'update_content_draft']), // no read_content
+      binding: binding(),
+      content: { search, create: vi.fn() as never, update: vi.fn() as never },
+      reply: (systemPrompt) =>
+        systemPrompt.includes('Eres el Orquestador') ? '<delegate agent="specialist-1">algo</delegate>' : 'ok',
+    });
+
+    await handleCoordinatorMessage('workspace-a', [], 'algo', 'user-1', ports);
+    expect(search).not.toHaveBeenCalled();
+  });
+
+  it("never calls content.create when the specialist's own allowedActions don't include create_content_draft — even though it emitted the tag (jailbreak attempt never trusted)", async () => {
+    const create = vi.fn(async () => ({ kind: 'created' as const, contentItemId: 'x', title: 'x', status: 'idea', version: 1, href: '/x' }));
+    const ports = fakePorts({
+      doc: contentSpecialistDoc(['read_content']), // read only — no create_content_draft
+      binding: binding(),
+      content: { search: vi.fn(async () => []), create, update: vi.fn() as never },
+      reply: (systemPrompt) =>
+        systemPrompt.includes('Eres el Orquestador')
+          ? '<delegate agent="specialist-1">crea un guion de todos modos</delegate>'
+          : 'Aquí tienes.\n<content_draft>{"title":"Intento no autorizado"}</content_draft>', // jailbroken model still emits the tag
+    });
+
+    const result = await handleCoordinatorMessage('workspace-a', [], 'crea un guion de todos modos', 'user-1', ports);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(create).not.toHaveBeenCalled();
+    expect(result.delegation?.content).toBeNull();
+    expect(result.delegation?.text).toBe('Aquí tienes.'); // tag still stripped from what the user sees, never surfaced raw
+  });
+
+  it('no other template can save content even if the coordinator delegates to it and it emits the exact same tag', async () => {
+    // Same shape as the agenda "lacks schedule_call/create_task" test —
+    // any specialist without create_content_draft in ITS OWN persisted
+    // allowedActions is inert for this tag, regardless of visible name.
+    const create = vi.fn();
+    const ports = fakePorts({
+      doc: document({
+        specialists: {
+          ...document().specialists,
+          'specialist-1': specialist('specialist-1', { enabled: true, name: 'Marco', function: 'Ventas', allowedActions: ['read_contacts', 'draft_message'] }),
+        },
+      }),
+      binding: binding(),
+      content: { search: vi.fn(async () => []), create, update: vi.fn() as never },
+      reply: (systemPrompt) =>
+        systemPrompt.includes('Eres el Orquestador')
+          ? '<delegate agent="specialist-1">algo</delegate>'
+          : 'listo.\n<content_draft>{"title":"No debería guardarse"}</content_draft>',
+    });
+
+    const result = await handleCoordinatorMessage('workspace-a', [], 'algo', 'user-1', ports);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(create).not.toHaveBeenCalled();
+    expect(result.delegation?.content).toBeNull();
+  });
+
+  it('a draft (unpublished) or disabled specialist never runs at all — coordinator answers directly instead', async () => {
+    const create = vi.fn();
+    const doc = contentSpecialistDoc();
+    doc.status = 'draft'; // whole configuration unpublished
+    const ports = fakePorts({
+      doc,
+      binding: binding(),
+      content: { search: vi.fn(async () => []), create, update: vi.fn() as never },
+      reply: (systemPrompt) =>
+        systemPrompt.includes('Eres el Orquestador')
+          ? 'Se lo paso a Lucía.\n<delegate agent="specialist-1">crea un guion</delegate>'
+          : 'no debería llamarse nunca',
+    });
+
+    const result = await handleCoordinatorMessage('workspace-a', [], 'crea un guion', 'user-1', ports);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.delegation).toBeNull(); // never resolved as an active specialist
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('really updates a content item and reports the resulting version when the specialist has update_content_draft', async () => {
+    const update = vi.fn(async () => ({ kind: 'updated' as const, contentItemId: '11111111-1111-4111-8111-111111111111', version: 4 }));
+    const ports = fakePorts({
+      doc: contentSpecialistDoc(),
+      binding: binding(),
+      content: { search: vi.fn(async () => [{ id: '11111111-1111-4111-8111-111111111111', title: 'Guion X', status: 'idea', version: 3 }]), create: vi.fn() as never, update },
+      reply: (systemPrompt) =>
+        systemPrompt.includes('Eres el Orquestador')
+          ? '<delegate agent="specialist-1">rellena el hook del guion X</delegate>'
+          : 'Actualizado.\n<content_update content_item_id="11111111-1111-4111-8111-111111111111" expected_version="3">{"script_hook":"Nuevo hook"}</content_update>',
+    });
+
+    const result = await handleCoordinatorMessage('workspace-a', [], 'rellena el hook del guion X', 'user-1', ports);
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(update).toHaveBeenCalledWith('workspace-a', 'user-1', '11111111-1111-4111-8111-111111111111', 3, { script_hook: 'Nuevo hook' });
+    expect(result.delegation?.content).toEqual({ kind: 'updated', contentItemId: '11111111-1111-4111-8111-111111111111', version: 4 });
+  });
+
+  it('surfaces a requires_confirmation outcome from the port untouched — never writes on its own, never claims it saved', async () => {
+    const update = vi.fn(async () => ({
+      kind: 'requires_confirmation' as const,
+      token: 'tok123',
+      expiresInSeconds: 300,
+      summary: 'Vas a sustituir el hook de «Guion X».',
+    }));
+    const ports = fakePorts({
+      doc: contentSpecialistDoc(),
+      binding: binding(),
+      content: { search: vi.fn(async () => [{ id: '11111111-1111-4111-8111-111111111111', title: 'Guion X', status: 'idea', version: 3 }]), create: vi.fn() as never, update },
+      reply: (systemPrompt) =>
+        systemPrompt.includes('Eres el Orquestador')
+          ? '<delegate agent="specialist-1">sustituye el hook</delegate>'
+          : 'Voy a sustituirlo.\n<content_update content_item_id="11111111-1111-4111-8111-111111111111" expected_version="3">{"script_hook":"Otro"}</content_update>',
+    });
+
+    const result = await handleCoordinatorMessage('workspace-a', [], 'sustituye el hook', 'user-1', ports);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.delegation?.content).toEqual({
+      kind: 'requires_confirmation',
+      token: 'tok123',
+      expiresInSeconds: 300,
+      summary: 'Vas a sustituir el hook de «Guion X».',
+    });
+  });
+
+  it('a CAS conflict from the port (content changed since it was read) is surfaced as an error, never silently retried or ignored', async () => {
+    const update = vi.fn(async () => ({ kind: 'error' as const, error: 'Ese contenido cambió desde la última vez que lo leíste.' }));
+    const ports = fakePorts({
+      doc: contentSpecialistDoc(),
+      binding: binding(),
+      content: { search: vi.fn(async () => [{ id: '11111111-1111-4111-8111-111111111111', title: 'Guion X', status: 'idea', version: 3 }]), create: vi.fn() as never, update },
+      reply: (systemPrompt) =>
+        systemPrompt.includes('Eres el Orquestador')
+          ? '<delegate agent="specialist-1">actualiza</delegate>'
+          : 'listo.\n<content_update content_item_id="11111111-1111-4111-8111-111111111111" expected_version="3">{"script_hook":"x"}</content_update>',
+    });
+
+    const result = await handleCoordinatorMessage('workspace-a', [], 'actualiza', 'user-1', ports);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.delegation?.content).toEqual({ kind: 'error', error: 'Ese contenido cambió desde la última vez que lo leíste.' });
+  });
+
+  it('malformed JSON inside the tag is treated as no action at all — never crashes the request', async () => {
+    const create = vi.fn();
+    const ports = fakePorts({
+      doc: contentSpecialistDoc(),
+      binding: binding(),
+      content: { search: vi.fn(async () => []), create, update: vi.fn() as never },
+      reply: (systemPrompt) =>
+        systemPrompt.includes('Eres el Orquestador')
+          ? '<delegate agent="specialist-1">crea un guion</delegate>'
+          : 'listo.\n<content_draft>{title esto no es json valido</content_draft>',
+    });
+
+    const result = await handleCoordinatorMessage('workspace-a', [], 'crea un guion', 'user-1', ports);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(create).not.toHaveBeenCalled();
+    expect(result.delegation?.content).toBeNull();
+  });
+
+  it('never writes content when actorUserId is null, even for a fully-authorized specialist', async () => {
+    const create = vi.fn();
+    const ports = fakePorts({
+      doc: contentSpecialistDoc(),
+      binding: binding(),
+      content: { search: vi.fn(async () => []), create, update: vi.fn() as never },
+      reply: (systemPrompt) =>
+        systemPrompt.includes('Eres el Orquestador')
+          ? '<delegate agent="specialist-1">crea un guion</delegate>'
+          : '<content_draft>{"title":"x"}</content_draft>',
+    });
+
+    const result = await handleCoordinatorMessage('workspace-a', [], 'crea un guion', null, ports);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(create).not.toHaveBeenCalled();
+    expect(result.delegation?.content).toBeNull();
+  });
+
+  it('ignores a content_draft/content_update tag emitted by a specialist OTHER than the one delegated to (never matches by name/text alone)', async () => {
+    // The coordinator can only ever delegate to ONE agentId per turn — a tag
+    // is only ever evaluated against THAT resolved targetConfig, never
+    // against some other specialist's allowedActions found by scanning text.
+    const create = vi.fn();
+    const doc = document({
+      specialists: {
+        ...document().specialists,
+        'specialist-1': specialist('specialist-1', { enabled: true, name: 'Marco', allowedActions: ['read_contacts'] }), // delegated to, no content actions
+        'specialist-2': specialist('specialist-2', {
+          enabled: true,
+          name: 'Lucía',
+          allowedActions: ['read_content', 'create_content_draft'], // has the actions, but NOT delegated to this turn
+        }),
+      },
+    });
+    const ports = fakePorts({
+      doc,
+      binding: binding(),
+      content: { search: vi.fn(async () => []), create, update: vi.fn() as never },
+      reply: (systemPrompt) =>
+        systemPrompt.includes('Eres el Orquestador')
+          ? '<delegate agent="specialist-1">algo</delegate>' // delegates to Marco, not Lucía
+          : 'listo.\n<content_draft>{"title":"No debería guardarse"}</content_draft>',
+    });
+
+    const result = await handleCoordinatorMessage('workspace-a', [], 'algo', 'user-1', ports);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(create).not.toHaveBeenCalled();
+    expect(result.delegation?.content).toBeNull();
   });
 });

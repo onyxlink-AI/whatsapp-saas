@@ -50,6 +50,11 @@ vi.mock("@ai-sdk/openai", () => ({
   },
 }));
 
+const decryptCredentials = vi.fn(async (creds: Record<string, unknown> | null) => creds ?? {});
+vi.mock("@/shared/lib/crypto", () => ({
+  decryptCredentials: (creds: Record<string, unknown> | null) => decryptCredentials(creds),
+}));
+
 // Cliente service-role — integrations (credencial estricta del workspace),
 // events (ya no se usa directamente, la reserva es un solo rpc), y rpc()
 // para reserve_content_script_generation.
@@ -151,9 +156,23 @@ describe("generateContentScript — nunca usa la clave de plataforma", () => {
     expect(createOpenAISpy).not.toHaveBeenCalled();
   });
 
-  it("integración deshabilitada (enabled=false) se trata igual que 'sin configurar', sin caer a la plataforma", async () => {
+  it("integración deshabilitada (enabled=false) con clave guardada da un error distinto de 'sin configurar', sin caer a la plataforma", async () => {
     process.env.OPENROUTER_API_KEY = "sk-or-platform-fake-key";
     integrationsMaybeSingleResult = { data: { enabled: false, credentials: { openrouter_api_key: WORKSPACE_KEY } }, error: null };
+
+    const result = await generateContentScript(WORKSPACE_A, VALID_INPUT);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe("openrouter_disabled");
+      expect(result.error).not.toBe("Conecta tu cuenta de OpenRouter en Ajustes → Integraciones para generar guiones con IA.");
+    }
+    expect(generateObject).not.toHaveBeenCalled();
+    expect(createOpenAISpy).not.toHaveBeenCalled();
+  });
+
+  it("integración deshabilitada (enabled=false) sin ninguna clave guardada se trata igual que 'sin configurar'", async () => {
+    process.env.OPENROUTER_API_KEY = "sk-or-platform-fake-key";
+    integrationsMaybeSingleResult = { data: { enabled: false, credentials: {} }, error: null };
 
     const result = await generateContentScript(WORKSPACE_A, VALID_INPUT);
     expect(result.ok).toBe(false);
@@ -168,10 +187,24 @@ describe("generateContentScript — nunca usa la clave de plataforma", () => {
     const result = await generateContentScript(WORKSPACE_A, VALID_INPUT);
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.code).toBeUndefined();
+      expect(result.code).toBe("transient_error");
       expect(result.error).not.toBe("Conecta tu cuenta de OpenRouter en Ajustes → Integraciones para generar guiones con IA.");
       expect(result.error).toMatch(/no se pudo comprobar tu acceso/i);
       expect(result.error).not.toContain("connection reset");
+    }
+    expect(generateObject).not.toHaveBeenCalled();
+  });
+
+  it("credencial guardada que no se puede descifrar da un error propio, nunca se cuelga sin controlar", async () => {
+    process.env.OPENROUTER_API_KEY = "sk-or-platform-fake-key";
+    integrationsMaybeSingleResult = { data: { enabled: true, credentials: { openrouter_api_key: "corrupt" } }, error: null };
+    decryptCredentials.mockRejectedValueOnce(new Error("bad ciphertext"));
+
+    const result = await generateContentScript(WORKSPACE_A, VALID_INPUT);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe("credential_decrypt_error");
+      expect(result.error).not.toContain("bad ciphertext");
     }
     expect(generateObject).not.toHaveBeenCalled();
   });
@@ -281,13 +314,14 @@ describe("generateContentScript — rate limit atómico, fail-closed", () => {
 });
 
 describe("generateContentScript — salida inválida y fallos del modelo", () => {
-  it("NoObjectGeneratedError (salida no válida) se controla y devuelve un error genérico", async () => {
+  it("NoObjectGeneratedError (salida no válida) se controla y devuelve un mensaje propio", async () => {
     generateObject.mockRejectedValue(new MockNoObjectGeneratedError("model returned malformed json"));
     const result = await generateContentScript(WORKSPACE_A, VALID_INPUT);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error).not.toContain("malformed json");
-      expect(result.error).toMatch(/no se pudo generar/i);
+      expect(result.code).toBe("invalid_model_response");
+      expect(result.error).toMatch(/no devolvió un guion con el formato esperado/i);
     }
   });
 
@@ -296,6 +330,16 @@ describe("generateContentScript — salida inválida y fallos del modelo", () =>
     const result = await generateContentScript(WORKSPACE_A, VALID_INPUT);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toMatch(/no se pudo generar/i);
+  });
+
+  it("un error de red explícito (fetch failed) se distingue con su propio código", async () => {
+    generateObject.mockRejectedValue(new Error("fetch failed"));
+    const result = await generateContentScript(WORKSPACE_A, VALID_INPUT);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe("network_error");
+      expect(result.error).toMatch(/no se pudo contactar/i);
+    }
   });
 });
 

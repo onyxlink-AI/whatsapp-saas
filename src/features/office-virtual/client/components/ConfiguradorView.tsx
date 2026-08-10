@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { CheckCircle2, ExternalLink, SlidersHorizontal, WandSparkles } from 'lucide-react';
 import { STANDARD_OFFICE_PRESET } from '../central-integrations/preset';
-import { CONFIGURABLE_AGENT_IDS, type ConfigurableOfficeAgentId } from '../central-integrations/specialist-seats';
-import type { OfficeApprovalPolicy, OfficeSpecialistAction } from '../central-integrations/configuration';
+import { CONFIGURABLE_AGENT_IDS, type ConfigurableOfficeAgentId, type FixedOfficeSeatId } from '../central-integrations/specialist-seats';
+import { CORE_SEAT_NAME_MAX_LENGTH, type OfficeApprovalPolicy, type OfficeSpecialistAction } from '../central-integrations/configuration';
 import { SPECIALIST_TEMPLATES, findSpecialistTemplate, type SpecialistTemplateId } from '../central-integrations/specialist-templates';
 import { ModelPicker } from '@/features/agents/components/model-picker';
 import { SPECIALIST_EXTENSIONS, type SpecialistExtension } from '../central-integrations/specialist-extensions';
@@ -50,14 +50,48 @@ function openRouterAttentionMessage(status: OpenRouterStatus): string {
   }
 }
 
-function ProtectedSeatCard({ displayLabel }: { displayLabel: string }) {
+function ProtectedSeatCard({
+  displayLabel,
+  agentId,
+  /** Vacío cuando no hay override — nunca se rellena a mano con el nombre por defecto, para no confundir "vacío = usa el de siempre" con "escribiste lo mismo que el de siempre". */
+  displayNameOverride,
+  onChangeDisplayName,
+}: {
+  displayLabel: string;
+  agentId: FixedOfficeSeatId;
+  displayNameOverride: string | undefined;
+  onChangeDisplayName: (agentId: FixedOfficeSeatId, name: string | null) => void;
+}) {
+  // Reajusta `draft` cuando cambia el override real (p.ej. tras guardar) sin
+  // usar un efecto — ajustar estado derivado de una prop DURANTE el render
+  // es el patrón que React recomienda para esto, evita el commit/render en
+  // cascada de hacerlo en un useEffect.
+  const [prevOverride, setPrevOverride] = useState(displayNameOverride);
+  const [draft, setDraft] = useState(displayNameOverride ?? '');
+  if (displayNameOverride !== prevOverride) {
+    setPrevOverride(displayNameOverride);
+    setDraft(displayNameOverride ?? '');
+  }
+  const commit = () => {
+    const trimmed = draft.trim();
+    onChangeDisplayName(agentId, trimmed || null);
+    setDraft(trimmed);
+  };
   return (
     <div className="rounded-lg border border-white/[0.06] bg-white/[0.015] p-4 flex items-center justify-between gap-3">
-      <div>
-        <div className="text-sm text-white/70">{displayLabel}</div>
-        <div className="text-[11px] text-white/30 mt-0.5">Reutiliza la configuración real del SaaS</div>
+      <div className="min-w-0 flex-1">
+        <div className="text-[11px] text-white/30">{displayLabel} — función fija, solo el nombre visible es editable</div>
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          maxLength={CORE_SEAT_NAME_MAX_LENGTH}
+          placeholder="Nombre por defecto"
+          className="onyx-input w-full rounded-md px-2.5 py-1.5 text-xs mt-1"
+          aria-label={`Nombre visible de ${displayLabel}`}
+        />
       </div>
-      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border text-white/40 border-white/10 bg-white/[0.03]">Protegido</span>
+      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border text-white/40 border-white/10 bg-white/[0.03] shrink-0">Protegido</span>
     </div>
   );
 }
@@ -490,6 +524,8 @@ export default function ConfiguradorView(props: Props) {
     publish,
     previewVertical,
     applyVertical,
+    coreSeatDisplayNames,
+    updateCoreSeatName,
   } = props;
   // eslint-disable-next-line react-hooks/purity -- relative "last saved/published" display is meant to reflect wall-clock time at render.
   const now = Date.now();
@@ -625,7 +661,13 @@ export default function ConfiguradorView(props: Props) {
             <summary className="cursor-pointer list-none text-[11px] font-medium text-white/55">Ver puestos conectados desde el SaaS <span className="text-white/25">({PROTECTED_SEATS.length})</span></summary>
             <div className="mt-3 grid sm:grid-cols-2 lg:grid-cols-4 gap-3 border-t border-white/[0.05] pt-3">
               {PROTECTED_SEATS.map((seat) => (
-                <ProtectedSeatCard key={seat.agentId} displayLabel={seat.displayLabel} />
+                <ProtectedSeatCard
+                  key={seat.agentId}
+                  displayLabel={seat.displayLabel}
+                  agentId={seat.agentId as FixedOfficeSeatId}
+                  displayNameOverride={coreSeatDisplayNames[seat.agentId as FixedOfficeSeatId]}
+                  onChangeDisplayName={updateCoreSeatName}
+                />
               ))}
             </div>
           </details>

@@ -20,20 +20,25 @@ function ResponsiveCamera({ cameraMode }: { cameraMode: CameraMode }) {
 
   useEffect(() => {
     const portrait = size.width < 640 && size.height > size.width;
+    // Recentrado (Fase 2): la oficina sigue siendo el elemento principal,
+    // en X=0 — antes el objetivo se desplazaba a x=9/10 porque la
+    // cafetería vivía fuera de eje, a un lateral. Ahora que la cafetería
+    // está centrada delante de la oficina (mayor Z, no X), el objetivo ya
+    // no necesita ningún desplazamiento lateral.
     const target: [number, number, number] =
-      cameraMode === 'showcase' ? [10, 0.8, 0] : [9, 1.35, portrait ? 2.4 : 3.2];
+      cameraMode === 'showcase' ? [0, 0.8, 0] : [0, 1.35, portrait ? 2.4 : 3.2];
 
     if (cameraMode === '2d') {
       camera.position.set(0, portrait ? 68 : 54, portrait ? 8 : 12);
     } else if (cameraMode === 'showcase') {
       // Locked cinematic framing inspired by a premium operations dashboard.
       // The original interactive isometric and top-down cameras stay intact.
-      camera.position.set(10, portrait ? 62 : 40, portrait ? 82 : 65);
+      camera.position.set(0, portrait ? 62 : 40, portrait ? 82 : 65);
     } else {
       // Portrait screens need a closer and more vertical profile. The old
       // long-distance framing kept every edge visible but made rooms, desks
       // and people too small to understand on a phone.
-      camera.position.set(9, portrait ? 60 : 28, portrait ? 84 : 54);
+      camera.position.set(0, portrait ? 60 : 28, portrait ? 84 : 54);
     }
     camera.lookAt(...target);
 
@@ -64,9 +69,11 @@ export default function OfficeCanvas({ rooms, selectedId, onSelect, onHover, cam
   // framing and (only in showcase) the fictional roster, never the visual skin.
   const hasPresentationStyle = true;
   const background = '#041010';
+  // Mismo recentrado que ResponsiveCamera — la cafetería ya no está a un
+  // lateral, así que el objetivo de OrbitControls tampoco necesita X≠0.
   const controlsTarget: [number, number, number] = isShowcase
-    ? [10, 0.8, 0]
-    : [9, 1.35, 3.2];
+    ? [0, 0.8, 0]
+    : [0, 1.35, 3.2];
 
   return (
     <Canvas
@@ -79,12 +86,16 @@ export default function OfficeCanvas({ rooms, selectedId, onSelect, onHover, cam
       <color attach="background" args={[background]} />
       {/* far must clear every camera-to-target distance this scene actually
           uses, including narrow-viewport iso (~98) and 2d (~101) framing
-          and OrbitControls' maxDistance (115) — at the previous far of 105,
+          and OrbitControls' maxDistance — at the previous far of 105,
           narrow/mobile screens rendered a fully fogged, empty-looking scene
-          (real bug, reproduced in the original Agencia IA app too). */}
+          (real bug, reproduced in the original Agencia IA app too).
+          Fase 2: la cafetería recentrada queda más lejos en Z (delante de
+          la oficina, no a un lateral) que antes — far/maxDistance suben en
+          la misma proporción para que orbitar hasta verla no vuelva a
+          reproducir ese mismo bug. */}
       <fog
         attach="fog"
-        args={['#041010', 42, 118]}
+        args={['#041010', 42, 140]}
       />
 
       <ambientLight
@@ -152,7 +163,7 @@ export default function OfficeCanvas({ rooms, selectedId, onSelect, onHover, cam
         enablePan={false}
         enableRotate={isIso || isShowcase}
         minDistance={16}
-        maxDistance={115}
+        maxDistance={135}
         minPolarAngle={isIso ? Math.PI / 6 : isShowcase ? Math.PI / 5 : 0.08}
         maxPolarAngle={isIso ? Math.PI / 2.3 : isShowcase ? Math.PI / 2.12 : 0.08}
         target={controlsTarget}

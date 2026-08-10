@@ -5,6 +5,8 @@ import { requireOfficeVirtualReader } from '@/features/office-virtual/server/off
 import {
   handleCoordinatorMessage,
   type AgendaPorts,
+  type ContentPorts,
+  type ContentWriteOutcome,
   type RealChatServicePorts,
 } from '@/features/office-virtual/server/real-chat-service';
 import type { OfficeConfigurationHead, OfficeConfigurationStore } from '@/features/office-virtual/server/office-configuration-service';
@@ -12,11 +14,19 @@ import type { OrchestratorStore } from '@/features/office-virtual/server/orchest
 import { resolveRealIntegrationStatuses } from '@/features/office-virtual/server/real-integration-status';
 import { OPENROUTER_STATUS_ACTIVATES } from '@/features/office-virtual/client/central-integrations/real-integrations';
 import type { WorkspaceOrchestratorBinding } from '@/features/office-virtual/client/central-orchestrator';
-import { generateChatReply } from '@/features/inbox/services/openrouter';
+import { createOpenAI } from '@ai-sdk/openai';
+import { generateText } from 'ai';
 import { getBusinessInfo, buildNowContext } from '@/features/inbox/services/business-info';
 import { getGoogleCalendarConfig, createGoogleEvent, zonedDateTime } from '@/features/inbox/services/google-calendar-client';
 import { getZoomConfig, createZoomMeeting } from '@/features/inbox/services/zoom-client';
 import { readJsonBody } from '@/lib/auth/workspace-access';
+import { searchContentItems, createContentItem } from '@/features/content/services/content-actions';
+import { writeContentFieldsWithConfirmation } from '@/features/help-assistant/services/action-tools/content-tools';
+import { createPendingConfirmationSlot } from '@/features/help-assistant/services/pending-actions';
+import { logAudit } from '@/features/audit/services/audit-log';
+import { resolveResponsibleMemberId, contentFieldsToPatch } from '@/features/office-virtual/server/office-content-mapping';
+import { getWorkspaceOpenRouterCredential } from '@/features/content/services/openrouter-credential';
+import type { GenerateChatReply } from '@/features/office-virtual/server/real-chat-service';
 
 function serviceClient() {
   return createServiceClient(
@@ -223,6 +233,157 @@ async function resolveNowContext(workspaceId: string): Promise<string> {
   return buildNowContext(await resolveWorkspaceTimezone(workspaceId));
 }
 
+/**
+ * Toda generación del Orquestador/especialistas usa EXCLUSIVAMENTE esta
+ * implementación — nunca `generateChatReply`/`getOpenRouterApiKey` de
+ * inbox/services/openrouter.ts, cuyo resolvedor cae silenciosamente a
+ * `process.env.OPENROUTER_API_KEY` (la clave de plataforma) si la lectura
+ * de la integración del workspace falla por cualquier motivo. Reutiliza el
+ * MISMO resolvedor estricto/fail-closed que "Generar guion con IA"
+ * (content-script-ai.ts) — una integración leída, un solo criterio de
+ * "hay clave o no hay clave", nunca dos que puedan divergir.
+ */
+export const officeVirtualGenerateReply: GenerateChatReply = async ({ model, systemPrompt, messages, workspaceId, maxOutputTokens }) => {
+  const credential = await getWorkspaceOpenRouterCredential(workspaceId);
+  if (credential.status !== 'ready') {
+    throw new Error(`[office-virtual/chat] OpenRouter no disponible para el workspace (${credential.status}) — nunca se usa la clave de plataforma como respaldo.`);
+  }
+
+  const openrouter = createOpenAI({
+    baseURL: 'https://openrouter.ai/api/v1',
+    apiKey: credential.apiKey,
+    headers: {
+      'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000',
+      'X-Title': 'Oficina Virtual',
+    },
+  });
+
+  const result = await generateText({
+    model: openrouter.chat(model),
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...messages.map((m) => ({ role: m.role, content: m.content })),
+    ],
+    maxOutputTokens: maxOutputTokens ?? 700,
+  });
+
+  return { text: result.text };
+};
+
+export function contentPorts(): ContentPorts {
+  function responsibleErrorMessage(code: 'responsible_not_found' | 'responsible_ambiguous' | 'database_error'): string {
+    if (code === 'responsible_not_found') return 'La persona responsable no es un miembro activo de esta empresa.';
+    if (code === 'responsible_ambiguous') return 'Hay varias personas con ese nombre. Indica un nombre inequívoco antes de guardar.';
+    return 'No se pudo comprobar la persona responsable en este momento. Inténtalo de nuevo.';
+  }
+
+  return {
+    async search(workspaceId, query) {
+      const results = await searchContentItems(workspaceId, query);
+      return results.map((r) => ({ id: r.id, title: r.title, status: r.status, version: r.version }));
+    },
+
+    async create(workspaceId, actorUserId, fields): Promise<ContentWriteOutcome> {
+      // Independent re-check right before the real write — never reuse the
+      // decision from the top of this same request. Same gate the route
+      // itself enforces (session, membership activa, rol mínimo manager,
+      // paquete Suite/office_virtual_enabled como kill switch) with fresh
+      // reads, so a membership revocada o el kill switch apagado a mitad
+      // de la petición sí bloquean la escritura.
+      const reauth = await requireOfficeVirtualReader(workspaceId);
+      if (!reauth.ok) return { kind: 'error', error: 'Ya no tienes acceso a la Oficina Virtual de esta empresa.' };
+
+      let responsibleId: string | undefined;
+      if (fields.responsible_name !== undefined) {
+        const resolution = await resolveResponsibleMemberId(workspaceId, fields.responsible_name);
+        if (!resolution.ok) return { kind: 'error', error: responsibleErrorMessage(resolution.code) };
+        responsibleId = resolution.userId;
+      }
+
+      const created = await createContentItem(workspaceId, {
+        title: fields.title?.trim() || 'Guion sin título',
+        main_idea: fields.main_idea,
+        description: fields.description,
+        content_type: fields.content_type,
+        platform: fields.platform,
+        orientation: fields.orientation,
+        duration_estimate: fields.duration_estimate,
+        scheduled_date: fields.scheduled_date,
+        script_hook: fields.script_hook,
+        script_body: fields.script_body,
+        script_closing: fields.script_closing,
+        script_cta: fields.script_cta,
+        bullet_points: fields.bullet_points,
+        reference_links: fields.reference_links,
+        lighting_notes: fields.lighting_notes,
+        music_notes: fields.music_notes,
+        notes: fields.notes,
+        responsible_id: responsibleId,
+      });
+      if (!created.ok) return { kind: 'error', error: created.error };
+
+      const contentItemId = created.data.id;
+
+      void logAudit({
+        workspaceId,
+        actorUserId,
+        action: 'office_virtual.create_content_draft',
+        targetType: 'content_item',
+        targetId: contentItemId,
+        summary: `El especialista Creador de Contenido guardó el borrador "${fields.title?.trim() || 'Guion sin título'}"`,
+      });
+
+      return {
+        kind: 'created',
+        contentItemId,
+        title: fields.title?.trim() || 'Guion sin título',
+        status: 'idea',
+        version: 1,
+        href: `/contenido/${contentItemId}?from=scripts`,
+      };
+    },
+
+    async update(workspaceId, actorUserId, contentItemId, expectedVersion, fields): Promise<ContentWriteOutcome> {
+      const reauth = await requireOfficeVirtualReader(workspaceId);
+      if (!reauth.ok) return { kind: 'error', error: 'Ya no tienes acceso a la Oficina Virtual de esta empresa.' };
+
+      const patch = contentFieldsToPatch(fields);
+      if (fields.responsible_name !== undefined) {
+        const resolution = await resolveResponsibleMemberId(workspaceId, fields.responsible_name);
+        if (!resolution.ok) return { kind: 'error', error: responsibleErrorMessage(resolution.code) };
+        patch.responsible_id = resolution.userId;
+      }
+      if (Object.keys(patch).length === 0) {
+        return { kind: 'error', error: 'No hay ningún campo que actualizar.' };
+      }
+
+      const outcome = await writeContentFieldsWithConfirmation(
+        { workspaceId, actorUserId },
+        createPendingConfirmationSlot(),
+        contentItemId,
+        expectedVersion,
+        patch,
+      );
+
+      if (outcome.kind === 'error') return { kind: 'error', error: outcome.error };
+      if (outcome.kind === 'requires_confirmation') {
+        return { kind: 'requires_confirmation', token: outcome.token, expiresInSeconds: outcome.expiresInSeconds, summary: outcome.summary };
+      }
+
+      void logAudit({
+        workspaceId,
+        actorUserId,
+        action: 'office_virtual.update_content_draft',
+        targetType: 'content_item',
+        targetId: contentItemId,
+        summary: 'El especialista Creador de Contenido actualizó campos vacíos de un guion existente',
+      });
+
+      return { kind: 'updated', contentItemId, version: outcome.version };
+    },
+  };
+}
+
 function ports(): RealChatServicePorts {
   return {
     configuration: {
@@ -239,8 +400,9 @@ function ports(): RealChatServicePorts {
         return openRouter;
       },
     },
-    generateReply: generateChatReply,
+    generateReply: officeVirtualGenerateReply,
     agenda: agendaPorts(),
+    content: contentPorts(),
     resolveNowContext,
   };
 }

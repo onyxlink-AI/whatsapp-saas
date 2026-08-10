@@ -1,6 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { STATUS_LABEL_ES as STATUS_LABEL } from '../lib/statusStyles';
+import { ConfirmationCard } from '@/features/help-assistant/components/confirmation-card';
+import type { ConfirmationCardMessage } from '@/features/help-assistant/hooks/use-help-assistant-chat';
 import type { Agent, ChatMessage } from '../types';
 
 type Props = {
@@ -10,9 +12,11 @@ type Props = {
   onClose: () => void;
   onSend: (text: string) => void;
   onDecideApproval: (approved: boolean) => void;
+  /** Real two-step confirmation for a content substitution proposed by the Creador de Contenido specialist — same infra/endpoint as the Asistente de Ayuda. */
+  onResolveContentConfirmation: (messageId: string, decision: 'confirm' | 'cancel') => void;
 };
 
-export default function ChatPanel({ agent, messages, isTyping, onClose, onSend, onDecideApproval }: Props) {
+export default function ChatPanel({ agent, messages, isTyping, onClose, onSend, onDecideApproval, onResolveContentConfirmation }: Props) {
   const [draft, setDraft] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -77,7 +81,27 @@ export default function ChatPanel({ agent, messages, isTyping, onClose, onSend, 
                 Escríbele a {agent.name} para empezar la conversación.
               </div>
             )}
-            {messages.map((m) => (
+            {messages.map((m) =>
+              m.contentConfirmation ? (
+                <div key={m.id} className="flex flex-col items-start">
+                  <ConfirmationCard
+                    card={
+                      {
+                        id: m.id,
+                        kind: 'confirmation',
+                        role: 'assistant',
+                        token: m.contentConfirmation.token,
+                        summary: m.contentConfirmation.summary,
+                        expiresAt: m.contentConfirmation.expiresAt,
+                        status: m.contentConfirmation.status,
+                        lastDecision: m.contentConfirmation.lastDecision,
+                        resultText: m.contentConfirmation.resultText,
+                      } satisfies ConfirmationCardMessage
+                    }
+                    onResolve={(decision) => onResolveContentConfirmation(m.id, decision)}
+                  />
+                </div>
+              ) : (
               <div key={m.id} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
                 <div
                   className={`max-w-[85%] rounded-lg px-3.5 py-2.5 text-sm leading-snug whitespace-pre-line border ${
@@ -109,7 +133,8 @@ export default function ChatPanel({ agent, messages, isTyping, onClose, onSend, 
                 )}
                 {m.approvalStatus === 'rejected' && <div className="text-[11px] text-rose-400 mt-1">✕ Rechazado</div>}
               </div>
-            ))}
+              ),
+            )}
             {isTyping && (
               <div className="flex justify-start">
                 <div className="bg-white/[0.045] border border-white/[0.07] text-white/40 rounded-lg rounded-bl-sm px-3.5 py-2.5 text-sm flex gap-1">

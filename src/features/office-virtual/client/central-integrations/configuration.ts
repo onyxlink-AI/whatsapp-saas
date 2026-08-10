@@ -1,5 +1,12 @@
 import type { WorkspaceOfficeConfiguration } from './preset';
-import { CONFIGURABLE_AGENT_IDS, DEFAULT_SPECIALIST_COLORS, FIXED_AGENT_IDS, type ConfigurableOfficeAgentId, type OfficeSeatId } from './specialist-seats';
+import {
+  CONFIGURABLE_AGENT_IDS,
+  DEFAULT_SPECIALIST_COLORS,
+  FIXED_AGENT_IDS,
+  type ConfigurableOfficeAgentId,
+  type FixedOfficeSeatId,
+  type OfficeSeatId,
+} from './specialist-seats';
 import { findSpecialistTemplate, type SpecialistTemplateId } from './specialist-templates';
 import type { SpecialistExtensionId } from './specialist-extensions';
 import type { SpecialistSkillId } from './specialist-skills';
@@ -21,6 +28,9 @@ export const OFFICE_SPECIALIST_ACTIONS = [
   'update_pipeline',
   'schedule_call',
   'request_handoff',
+  'read_content',
+  'create_content_draft',
+  'update_content_draft',
 ] as const;
 
 export type OfficeSpecialistAction = (typeof OFFICE_SPECIALIST_ACTIONS)[number];
@@ -57,9 +67,24 @@ export type OfficeConfigurationDocument = {
   officeDisplayName: string;
   sectorId: VerticalId | null;
   specialists: Record<ConfigurableOfficeAgentId, OfficeSpecialistConfiguration>;
+  /**
+   * Fase 3 — nombre visible de los 4 puestos fijos (Orquestador/WhatsApp/
+   * Voz/Chatbot), configurable igual que el de un especialista, PERO nunca
+   * su función/objetivo/instrucciones/color — esos siguen reutilizando la
+   * configuración real del SaaS, protegida (ver `protected_seat` más
+   * abajo). Una clave ausente significa "usa el nombre por defecto", nunca
+   * "nombre vacío" — el fallback vive en `officeRoster.ts`. Opcional para
+   * que un documento persistido ANTES de esta fase (sin esta clave en su
+   * JSONB) siga siendo válido tal cual: undefined, nunca un objeto vacío
+   * fabricado que pudiera confundirse con "todos los puestos ya revisados".
+   */
+  coreSeatDisplayNames?: Partial<Record<FixedOfficeSeatId, string>>;
   updatedAt: string;
   updatedBy: string;
 };
+
+/** Mismo límite que el nombre de un especialista (`specialists.*.name`) — un nombre visible es un nombre visible, sin importar si el puesto es fijo o configurable. */
+export const CORE_SEAT_NAME_MAX_LENGTH = 80;
 
 export type OfficeConfigurationHistoryAction =
   | 'provisioned'
@@ -68,7 +93,8 @@ export type OfficeConfigurationHistoryAction =
   | 'specialist_reset'
   | 'vertical_applied'
   | 'published'
-  | 'revision_restored';
+  | 'revision_restored'
+  | 'core_seat_name_updated';
 
 type CommandBase = {
   workspaceId: string;
@@ -84,6 +110,13 @@ export type OfficeConfigurationCommand =
   /** `openRouterConnected` is computed server-side right before the reducer runs — the pure reducer never queries anything itself, and a client can never claim it's connected when it isn't. */
   | (CommandBase & { type: 'update_specialist'; agentId: OfficeSeatId; patch: SpecialistPatch; openRouterConnected: boolean })
   | (CommandBase & { type: 'reset_specialist'; agentId: OfficeSeatId })
+  /**
+   * Único cambio permitido sobre un puesto fijo (Orquestador/WhatsApp/Voz/
+   * Chatbot) — SOLO el nombre visible, nunca función/objetivo/color/
+   * instrucciones, que siguen viniendo de la configuración real del SaaS.
+   * `name: null` borra el override y vuelve al nombre por defecto.
+   */
+  | (CommandBase & { type: 'update_core_seat_name'; agentId: FixedOfficeSeatId; name: string | null })
   | (CommandBase & { type: 'apply_vertical'; verticalId: VerticalId | null })
   | (CommandBase & { type: 'publish' })
   /** `sourceDocument` is fetched by the server from the revisions table before the command is applied — the pure reducer never needs to hold history itself. */
@@ -120,6 +153,11 @@ function cloneDocument(document: OfficeConfigurationDocument): OfficeConfigurati
         { ...specialist, allowedActions: [...specialist.allowedActions], extensions: [...specialist.extensions], skills: [...specialist.skills] },
       ]),
     ) as OfficeConfigurationDocument['specialists'],
+    // Copia propia — de lo contrario `next.coreSeatDisplayNames` seguiría
+    // siendo LA MISMA referencia que `current.coreSeatDisplayNames`, y
+    // mutarla rompería la inmutabilidad que el resto de este reductor da
+    // por hecha (current nunca cambia bajo los pies de quien la conserva).
+    coreSeatDisplayNames: { ...document.coreSeatDisplayNames },
   };
 }
 
@@ -152,6 +190,16 @@ function validateText(issues: OfficeConfigurationIssue[], field: string, value: 
 export function validateOfficeConfiguration(document: OfficeConfigurationDocument): OfficeConfigurationIssue[] {
   const issues: OfficeConfigurationIssue[] = [];
   validateText(issues, 'officeDisplayName', document.officeDisplayName, 100);
+
+  // Documento persistido antes de la Fase 3: la clave simplemente no existe
+  // — válido, nunca se trata como "objeto vacío" a rellenar.
+  for (const [seatId, name] of Object.entries(document.coreSeatDisplayNames ?? {})) {
+    if (!FIXED_AGENT_IDS.includes(seatId as FixedOfficeSeatId)) {
+      issues.push({ field: `coreSeatDisplayNames.${seatId}`, message: 'Puesto fijo desconocido.' });
+      continue;
+    }
+    if (typeof name === 'string') validateText(issues, `coreSeatDisplayNames.${seatId}`, name, CORE_SEAT_NAME_MAX_LENGTH);
+  }
 
   for (const agentId of CONFIGURABLE_AGENT_IDS) {
     const specialist = document.specialists[agentId];
@@ -222,6 +270,7 @@ export function createOfficeConfigurationDocument(
     officeDisplayName: provisioned.displayName,
     sectorId: null,
     specialists,
+    coreSeatDisplayNames: {},
     updatedAt: occurredAt,
     updatedBy: actorId,
   };
@@ -299,6 +348,21 @@ export function applyOfficeConfigurationCommand(
     next.specialists[specialist.agentId] = defaultSpecialist(specialist.agentId);
     next.status = 'draft';
     action = 'specialist_reset';
+  } else if (command.type === 'update_core_seat_name') {
+    if (!FIXED_AGENT_IDS.includes(command.agentId)) {
+      return { success: false, code: 'unknown_specialist' };
+    }
+    const trimmed = command.name?.trim();
+    if (trimmed) {
+      next.coreSeatDisplayNames = { ...next.coreSeatDisplayNames, [command.agentId]: trimmed };
+    } else {
+      // name === null (o cadena vacía tras recortar espacios) borra el
+      // override — nunca se guarda un nombre vacío, vuelve al fallback.
+      const { [command.agentId]: _removed, ...rest } = next.coreSeatDisplayNames ?? {};
+      next.coreSeatDisplayNames = rest;
+    }
+    next.status = 'draft';
+    action = 'core_seat_name_updated';
   } else if (command.type === 'apply_vertical') {
     if (command.verticalId === null) {
       next.sectorId = null;
@@ -346,6 +410,7 @@ export function applyOfficeConfigurationCommand(
     next.officeDisplayName = command.sourceDocument.officeDisplayName;
     next.sectorId = command.sourceDocument.sectorId;
     next.specialists = cloneDocument(command.sourceDocument).specialists;
+    next.coreSeatDisplayNames = { ...command.sourceDocument.coreSeatDisplayNames };
     next.status = 'draft';
     action = 'revision_restored';
   }

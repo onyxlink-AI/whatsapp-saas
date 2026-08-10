@@ -296,3 +296,146 @@ describe('office configuration — no secrets', () => {
     expect(validateOfficeConfiguration(document)).toEqual([]);
   });
 });
+
+// Fase 3 — nombre visible de los 4 puestos fijos (Orquestador/WhatsApp/Voz/
+// Chatbot): mismo mecanismo de comando/revisión/validación que un
+// especialista, pero SOLO el nombre — nunca función/objetivo/color/
+// instrucciones, que siguen viniendo de la configuración real del SaaS.
+describe('update_core_seat_name — nombre visible de un puesto fijo', () => {
+  it('un documento recién creado no tiene ningún override — coreSeatDisplayNames vacío', () => {
+    const document = freshDocument();
+    expect(document.coreSeatDisplayNames).toEqual({});
+  });
+
+  it('fija el nombre de un puesto fijo, sube la revisión, y NO toca los especialistas ni el resto del documento', () => {
+    const document = freshDocument();
+    const result = applyOfficeConfigurationCommand(
+      document,
+      baseCommand({ type: 'update_core_seat_name', expectedRevision: document.revision, agentId: 'coordinator', name: 'Pepe' }),
+    );
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.document.coreSeatDisplayNames).toEqual({ coordinator: 'Pepe' });
+    expect(result.document.revision).toBe(document.revision + 1);
+    expect(result.document.specialists).toEqual(document.specialists);
+    expect(result.action).toBe('core_seat_name_updated');
+  });
+
+  it('permite configurar los 4 puestos fijos de forma independiente', () => {
+    let document = freshDocument();
+    for (const [agentId, name] of [
+      ['coordinator', 'Pepe'],
+      ['lead-intake', 'Sofía'],
+      ['strategy', 'Contenido'],
+      ['chatbot', 'Nova'],
+    ] as const) {
+      const result = applyOfficeConfigurationCommand(document, baseCommand({ type: 'update_core_seat_name', expectedRevision: document.revision, agentId, name }));
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+      document = result.document;
+    }
+    expect(document.coreSeatDisplayNames).toEqual({ coordinator: 'Pepe', 'lead-intake': 'Sofía', strategy: 'Contenido', chatbot: 'Nova' });
+  });
+
+  it('recorta espacios en blanco al guardar el nombre', () => {
+    const document = freshDocument();
+    const result = applyOfficeConfigurationCommand(
+      document,
+      baseCommand({ type: 'update_core_seat_name', expectedRevision: document.revision, agentId: 'chatbot', name: '  Nova  ' }),
+    );
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.document.coreSeatDisplayNames?.chatbot).toBe('Nova');
+  });
+
+  it('name: null BORRA el override — vuelve al fallback (compatibilidad con configuraciones existentes)', () => {
+    let document = freshDocument();
+    const set = applyOfficeConfigurationCommand(document, baseCommand({ type: 'update_core_seat_name', expectedRevision: document.revision, agentId: 'chatbot', name: 'Nova' }));
+    expect(set.success).toBe(true);
+    if (!set.success) return;
+    document = set.document;
+    expect(document.coreSeatDisplayNames).toEqual({ chatbot: 'Nova' });
+
+    const cleared = applyOfficeConfigurationCommand(document, baseCommand({ type: 'update_core_seat_name', expectedRevision: document.revision, agentId: 'chatbot', name: null }));
+    expect(cleared.success).toBe(true);
+    if (!cleared.success) return;
+    // La clave desaparece del todo — nunca queda como cadena vacía guardada.
+    expect(cleared.document.coreSeatDisplayNames).toEqual({});
+    expect(Object.prototype.hasOwnProperty.call(cleared.document.coreSeatDisplayNames, 'chatbot')).toBe(false);
+  });
+
+  it('una cadena vacía (tras recortar espacios) también borra el override, igual que null', () => {
+    let document = freshDocument();
+    const set = applyOfficeConfigurationCommand(document, baseCommand({ type: 'update_core_seat_name', expectedRevision: document.revision, agentId: 'strategy', name: 'Elena Voz' }));
+    expect(set.success).toBe(true);
+    if (!set.success) return;
+    document = set.document;
+
+    const cleared = applyOfficeConfigurationCommand(document, baseCommand({ type: 'update_core_seat_name', expectedRevision: document.revision, agentId: 'strategy', name: '   ' }));
+    expect(cleared.success).toBe(true);
+    if (!cleared.success) return;
+    expect(cleared.document.coreSeatDisplayNames?.strategy).toBeUndefined();
+  });
+
+  it('rechaza un nombre por encima de CORE_SEAT_NAME_MAX_LENGTH', () => {
+    const document = freshDocument();
+    const result = applyOfficeConfigurationCommand(
+      document,
+      baseCommand({ type: 'update_core_seat_name', expectedRevision: document.revision, agentId: 'coordinator', name: 'x'.repeat(81) }),
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.code).toBe('invalid_configuration');
+    expect(result.issues?.some((issue) => issue.field === 'coreSeatDisplayNames.coordinator')).toBe(true);
+  });
+
+  it('exige onyxlink_super_admin, igual que el resto de comandos del configurador', () => {
+    const document = freshDocument();
+    const result = applyOfficeConfigurationCommand(document, {
+      ...baseCommand({ type: 'update_core_seat_name', expectedRevision: document.revision, agentId: 'coordinator', name: 'Pepe' }),
+      actor: WORKSPACE_ADMIN,
+    });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.code).toBe('unauthorized');
+  });
+
+  it('conflicto de revisión (stale_revision) cuando otra escritura ya avanzó la revisión', () => {
+    const document = freshDocument();
+    const result = applyOfficeConfigurationCommand(
+      document,
+      baseCommand({ type: 'update_core_seat_name', expectedRevision: document.revision + 5, agentId: 'coordinator', name: 'Pepe' }),
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.code).toBe('stale_revision');
+  });
+
+  it('un documento SIN coreSeatDisplayNames (persistido antes de esta fase) sigue siendo válido — compatibilidad hacia atrás', () => {
+    const legacyDocument: OfficeConfigurationDocument = (() => {
+      const fresh = freshDocument();
+      const { coreSeatDisplayNames: _drop, ...withoutField } = fresh;
+      return withoutField as OfficeConfigurationDocument;
+    })();
+    expect(validateOfficeConfiguration(legacyDocument)).toEqual([]);
+    const result = applyOfficeConfigurationCommand(
+      legacyDocument,
+      baseCommand({ type: 'update_core_seat_name', expectedRevision: legacyDocument.revision, agentId: 'coordinator', name: 'Pepe' }),
+    );
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.document.coreSeatDisplayNames).toEqual({ coordinator: 'Pepe' });
+  });
+
+  it('nunca deja a `current` mutado — cloneDocument copia coreSeatDisplayNames, no lo comparte', () => {
+    let document = freshDocument();
+    const set = applyOfficeConfigurationCommand(document, baseCommand({ type: 'update_core_seat_name', expectedRevision: document.revision, agentId: 'chatbot', name: 'Nova' }));
+    expect(set.success).toBe(true);
+    if (!set.success) return;
+    const beforeSecondCommand = { ...document.coreSeatDisplayNames };
+    document = set.document;
+    applyOfficeConfigurationCommand(document, baseCommand({ type: 'update_core_seat_name', expectedRevision: document.revision, agentId: 'coordinator', name: 'Pepe' }));
+    // El documento ORIGINAL (antes del primer comando) nunca cambia retroactivamente.
+    expect(beforeSecondCommand).toEqual({});
+  });
+});

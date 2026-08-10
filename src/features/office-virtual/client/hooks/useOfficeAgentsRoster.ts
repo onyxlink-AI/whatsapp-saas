@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import type { OfficeAgentSeatProjection } from '../central-integrations/office-agent-projection';
+import type { FixedOfficeSeatId } from '../central-integrations/specialist-seats';
 import { fetchOfficeAgentsRoster } from '../lib/saasOfficeAgentsAdapter';
 
 export type OfficeAgentsRoster = {
   seats: OfficeAgentSeatProjection[];
+  coreSeatDisplayNames: Partial<Record<FixedOfficeSeatId, string>>;
   loading: boolean;
   error: string | null;
 };
@@ -14,6 +16,7 @@ export function useOfficeAgentsRoster(
   demoSeats: OfficeAgentSeatProjection[] | null = null,
 ): OfficeAgentsRoster {
   const [seats, setSeats] = useState<OfficeAgentSeatProjection[]>([]);
+  const [coreSeatDisplayNames, setCoreSeatDisplayNames] = useState<Partial<Record<FixedOfficeSeatId, string>>>({});
   const [loading, setLoading] = useState(demoSeats === null);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,6 +27,7 @@ export function useOfficeAgentsRoster(
       if (cancelled) return;
       if (result.status === 'ok') {
         setSeats(result.seats);
+        setCoreSeatDisplayNames(result.coreSeatDisplayNames);
         setError(null);
       } else {
         setError(result.message);
@@ -36,6 +40,6 @@ export function useOfficeAgentsRoster(
   }, [workspaceId, demoSeats]);
 
   return demoSeats !== null
-    ? { seats: demoSeats, loading: false, error: null }
-    : { seats, loading, error };
+    ? { seats: demoSeats, coreSeatDisplayNames: {}, loading: false, error: null }
+    : { seats, coreSeatDisplayNames, loading, error };
 }

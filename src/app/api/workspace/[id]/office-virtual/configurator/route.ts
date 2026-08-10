@@ -10,10 +10,19 @@ import {
   type OfficeConfigurationServicePorts,
   type OfficeConfigurationStore,
 } from '@/features/office-virtual/server/office-configuration-service';
-import { OFFICE_SPECIALIST_ACTIONS, type OfficeConfigurationHistoryAction } from '@/features/office-virtual/client/central-integrations/configuration';
+import {
+  OFFICE_SPECIALIST_ACTIONS,
+  CORE_SEAT_NAME_MAX_LENGTH,
+  type OfficeConfigurationHistoryAction,
+} from '@/features/office-virtual/client/central-integrations/configuration';
 import { SPECIALIST_EXTENSION_IDS } from '@/features/office-virtual/client/central-integrations/specialist-extensions';
 import { SPECIALIST_SKILL_IDS } from '@/features/office-virtual/client/central-integrations/specialist-skills';
-import { CONFIGURABLE_AGENT_IDS, type ConfigurableOfficeAgentId } from '@/features/office-virtual/client/central-integrations/specialist-seats';
+import {
+  CONFIGURABLE_AGENT_IDS,
+  FIXED_AGENT_IDS,
+  type ConfigurableOfficeAgentId,
+  type FixedOfficeSeatId,
+} from '@/features/office-virtual/client/central-integrations/specialist-seats';
 import { SPECIALIST_TEMPLATE_IDS } from '@/features/office-virtual/client/central-integrations/specialist-templates';
 import { VERTICAL_IDS } from '@/features/office-virtual/client/central-integrations/specialist-verticals';
 import { resolveRealIntegrationStatuses } from '@/features/office-virtual/server/real-integration-status';
@@ -137,11 +146,19 @@ const SpecialistPatchSchema = z
   .strict();
 
 const SeatIdSchema = z.enum(CONFIGURABLE_AGENT_IDS as [ConfigurableOfficeAgentId, ...ConfigurableOfficeAgentId[]]);
+const FixedSeatIdSchema = z.enum(FIXED_AGENT_IDS as [FixedOfficeSeatId, ...FixedOfficeSeatId[]]);
 
 const CommandBodySchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('update_office'), displayName: z.string().trim().min(1).max(100) }).strict(),
   z.object({ type: z.literal('update_specialist'), agentId: SeatIdSchema, patch: SpecialistPatchSchema }).strict(),
   z.object({ type: z.literal('reset_specialist'), agentId: SeatIdSchema }).strict(),
+  z
+    .object({
+      type: z.literal('update_core_seat_name'),
+      agentId: FixedSeatIdSchema,
+      name: z.string().trim().min(1).max(CORE_SEAT_NAME_MAX_LENGTH).nullable(),
+    })
+    .strict(),
   z.object({ type: z.literal('apply_vertical'), verticalId: z.enum(VERTICAL_IDS).nullable() }).strict(),
   z.object({ type: z.literal('publish') }).strict(),
   z.object({ type: z.literal('restore_revision'), revision: z.number().int().positive() }).strict(),
@@ -236,6 +253,8 @@ function configuratorAuditSummary(action: OfficeConfigurationHistoryAction | str
       return 'Actualizó un puesto de especialista';
     case 'reset_specialist':
       return 'Restableció un puesto de especialista';
+    case 'update_core_seat_name':
+      return 'Cambió el nombre visible de un puesto fijo (Orquestador/WhatsApp/Voz/Chatbot)';
     case 'apply_vertical':
       return 'Aplicó un sector a la Oficina Virtual';
     case 'publish':

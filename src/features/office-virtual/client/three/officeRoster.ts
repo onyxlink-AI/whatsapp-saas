@@ -1,7 +1,13 @@
 import { agents as staticAgents } from '../agents';
-import { CONFIGURABLE_AGENT_IDS, type ConfigurableOfficeAgentId } from '../central-integrations/specialist-seats';
+import { CONFIGURABLE_AGENT_IDS, type ConfigurableOfficeAgentId, type FixedOfficeSeatId } from '../central-integrations/specialist-seats';
 import type { OfficeAgentSeatProjection } from '../central-integrations/office-agent-projection';
 import type { CharacterAppearance, OfficeSceneAgent } from '../types';
+
+/** Nombre por defecto (sin override) del puesto — mismo que ya usa/mostraba `staticAgents`/`CHATBOT_SHELL`. Vive aquí (no en el override) para que el fallback sea explícito y testeable. */
+function withDisplayName(agent: OfficeSceneAgent, overrides: Partial<Record<FixedOfficeSeatId, string>> | undefined, seatId: FixedOfficeSeatId): OfficeSceneAgent {
+  const override = overrides?.[seatId];
+  return override ? { ...agent, name: override } : agent;
+}
 
 // Builds the 12 room slots the 3D scene renders: room geometry always shows
 // (see Building.tsx), the character (`occupant`) only when there's real,
@@ -73,7 +79,11 @@ const SPECIALIST_APPEARANCES: Record<ConfigurableOfficeAgentId, CharacterAppeara
   'specialist-8': { shirtColor: '#397C7B', pantsColor: '#1e293b', skinColor: '#f4c99b', hairColor: '#5c3a21' },
 };
 
-export function buildOfficeRoomSlots(roster: OfficeAgentSeatProjection[], readiness: OfficeSeatReadiness): OfficeRoomSlot[] {
+export function buildOfficeRoomSlots(
+  roster: OfficeAgentSeatProjection[],
+  readiness: OfficeSeatReadiness,
+  coreSeatDisplayNames: Partial<Record<FixedOfficeSeatId, string>> = {},
+): OfficeRoomSlot[] {
   const coordinator = staticAgents.find((a) => a.id === 'coordinator');
   const whatsapp = staticAgents.find((a) => a.id === 'lead-intake');
   const voice = staticAgents.find((a) => a.id === 'strategy');
@@ -82,21 +92,28 @@ export function buildOfficeRoomSlots(roster: OfficeAgentSeatProjection[], readin
 
   const slots: OfficeRoomSlot[] = [];
 
+  // El nombre visible configurado SOLO se aplica al agente real, nunca al
+  // puesto vacío — un puesto sin ocupante debe seguir sin revelar ninguna
+  // identidad, configurada o no (ver emptySeatShell más arriba).
   if (coordinator) {
     const occupied = hasAnyPublishedSpecialist;
-    slots.push({ seatId: 'coordinator', room: occupied ? coordinator : emptySeatShell('coordinator'), occupant: occupied ? coordinator : null });
+    const named = withDisplayName(coordinator, coreSeatDisplayNames, 'coordinator');
+    slots.push({ seatId: 'coordinator', room: occupied ? named : emptySeatShell('coordinator'), occupant: occupied ? named : null });
   }
   if (whatsapp) {
     const occupied = readiness.whatsappReady;
-    slots.push({ seatId: 'lead-intake', room: occupied ? whatsapp : emptySeatShell('lead-intake'), occupant: occupied ? whatsapp : null });
+    const named = withDisplayName(whatsapp, coreSeatDisplayNames, 'lead-intake');
+    slots.push({ seatId: 'lead-intake', room: occupied ? named : emptySeatShell('lead-intake'), occupant: occupied ? named : null });
   }
   if (voice) {
     const occupied = readiness.voiceReady;
-    slots.push({ seatId: 'strategy', room: occupied ? voice : emptySeatShell('strategy'), occupant: occupied ? voice : null });
+    const named = withDisplayName(voice, coreSeatDisplayNames, 'strategy');
+    slots.push({ seatId: 'strategy', room: occupied ? named : emptySeatShell('strategy'), occupant: occupied ? named : null });
   }
   {
     const occupied = readiness.chatbotReady;
-    slots.push({ seatId: 'chatbot', room: occupied ? CHATBOT_SHELL : emptySeatShell('chatbot'), occupant: occupied ? CHATBOT_SHELL : null });
+    const named = withDisplayName(CHATBOT_SHELL, coreSeatDisplayNames, 'chatbot');
+    slots.push({ seatId: 'chatbot', room: occupied ? named : emptySeatShell('chatbot'), occupant: occupied ? named : null });
   }
 
   CONFIGURABLE_AGENT_IDS.forEach((agentId) => {

@@ -71,6 +71,7 @@ function baseItem(overrides: Partial<ContentItemRow> = {}): ContentItemRow {
     created_by: null,
     created_at: "2026-08-01T00:00:00.000Z",
     updated_at: "2026-08-01T00:00:00.000Z",
+    version: 1,
     ...overrides,
   };
 }
@@ -208,6 +209,72 @@ describe("ContentEditor — Generar guion con IA", () => {
     await waitFor(() => expect(generateContentScript).toHaveBeenCalledTimes(1));
     // El componente no debe quedar colgado en estado "generando" para siempre.
     await waitFor(() => expect(button.disabled).toBe(false));
+  });
+
+  it("con la integración deshabilitada (openrouter_disabled), el mensaje también conduce a Ajustes → Integraciones", async () => {
+    generateContentScript.mockResolvedValue({
+      ok: false,
+      error: "La integración de OpenRouter de esta empresa está desactivada. Actívala en Ajustes → Integraciones para generar guiones con IA.",
+      code: "openrouter_disabled",
+    });
+    renderEditor();
+
+    fireEvent.click(screen.getByRole("button", { name: /Generar guion con IA/i }));
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledTimes(1));
+    const [message, options] = toastError.mock.calls[0] as [string, { action?: { label: string; onClick: () => void } }];
+    expect(message).toMatch(/desactivada/i);
+    expect(options.action?.label).toBe("Ir a Ajustes");
+    options.action?.onClick();
+    expect(push).toHaveBeenCalledWith("/settings?tab=integraciones");
+  });
+
+  it("el botón se deshabilita durante la generación y un segundo clic no dispara una segunda generación", async () => {
+    let resolveGeneration!: (value: { ok: true; data: typeof GENERATED }) => void;
+    generateContentScript.mockReturnValue(new Promise((resolve) => { resolveGeneration = resolve; }));
+    renderEditor();
+
+    const button = screen.getByRole("button", { name: /Generar guion con IA/i }) as HTMLButtonElement;
+    fireEvent.click(button);
+
+    await waitFor(() => expect(button.disabled).toBe(true));
+    fireEvent.click(button); // second click while still generating — must be a no-op
+    fireEvent.click(button);
+
+    resolveGeneration({ ok: true, data: GENERATED });
+    await waitFor(() => expect(button.disabled).toBe(false));
+    expect(generateContentScript).toHaveBeenCalledTimes(1);
+  });
+
+  it("usa el estado ACTUAL del formulario (idea principal editada), nunca la versión antigua guardada en base de datos", async () => {
+    generateContentScript.mockResolvedValue({ ok: true, data: GENERATED });
+    renderEditor({ main_idea: "Idea original en la base de datos" });
+
+    const ideaField = screen.getByDisplayValue("Idea original en la base de datos");
+    fireEvent.change(ideaField, { target: { value: "Idea editada en el formulario, todavía sin guardar" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /Generar guion con IA/i }));
+
+    await waitFor(() => expect(generateContentScript).toHaveBeenCalledTimes(1));
+    expect(generateContentScript).toHaveBeenCalledWith(
+      "empresa-a",
+      expect.objectContaining({ mainIdea: "Idea editada en el formulario, todavía sin guardar" }),
+    );
+  });
+
+  it('"Estructuras de guion" se mantiene, sigue funcionando, y está a la derecha de "Generar guion con IA"', async () => {
+    renderEditor();
+
+    const buttons = screen.getAllByRole("button").map((b) => b.textContent ?? "");
+    const generateIndex = buttons.findIndex((t) => /Generar guion con IA/i.test(t));
+    const structuresIndex = buttons.findIndex((t) => /Estructuras de guion/i.test(t));
+    expect(generateIndex).toBeGreaterThanOrEqual(0);
+    expect(structuresIndex).toBeGreaterThan(generateIndex);
+
+    fireEvent.click(screen.getByRole("button", { name: /Estructuras de guion/i }));
+    // El botón y el título del diálogo comparten el mismo texto — abrir el
+    // diálogo debe dejar DOS apariciones ("Estructuras de guion") en vez de una.
+    await waitFor(() => expect(screen.getAllByText("Estructuras de guion").length).toBeGreaterThanOrEqual(2));
   });
 });
 

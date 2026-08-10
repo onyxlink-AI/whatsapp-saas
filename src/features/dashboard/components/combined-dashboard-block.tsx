@@ -242,8 +242,8 @@ export function CombinedDashboardBlock({ whatsapp, whatsappStatus, canConfigureW
       <section aria-label="Indicadores principales" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {whatsappReady && (
           <>
-            <KpiCard index={0} label="💬 Mensajes de hoy" value={whatsapp.metrics.messagesToday.toLocaleString("es")} helper="Recibidos y enviados." icon={MessageCircle} />
-            <KpiCard index={1} label="🗨️ Chats abiertos" value={whatsapp.metrics.activeConversations.toLocaleString("es")} helper="Conversaciones abiertas." icon={Users} tone="primary" />
+            <KpiCard index={0} label="💬 Mensajes de hoy" value={whatsapp.metrics.messagesToday.toLocaleString("es")} helper="Recibidos y enviados." icon={MessageCircle} href="/inbox" />
+            <KpiCard index={1} label="🗨️ Chats abiertos" value={whatsapp.metrics.activeConversations.toLocaleString("es")} helper="Conversaciones abiertas." icon={Users} tone="primary" href="/inbox" />
           </>
         )}
         <KpiCard
@@ -253,8 +253,9 @@ export function CombinedDashboardBlock({ whatsapp, whatsappStatus, canConfigureW
           helper={gestion.metrics.tasksOverdue > 0 ? `${gestion.metrics.tasksOverdue} vencidas` : "Ninguna vencida"}
           icon={ListChecks}
           tone={gestion.metrics.tasksOverdue > 0 ? "warning" : "neutral"}
+          href="/proyectos?view=tasks"
         />
-        <KpiCard index={3} label="💼 Oportunidades abiertas" value={gestion.metrics.dealsOpenCount.toLocaleString("es")} helper={formatCurrency(gestion.metrics.dealsOpenValue)} icon={Workflow} />
+        <KpiCard index={3} label="💼 Oportunidades abiertas" value={gestion.metrics.dealsOpenCount.toLocaleString("es")} helper={formatCurrency(gestion.metrics.dealsOpenValue)} icon={Workflow} href="/pipeline" />
       </section>
 
       {(hasMessageVolume || hasConversationStates) && (

@@ -143,7 +143,7 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, isDemoPresen
   const searchActor = { actorId: userEmail, role: workspaceRole, workspaceId };
   const reportActor = { actorId: userEmail, role: workspaceRole, workspaceId };
 
-  const { messagesByAgent, sendMessage, decideApproval, typingAgentId, pendingApproval } = useAgentChat(
+  const { messagesByAgent, sendMessage, decideApproval, resolveContentConfirmation, typingAgentId, pendingApproval } = useAgentChat(
     workspaceId,
     !isDemoPresentation,
   );
@@ -234,12 +234,16 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, isDemoPresen
   const officeAgentsRoster = useOfficeAgentsRoster(workspaceId, demoSpecialistSeats);
   const officeRoomSlots = useMemo(
     () =>
-      buildOfficeRoomSlots(officeAgentsRoster.seats, {
-        whatsappReady: isWhatsAppChannelReady(officeActivation.snapshot),
-        voiceReady: isVoiceChannelReady(officeActivation.snapshot),
-        chatbotReady: isChatbotChannelReady(officeActivation.snapshot),
-      }),
-    [officeAgentsRoster.seats, officeActivation.snapshot],
+      buildOfficeRoomSlots(
+        officeAgentsRoster.seats,
+        {
+          whatsappReady: isWhatsAppChannelReady(officeActivation.snapshot),
+          voiceReady: isVoiceChannelReady(officeActivation.snapshot),
+          chatbotReady: isChatbotChannelReady(officeActivation.snapshot),
+        },
+        officeAgentsRoster.coreSeatDisplayNames,
+      ),
+    [officeAgentsRoster.seats, officeAgentsRoster.coreSeatDisplayNames, officeActivation.snapshot],
   );
   const activeSeatCount = useMemo(
     () => officeRoomSlots.filter((slot) => slot.occupant !== null).length,
@@ -463,6 +467,7 @@ export default function OfficeVirtualApp({ userEmail, isSuperAdmin, isDemoPresen
         onClose={() => setSelectedId(null)}
         onSend={(text) => selectedAgent && sendMessage(selectedAgent, text)}
         onDecideApproval={(approved) => selectedAgent && decideApproval(selectedAgent, approved)}
+        onResolveContentConfirmation={(messageId, decision) => selectedAgent && resolveContentConfirmation(selectedAgent, messageId, decision)}
       />
 
       <Contact360Panel contact={contact360Id ? getContact(contact360Id) : null} onClose={() => setContact360Id(null)} />

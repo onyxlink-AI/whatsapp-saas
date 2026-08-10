@@ -1,6 +1,6 @@
 import type { OfficeConfigurationDocument, OfficeConfigurationIssue } from './configuration';
 import { validateOfficeConfiguration } from './configuration';
-import { CONFIGURABLE_AGENT_IDS, type ConfigurableOfficeAgentId } from './specialist-seats';
+import { CONFIGURABLE_AGENT_IDS, type ConfigurableOfficeAgentId, type FixedOfficeSeatId } from './specialist-seats';
 
 // This is the ONLY thing the 3D office (or any non-superadmin surface) is
 // allowed to read from the configuration document: a sanitized, per-seat
@@ -23,6 +23,13 @@ export type OfficeAgentProjection = {
   revision: number;
   /** Only enabled seats — disabled seats are simply absent, never a fabricated placeholder. */
   seats: OfficeAgentSeatProjection[];
+  /**
+   * Fase 3 — nombre visible configurado para los 4 puestos fijos. Una clave
+   * ausente significa "usa el nombre por defecto" — el fallback lo aplica
+   * `officeRoster.ts`, nunca aquí (esta proyección solo pasa lo que hay,
+   * nunca inventa un valor).
+   */
+  coreSeatDisplayNames: Partial<Record<FixedOfficeSeatId, string>>;
 };
 
 export type OfficeAgentProjectionResult =
@@ -43,7 +50,13 @@ function project(document: OfficeConfigurationDocument, workspaceId: string, req
 
   return {
     success: true,
-    projection: { workspaceId, officeDisplayName: document.officeDisplayName, revision: document.revision, seats },
+    projection: {
+      workspaceId,
+      officeDisplayName: document.officeDisplayName,
+      revision: document.revision,
+      seats,
+      coreSeatDisplayNames: { ...document.coreSeatDisplayNames },
+    },
   };
 }
 

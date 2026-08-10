@@ -565,7 +565,7 @@ export const SPECIALIST_TEMPLATES: SpecialistTemplate[] = [
     ],
     handoffTargets: ['comercial-growth', 'gestor-de-empresa'],
     kpis: ['Diagnóstico inicial completado antes del primer guion', 'Guiones entregados listos para grabar', 'Ideas de contenido propuestas'],
-    allowedActions: ['read_memory', 'create_task', 'request_handoff'],
+    allowedActions: ['read_memory', 'create_task', 'request_handoff', 'read_content', 'create_content_draft', 'update_content_draft'],
     approvalPolicy: 'never',
     safetyNotes: [
       'No genera imágenes ni vídeos: solo texto (guiones, ideas, análisis).',

@@ -49,6 +49,14 @@ export const PENDING_ACTION_TTL_SECONDS = 300;
 // mínimo indispensable — IDs y parámetros, nunca documentos/contenido
 // completo (decisión cerrada del usuario).
 // ──────────────────────────────────────────────────────────────────────────────
+/** Mismo whitelist que la función SQL (update_content_item_fields_cas) — una clave fuera de esta lista se rechaza aquí antes de gastar un viaje a la base de datos; la función también la rechaza igual, defensa en profundidad. */
+const CONTENT_ITEM_PATCH_KEYS = [
+  "title", "main_idea", "description", "content_type", "platform", "orientation",
+  "responsible_id", "scheduled_date", "script_hook", "script_body", "script_closing",
+  "script_cta", "bullet_points", "reference_links", "notes", "lighting_notes",
+  "music_notes", "duration_estimate",
+] as const;
+
 const PENDING_ACTION_PAYLOAD_SCHEMAS = {
   cancel_agenda_item: z.object({ agenda_task_id: z.string().uuid() }),
   // Fase 4C: element_id NO es un UUID — Excalidraw genera ids propios
@@ -58,6 +66,21 @@ const PENDING_ACTION_PAYLOAD_SCHEMAS = {
     whiteboard_id: z.string().uuid(),
     element_id: z.string().min(1).max(100),
     expected_element_version: z.number().int().positive(),
+  }),
+  // Fase 4 — Agente de Contenido: solo se prepara cuando el modelo va a
+  // SUSTITUIR un campo que ya tenía contenido. `patch` nunca lleva el texto
+  // completo sensible más allá de lo que el propio campo ya representa —
+  // el resumen mostrado al usuario (ver content-tools.ts) trunca cualquier
+  // vista previa por separado.
+  update_content_item: z.object({
+    content_item_id: z.string().uuid(),
+    expected_version: z.number().int().positive(),
+    patch: z
+      .record(z.string(), z.unknown())
+      .refine((v) => Object.keys(v).length > 0, { message: "El parche no puede estar vacío" })
+      .refine((v) => Object.keys(v).every((k) => (CONTENT_ITEM_PATCH_KEYS as readonly string[]).includes(k)), {
+        message: "El parche contiene un campo no permitido",
+      }),
   }),
 } as const;
 

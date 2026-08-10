@@ -5,7 +5,7 @@ import {
   type OfficeSpecialistConfiguration,
 } from '../central-integrations/configuration';
 import { STANDARD_OFFICE_PRESET } from '../central-integrations/preset';
-import { CONFIGURABLE_AGENT_IDS, type ConfigurableOfficeAgentId } from '../central-integrations/specialist-seats';
+import { CONFIGURABLE_AGENT_IDS, type ConfigurableOfficeAgentId, type FixedOfficeSeatId } from '../central-integrations/specialist-seats';
 import { findSpecialistTemplate, type SpecialistTemplateId } from '../central-integrations/specialist-templates';
 import type { VerticalId } from '../central-integrations/specialist-verticals';
 import { createVerticalApplicationPlan, type VerticalApplicationPlan } from '../central-integrations/vertical-application-plan';
@@ -95,6 +95,17 @@ export function useDemoOfficeConfigurator(workspaceId: string, enabled: boolean)
     setSpecialistDrafts((previous) => ({ ...previous, [agentId]: draft }));
   };
 
+  /** Fase 3 — demo local: se aplica de inmediato, sin la ronda save()→command() del hook real. */
+  const updateCoreSeatName = (agentId: FixedOfficeSeatId, name: string | null) => {
+    setDocument((previous) => {
+      const trimmed = name?.trim();
+      const nextNames = { ...previous.coreSeatDisplayNames };
+      if (trimmed) nextNames[agentId] = trimmed;
+      else delete nextNames[agentId];
+      return { ...previous, coreSeatDisplayNames: nextNames, revision: previous.revision + 1 };
+    });
+  };
+
   const previewVertical = (verticalId: VerticalId): VerticalApplicationPlan | null => {
     const appliedTemplateByAgent = Object.fromEntries(
       CONFIGURABLE_AGENT_IDS.map((agentId) => [agentId, specialistDrafts[agentId].templateId ?? undefined]),
@@ -153,8 +164,10 @@ export function useDemoOfficeConfigurator(workspaceId: string, enabled: boolean)
     specialistDrafts,
     realIntegrations: DEMO_INTEGRATIONS,
     openRouterStatus: 'verified',
+    coreSeatDisplayNames: document.coreSeatDisplayNames ?? {},
     updateSpecialistDraft,
     resetSpecialist,
+    updateCoreSeatName,
     lastResult,
     hasUnsavedChanges,
     save: () => { commit('draft'); },

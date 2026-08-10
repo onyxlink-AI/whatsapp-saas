@@ -100,12 +100,14 @@ const searchContentItems = vi.fn();
 const getContentItem = vi.fn();
 const createContentItem = vi.fn();
 const updateContentItem = vi.fn();
+const updateContentItemFieldsCas = vi.fn();
 const moveContentStatus = vi.fn();
 vi.mock("@/features/content/services/content-actions", () => ({
   searchContentItems: (...args: unknown[]) => searchContentItems(...args),
   getContentItem: (...args: unknown[]) => getContentItem(...args),
   createContentItem: (...args: unknown[]) => createContentItem(...args),
   updateContentItem: (...args: unknown[]) => updateContentItem(...args),
+  updateContentItemFieldsCas: (...args: unknown[]) => updateContentItemFieldsCas(...args),
   moveContentStatus: (...args: unknown[]) => moveContentStatus(...args),
 }));
 
@@ -765,9 +767,37 @@ describe("note-tools", () => {
 });
 
 describe("content-tools", () => {
-  it("create_content_idea succeeds and logs an audit entry", async () => {
+  function contentItem(overrides: Record<string, unknown> = {}) {
+    return {
+      id: "ci1",
+      workspace_id: "ws1",
+      title: "Reel de automatizaciones",
+      version: 3,
+      main_idea: null,
+      description: null,
+      content_type: null,
+      platform: null,
+      orientation: null,
+      duration_estimate: null,
+      scheduled_date: null,
+      responsible_id: null,
+      status: "idea",
+      script_hook: null,
+      script_body: null,
+      script_closing: null,
+      script_cta: null,
+      bullet_points: [],
+      reference_links: [],
+      lighting_notes: null,
+      music_notes: null,
+      notes: null,
+      ...overrides,
+    };
+  }
+
+  it("create_content_idea succeeds and logs an audit entry — direct, no confirmation (fila nueva)", async () => {
     createContentItem.mockResolvedValue({ ok: true, data: { id: "ci1" } });
-    const tools = buildContentTools(ctx);
+    const tools = buildContentTools(ctx, createPendingConfirmationSlot());
 
     const result = await tools.create_content_idea.execute!(
       { title: "Reel de automatizaciones" },
@@ -778,9 +808,26 @@ describe("content-tools", () => {
     expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({ action: "help_assistant.create_content_idea" }));
   });
 
+  it("get_content_item devuelve el contenido completo, incluida la versión, para un content_item_id del propio workspace", async () => {
+    getContentItem.mockResolvedValue(contentItem({ main_idea: "Automatizaciones" }));
+    const tools = buildContentTools(ctx, createPendingConfirmationSlot());
+
+    const result = await tools.get_content_item.execute!({ content_item_id: "ci1" }, { toolCallId: "t1", messages: [] } as never);
+
+    expect(result).toMatchObject({ ok: true, content_item_id: "ci1", element_version: 3, main_idea: "Automatizaciones" });
+  });
+
+  it("get_content_item rechaza un content_item_id de otro workspace", async () => {
+    getContentItem.mockResolvedValue(contentItem({ workspace_id: "ws-other" }));
+    const tools = buildContentTools(ctx, createPendingConfirmationSlot());
+
+    const result = await tools.get_content_item.execute!({ content_item_id: "ci1" }, { toolCallId: "t1", messages: [] } as never);
+    expect(result).toEqual({ ok: false, error: "No encontré esa pieza de contenido en esta empresa." });
+  });
+
   it("move_content_status calls moveContentStatus with workspaceId and position 0", async () => {
     moveContentStatus.mockResolvedValue({ ok: true, data: null });
-    const tools = buildContentTools(ctx);
+    const tools = buildContentTools(ctx, createPendingConfirmationSlot());
 
     const result = await tools.move_content_status.execute!(
       { content_item_id: "11111111-1111-4111-8111-111111111111", status: "in_production" },
@@ -790,78 +837,234 @@ describe("content-tools", () => {
     expect(moveContentStatus).toHaveBeenCalledWith("ws1", "11111111-1111-4111-8111-111111111111", "in_production", 0);
   });
 
-  it("generate_content_script returns a proposal without saving — never calls updateContentItem", async () => {
-    getContentItem.mockResolvedValue({
-      id: "ci1",
-      workspace_id: "ws1",
-      main_idea: "Automatizaciones",
-      description: "3 trucos",
-      content_type: "Reel",
-      platform: "Instagram",
-      orientation: "vertical",
-      duration_estimate: "30s",
-      responsible_id: null,
-      scheduled_date: null,
-    });
-    generateContentScript.mockResolvedValue({
-      ok: true,
-      data: { hook: "H", body: "B", closing: "C", cta: "CTA", bulletPoints: [], links: [], lighting: "L", music: "M", notes: "" },
-    });
-    const tools = buildContentTools(ctx);
+  describe("update_content_general / update_content_script — CAS y confirmación de sustitución", () => {
+    it("rellenar un campo VACÍO es directo — nunca pide confirmación", async () => {
+      getContentItem.mockResolvedValue(contentItem({ description: null }));
+      updateContentItemFieldsCas.mockResolvedValue({ ok: true, data: { result: "updated", version: 4 } });
+      const slot = createPendingConfirmationSlot();
+      const tools = buildContentTools(ctx, slot);
 
-    const result = await tools.generate_content_script.execute!(
-      { content_item_id: "ci1" },
-      { toolCallId: "t1", messages: [] } as never,
-    );
+      const result = await tools.update_content_general.execute!(
+        { content_item_id: "ci1", expected_version: 3, description: "Descripción nueva" },
+        { toolCallId: "t1", messages: [] } as never,
+      );
 
-    expect(result).toMatchObject({ ok: true, content_item_id: "ci1" });
-    expect(updateContentItem).not.toHaveBeenCalled();
-    expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({ action: "help_assistant.generate_content_script" }));
+      expect(result).toEqual({ ok: true, content_item_id: "ci1", element_version: 4 });
+      expect(updateContentItemFieldsCas).toHaveBeenCalledWith("ws1", "ci1", 3, expect.objectContaining({ description: "Descripción nueva" }));
+      expect(slot.prepared).toBeNull();
+      expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({ action: "help_assistant.update_content_general" }));
+    });
+
+    it("sustituir un campo que YA tenía contenido pide confirmación — nunca escribe directo", async () => {
+      getContentItem.mockResolvedValue(contentItem({ description: "Descripción vieja" }));
+      const slot = createPendingConfirmationSlot();
+      const tools = buildContentTools(ctx, slot);
+
+      const result = await tools.update_content_general.execute!(
+        { content_item_id: "ci1", expected_version: 3, description: "Descripción nueva" },
+        { toolCallId: "t1", messages: [] } as never,
+      );
+
+      expect(result).toMatchObject({ ok: true, requiresConfirmation: true });
+      expect((result as { summary: string }).summary).toContain("Reel de automatizaciones");
+      expect((result as { summary: string }).summary).toContain("breve descripción");
+      expect(updateContentItemFieldsCas).not.toHaveBeenCalled();
+      expect(slot.remaining).toBe(0);
+      expect(slot.prepared).toMatchObject({ summary: expect.stringContaining("breve descripción") as unknown as string });
+    });
+
+    it("proponer el MISMO valor que ya tenía el campo no exige confirmación (no hay cambio real)", async () => {
+      getContentItem.mockResolvedValue(contentItem({ description: "Igual" }));
+      updateContentItemFieldsCas.mockResolvedValue({ ok: true, data: { result: "updated", version: 4 } });
+      const slot = createPendingConfirmationSlot();
+      const tools = buildContentTools(ctx, slot);
+
+      const result = await tools.update_content_general.execute!(
+        { content_item_id: "ci1", expected_version: 3, description: "Igual" },
+        { toolCallId: "t1", messages: [] } as never,
+      );
+
+      expect(result).toMatchObject({ ok: true });
+      expect(slot.prepared).toBeNull();
+    });
+
+    it("expected_version desactualizada -> conflicto, nunca escribe ni prepara confirmación", async () => {
+      getContentItem.mockResolvedValue(contentItem({ version: 9 }));
+      const slot = createPendingConfirmationSlot();
+      const tools = buildContentTools(ctx, slot);
+
+      const result = await tools.update_content_general.execute!(
+        { content_item_id: "ci1", expected_version: 3, title: "Nuevo título" },
+        { toolCallId: "t1", messages: [] } as never,
+      );
+
+      expect(result).toEqual({ ok: false, error: expect.stringContaining("Vuelve a leerlo") });
+      expect(updateContentItemFieldsCas).not.toHaveBeenCalled();
+      expect(slot.prepared).toBeNull();
+    });
+
+    it("content_item_id de otro workspace -> no encontrado, nunca escribe", async () => {
+      getContentItem.mockResolvedValue(contentItem({ workspace_id: "ws-other" }));
+      const tools = buildContentTools(ctx, createPendingConfirmationSlot());
+
+      const result = await tools.update_content_general.execute!(
+        { content_item_id: "ci1", expected_version: 3, title: "X" },
+        { toolCallId: "t1", messages: [] } as never,
+      );
+      expect(result).toEqual({ ok: false, error: expect.stringContaining("No encontré esa pieza de contenido") });
+      expect(updateContentItemFieldsCas).not.toHaveBeenCalled();
+    });
+
+    it("responsable que no pertenece al workspace -> invalid_responsible, mensaje claro, nunca se confía en el ID sin verificar", async () => {
+      getContentItem.mockResolvedValue(contentItem({ responsible_id: null }));
+      updateContentItemFieldsCas.mockResolvedValue({ ok: true, data: { result: "invalid_responsible" } });
+      const tools = buildContentTools(ctx, createPendingConfirmationSlot());
+
+      const result = await tools.update_content_general.execute!(
+        { content_item_id: "ci1", expected_version: 3, responsible_id: "22222222-2222-4222-8222-222222222222" },
+        { toolCallId: "t1", messages: [] } as never,
+      );
+      expect(result).toEqual({ ok: false, error: expect.stringContaining("no pertenece a esta empresa") });
+    });
+
+    it("respeta el límite de una preparación confirmable por petición (compartido con Board/Agenda)", async () => {
+      getContentItem.mockResolvedValue(contentItem({ description: "Vieja" }));
+      const slot = createPendingConfirmationSlot();
+      slot.remaining = 0;
+      const tools = buildContentTools(ctx, slot);
+
+      const result = await tools.update_content_general.execute!(
+        { content_item_id: "ci1", expected_version: 3, description: "Nueva" },
+        { toolCallId: "t1", messages: [] } as never,
+      );
+      expect(result).toMatchObject({ ok: false });
+      expect(updateContentItemFieldsCas).not.toHaveBeenCalled();
+    });
+
+    it("update_content_script: rellenar el hook vacío es directo; sustituir uno ya escrito pide confirmación con los campos exactos", async () => {
+      getContentItem.mockResolvedValue(contentItem({ script_hook: null, script_body: "Desarrollo ya escrito" }));
+      updateContentItemFieldsCas.mockResolvedValue({ ok: true, data: { result: "updated", version: 4 } });
+      const slot = createPendingConfirmationSlot();
+      const tools = buildContentTools(ctx, slot);
+
+      // Solo rellena el hook (vacío) — directo.
+      const directResult = await tools.update_content_script.execute!(
+        { content_item_id: "ci1", expected_version: 3, hook: "Hook nuevo" },
+        { toolCallId: "t1", messages: [] } as never,
+      );
+      expect(directResult).toEqual({ ok: true, content_item_id: "ci1", element_version: 4 });
+
+      // Ahora sustituye el desarrollo (ya tenía contenido) — pide confirmación.
+      const confirmResult = await tools.update_content_script.execute!(
+        { content_item_id: "ci1", expected_version: 3, body: "Desarrollo nuevo" },
+        { toolCallId: "t2", messages: [] } as never,
+      );
+      expect(confirmResult).toMatchObject({ ok: true, requiresConfirmation: true });
+      expect((confirmResult as { summary: string }).summary).toContain("desarrollo");
+    });
+
+    it("update_content_script aplicando una propuesta de generate_content_script sigue pidiendo confirmación si sustituye contenido real", async () => {
+      getContentItem.mockResolvedValue(contentItem({ script_hook: "Hook viejo" }));
+      const slot = createPendingConfirmationSlot();
+      const tools = buildContentTools(ctx, slot);
+
+      const result = await tools.update_content_script.execute!(
+        { content_item_id: "ci1", expected_version: 3, hook: "Hook propuesto por generate_content_script" },
+        { toolCallId: "t1", messages: [] } as never,
+      );
+      expect(result).toMatchObject({ ok: true, requiresConfirmation: true });
+    });
   });
 
-  it("generate_content_script rejects a content_item_id from another workspace", async () => {
-    getContentItem.mockResolvedValue({ id: "ci1", workspace_id: "ws-other" });
-    const tools = buildContentTools(ctx);
+  describe("generate_content_script", () => {
+    it("returns a proposal without saving — never calls updateContentItem/updateContentItemFieldsCas", async () => {
+      getContentItem.mockResolvedValue(contentItem({
+        main_idea: "Automatizaciones",
+        description: "3 trucos",
+        content_type: "Reel",
+        platform: "Instagram",
+        orientation: "vertical",
+        duration_estimate: "30s",
+      }));
+      generateContentScript.mockResolvedValue({
+        ok: true,
+        data: { hook: "H", body: "B", closing: "C", cta: "CTA", bulletPoints: [], links: [], lighting: "L", music: "M", notes: "" },
+      });
+      const tools = buildContentTools(ctx, createPendingConfirmationSlot());
 
-    const result = await tools.generate_content_script.execute!(
-      { content_item_id: "ci1" },
-      { toolCallId: "t1", messages: [] } as never,
-    );
-    expect(result).toEqual({ ok: false, error: "No encontré esa pieza de contenido en esta empresa" });
-    expect(generateContentScript).not.toHaveBeenCalled();
-  });
+      const result = await tools.generate_content_script.execute!(
+        { content_item_id: "ci1" },
+        { toolCallId: "t1", messages: [] } as never,
+      );
 
-  it("generate_content_script allows at most one generation per buildContentTools() instance (one user petición)", async () => {
-    getContentItem.mockResolvedValue({ id: "ci1", workspace_id: "ws1", main_idea: "X", description: "", content_type: "", platform: "", orientation: null, duration_estimate: "", responsible_id: null, scheduled_date: null });
-    generateContentScript.mockResolvedValue({
-      ok: true,
-      data: { hook: "H", body: "B", closing: "C", cta: "CTA", bulletPoints: [], links: [], lighting: "L", music: "M", notes: "" },
-    });
-    const tools = buildContentTools(ctx);
-
-    const first = (await tools.generate_content_script.execute!({ content_item_id: "ci1" }, { toolCallId: "t1", messages: [] } as never)) as { ok: boolean };
-    expect(first.ok).toBe(true);
-    expect(generateContentScript).toHaveBeenCalledTimes(1);
-
-    const second = (await tools.generate_content_script.execute!({ content_item_id: "ci1" }, { toolCallId: "t2", messages: [] } as never)) as { ok: boolean };
-    expect(second.ok).toBe(false);
-    // Still only ever called once — the second attempt never reaches the provider.
-    expect(generateContentScript).toHaveBeenCalledTimes(1);
-  });
-
-  it("a NEW buildContentTools() call (new user petición) resets the once-per-request guard", async () => {
-    getContentItem.mockResolvedValue({ id: "ci1", workspace_id: "ws1", main_idea: "X", description: "", content_type: "", platform: "", orientation: null, duration_estimate: "", responsible_id: null, scheduled_date: null });
-    generateContentScript.mockResolvedValue({
-      ok: true,
-      data: { hook: "H", body: "B", closing: "C", cta: "CTA", bulletPoints: [], links: [], lighting: "L", music: "M", notes: "" },
+      expect(result).toMatchObject({ ok: true, content_item_id: "ci1" });
+      expect(updateContentItem).not.toHaveBeenCalled();
+      expect(updateContentItemFieldsCas).not.toHaveBeenCalled();
+      expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({ action: "help_assistant.generate_content_script" }));
     });
 
-    const firstRequestTools = buildContentTools(ctx);
-    await firstRequestTools.generate_content_script.execute!({ content_item_id: "ci1" }, { toolCallId: "t1", messages: [] } as never);
+    it("rejects a content_item_id from another workspace", async () => {
+      getContentItem.mockResolvedValue(contentItem({ workspace_id: "ws-other" }));
+      const tools = buildContentTools(ctx, createPendingConfirmationSlot());
 
-    const secondRequestTools = buildContentTools(ctx);
-    const result = (await secondRequestTools.generate_content_script.execute!({ content_item_id: "ci1" }, { toolCallId: "t2", messages: [] } as never)) as { ok: boolean };
-    expect(result.ok).toBe(true);
-    expect(generateContentScript).toHaveBeenCalledTimes(2);
+      const result = await tools.generate_content_script.execute!(
+        { content_item_id: "ci1" },
+        { toolCallId: "t1", messages: [] } as never,
+      );
+      expect(result).toEqual({ ok: false, error: "No encontré esa pieza de contenido en esta empresa" });
+      expect(generateContentScript).not.toHaveBeenCalled();
+    });
+
+    it("cuando la integración OpenRouter del cliente no está conectada, devuelve un mensaje controlado — nunca intenta con otra clave", async () => {
+      getContentItem.mockResolvedValue(contentItem());
+      generateContentScript.mockResolvedValue({ ok: false, error: "Conecta OpenRouter en Ajustes → Integraciones para generar guiones con IA." });
+      const tools = buildContentTools(ctx, createPendingConfirmationSlot());
+
+      const result = await tools.generate_content_script.execute!({ content_item_id: "ci1" }, { toolCallId: "t1", messages: [] } as never);
+      expect(result).toEqual({ ok: false, error: expect.stringContaining("OpenRouter") });
+    });
+
+    it("cuando el rate limit del cliente está agotado, devuelve un mensaje controlado — fail-closed, nunca genera igualmente", async () => {
+      getContentItem.mockResolvedValue(contentItem());
+      generateContentScript.mockResolvedValue({ ok: false, error: "Se alcanzó el límite de generaciones de guion por esta hora. Inténtalo más tarde." });
+      const tools = buildContentTools(ctx, createPendingConfirmationSlot());
+
+      const result = await tools.generate_content_script.execute!({ content_item_id: "ci1" }, { toolCallId: "t1", messages: [] } as never);
+      expect(result).toEqual({ ok: false, error: expect.stringContaining("límite") });
+    });
+
+    it("allows at most one generation per buildContentTools() instance (one user petición)", async () => {
+      getContentItem.mockResolvedValue(contentItem());
+      generateContentScript.mockResolvedValue({
+        ok: true,
+        data: { hook: "H", body: "B", closing: "C", cta: "CTA", bulletPoints: [], links: [], lighting: "L", music: "M", notes: "" },
+      });
+      const tools = buildContentTools(ctx, createPendingConfirmationSlot());
+
+      const first = (await tools.generate_content_script.execute!({ content_item_id: "ci1" }, { toolCallId: "t1", messages: [] } as never)) as { ok: boolean };
+      expect(first.ok).toBe(true);
+      expect(generateContentScript).toHaveBeenCalledTimes(1);
+
+      const second = (await tools.generate_content_script.execute!({ content_item_id: "ci1" }, { toolCallId: "t2", messages: [] } as never)) as { ok: boolean };
+      expect(second.ok).toBe(false);
+      // Still only ever called once — the second attempt never reaches the provider.
+      expect(generateContentScript).toHaveBeenCalledTimes(1);
+    });
+
+    it("a NEW buildContentTools() call (new user petición) resets the once-per-request guard", async () => {
+      getContentItem.mockResolvedValue(contentItem());
+      generateContentScript.mockResolvedValue({
+        ok: true,
+        data: { hook: "H", body: "B", closing: "C", cta: "CTA", bulletPoints: [], links: [], lighting: "L", music: "M", notes: "" },
+      });
+
+      const firstRequestTools = buildContentTools(ctx, createPendingConfirmationSlot());
+      await firstRequestTools.generate_content_script.execute!({ content_item_id: "ci1" }, { toolCallId: "t1", messages: [] } as never);
+
+      const secondRequestTools = buildContentTools(ctx, createPendingConfirmationSlot());
+      const result = (await secondRequestTools.generate_content_script.execute!({ content_item_id: "ci1" }, { toolCallId: "t2", messages: [] } as never)) as { ok: boolean };
+      expect(result.ok).toBe(true);
+      expect(generateContentScript).toHaveBeenCalledTimes(2);
+    });
   });
 });

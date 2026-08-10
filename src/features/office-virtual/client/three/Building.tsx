@@ -1,12 +1,23 @@
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { BUILDING_DEPTH, BUILDING_WIDTH, GAP, ROOM_D, ROOM_W, SPACING_X, roomCenter } from './layout';
+import {
+  BUILDING_DEPTH,
+  BUILDING_WIDTH,
+  CAFE_CENTER,
+  CAFE_CORRIDOR_WIDTH,
+  CAFE_ROTATION_Y,
+  CORRIDOR_Z,
+  ROOM_W,
+  SPACING_X,
+  roomCenter,
+} from './layout';
 import type { OfficeRoomSlot } from './officeRoster';
 import OfficeCharacter from './OfficeCharacter';
 import OfficeRoom from './OfficeRoom';
 import { resolveCoffeePropState, resolveIdleMotion } from './idleMotion';
 import { buildPresentationRoomSlots } from './presentationRoster';
+import { DESK_LOCAL_Z, PATROL_AMPLITUDE, PATROL_LOCAL_Z, WORK_CHAIR_LOCAL_Z, buildIdleRoute, pathDistance } from './officePathing';
 
 type Props = {
   rooms: OfficeRoomSlot[];
@@ -16,67 +27,6 @@ type Props = {
   presentation?: boolean;
   presentationStyle?: boolean;
 };
-
-const DESK_LOCAL_Z = -ROOM_D / 2 + 1.25;
-const WORK_CHAIR_LOCAL_Z = DESK_LOCAL_Z + 1.05;
-const PATROL_LOCAL_Z = 0.8;
-const PATROL_AMPLITUDE = 2.75;
-
-type IdleRoute = {
-  path: [number, number, number][];
-  distance: number;
-  cupPickupProgress: number;
-};
-
-function buildIdleRoute(index: number, corridorZ: number, cafeCenter: [number, number, number]): IdleRoute {
-  const room = roomCenter(index);
-  const laneOffset = (index % 4 - 1.5) * .28;
-  const rowCorridorZ = room[2] + ROOM_D / 2 + GAP / 2 + laneOffset;
-  const sideCorridorX = BUILDING_WIDTH / 2 + 1.05 + (index % 3) * .34;
-  // Two completely clear internal aisles between the two table rows. Every
-  // destination is outside the table, chair, sofa and counter footprints.
-  const cafeStopX = -6.05 + (index % 6) * 2.35;
-  const cafeAisleZ = index % 2 === 0 ? .35 : 1.35;
-  const entranceZ = index % 2 === 0 ? -2.6 : 2.6;
-  const cupStationX = 2.8 + (index % 6) * .42;
-  const path: [number, number, number][] = [
-    [room[0] + ROOM_W / 2 - 1.15, 0, room[2] + ROOM_D / 2 + .35],
-    [room[0] + ROOM_W / 2 - 1.15, 0, rowCorridorZ],
-    [sideCorridorX, 0, rowCorridorZ],
-    [sideCorridorX, 0, corridorZ],
-    [cafeCenter[0] - 8.55, 0, corridorZ + laneOffset],
-    // Align while still outside. Crossing the wall diagonally was the source
-    // of the visible wall clipping in the previous route.
-    [cafeCenter[0] - 8.55, 0, corridorZ + entranceZ],
-    [cafeCenter[0] - 8.2, 0, corridorZ + entranceZ],
-    [cafeCenter[0] - 7.55, 0, corridorZ + entranceZ],
-    // Stay against the clear left edge until reaching an internal aisle, then
-    // turn at 90 degrees. No diagonal segment can cut across furniture.
-    [cafeCenter[0] - 7.4, 0, corridorZ + entranceZ],
-    [cafeCenter[0] - 7.4, 0, corridorZ + cafeAisleZ],
-    // Every visit reaches the real cup rack first. The approach runs along
-    // the clear strip in front of the counter, never through tables/chairs.
-    [cafeCenter[0] - 7.4, 0, corridorZ - 4.2],
-    [cafeCenter[0] + cupStationX, 0, corridorZ - 4.2],
-    [cafeCenter[0] - 7, 0, corridorZ - 4.2],
-    [cafeCenter[0] - 7, 0, corridorZ + cafeAisleZ],
-    [cafeCenter[0] + cafeStopX, 0, corridorZ + cafeAisleZ],
-  ];
-  const start: [number, number, number] = [room[0], room[1], room[2] + PATROL_LOCAL_Z];
-  const distance = pathDistance(start, path);
-  const pickupDistance = pathDistance(start, path.slice(0, 12));
-  return { path, distance, cupPickupProgress: Math.min(.94, pickupDistance / distance) };
-}
-
-function pathDistance(start: [number, number, number], path: [number, number, number][]): number {
-  let distance = 0;
-  let previous = start;
-  path.forEach((point) => {
-    distance += Math.hypot(point[0] - previous[0], point[2] - previous[2]);
-    previous = point;
-  });
-  return distance;
-}
 
 function CafeChair({ position, rotation = 0, presentation }: { position: [number, number, number]; rotation?: number; presentation: boolean }) {
   const color = presentation ? '#17302f' : '#6e7d79';
@@ -214,18 +164,20 @@ function CafeLounge({ position, presentation, coffeeSchedules }: { position: [nu
 }
 
 export default function Building({ rooms, selectedId, onSelect, onHover, presentation = false, presentationStyle = presentation }: Props) {
-  const frontRoomZ = roomCenter(0)[2];
-  const corridorZ = frontRoomZ + ROOM_D / 2 + GAP / 2;
-  const cafeCenter: [number, number, number] = [BUILDING_WIDTH / 2 + 12, 0, corridorZ];
   const visibleRooms = presentation ? buildPresentationRoomSlots(rooms) : rooms;
-  const idleRoutes = visibleRooms.map((_, index) => buildIdleRoute(index, corridorZ, cafeCenter));
+  const idleRoutes = visibleRooms.map((_, index) => buildIdleRoute(index));
   const coffeeSchedules: CoffeeSchedule[] = visibleRooms.flatMap((slot, index) => slot.occupant && slot.occupant.status !== 'working' ? [{ phase: index * 1.3, routeDistance: idleRoutes[index].distance, cupPickupProgress: idleRoutes[index].cupPickupProgress, slotIndex: index }] : []);
+  // Distancia real entre el spine de despachos y la pared de entrada de la
+  // cafetería (mismo cálculo que CAFE_CENTER en layout.ts) — usada solo
+  // para dibujar el tramo de pasillo de conexión con la longitud exacta.
+  const cafeConnectorLength = CAFE_CENTER[2] - CORRIDOR_Z;
+  const cafeConnectorCenterZ = (CORRIDOR_Z + CAFE_CENTER[2]) / 2;
 
   return (
     <group>
       {/* ground beneath/around the building */}
       <mesh position={[0, -0.2, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[BUILDING_WIDTH + 42, BUILDING_DEPTH + 24]} />
+        <planeGeometry args={[BUILDING_WIDTH + 42, BUILDING_DEPTH + CAFE_CENTER[2] * 2 + 24]} />
         <meshStandardMaterial
           color={presentationStyle ? '#020808' : '#d9ddda'}
           roughness={presentationStyle ? 0.68 : 0.88}
@@ -233,13 +185,8 @@ export default function Building({ rooms, selectedId, onSelect, onHover, present
         />
       </mesh>
 
-      <mesh position={[BUILDING_WIDTH / 2 + 2, -.105, corridorZ]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[8, 6.6]} />
-        <meshStandardMaterial color={presentationStyle ? '#0b1b1a' : '#c4cbc8'} metalness={presentationStyle ? .26 : .05} roughness={.72} />
-      </mesh>
-
       {/* A neutral circulation spine makes the rooms read as one shared office. */}
-      <mesh position={[0, -0.115, corridorZ]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <mesh position={[0, -0.115, CORRIDOR_Z]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[BUILDING_WIDTH + 1.2, 1.15]} />
         <meshStandardMaterial
           color={presentationStyle ? '#081414' : '#c4cbc8'}
@@ -248,17 +195,34 @@ export default function Building({ rooms, selectedId, onSelect, onHover, present
         />
       </mesh>
       {[-1.5 * SPACING_X, -0.5 * SPACING_X, 0.5 * SPACING_X, 1.5 * SPACING_X].map((x) => (
-        <mesh key={x} position={[x, -0.105, corridorZ]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh key={x} position={[x, -0.105, CORRIDOR_Z]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[0.055, 1.05]} />
           <meshBasicMaterial color={presentationStyle ? '#397C7B' : '#8fa29d'} />
         </mesh>
       ))}
-      <mesh position={[0, -0.1, corridorZ]} rotation={[-Math.PI / 2, 0, 0]}>
+
+      {/* Pasillo ancho y despejado que conecta el spine de despachos con la
+          cafetería, siempre centrado en X=0 — la cafetería nunca queda
+          desplazada a un lateral. */}
+      <mesh position={[0, -0.115, cafeConnectorCenterZ]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[CAFE_CORRIDOR_WIDTH, cafeConnectorLength]} />
+        <meshStandardMaterial
+          color={presentationStyle ? '#081414' : '#c4cbc8'}
+          metalness={presentationStyle ? 0.3 : 0.06}
+          roughness={0.76}
+        />
+      </mesh>
+      <mesh position={[0, -0.1, CORRIDOR_Z]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[ROOM_W, 0.035]} />
         <meshBasicMaterial color={presentationStyle ? '#83CFCE' : '#879995'} />
       </mesh>
 
-      <CafeLounge position={cafeCenter} presentation={presentationStyle} coffeeSchedules={coffeeSchedules} />
+      {/* La cafetería queda centrada, delante de la oficina — rotada -90°
+          sobre Y para que su pared con las 2 puertas reales mire hacia el
+          spine de despachos en vez de hacia un lateral. */}
+      <group rotation={[0, CAFE_ROTATION_Y, 0]} position={CAFE_CENTER}>
+        <CafeLounge position={[0, 0, 0]} presentation={presentationStyle} coffeeSchedules={coffeeSchedules} />
+      </group>
 
       {visibleRooms.map((slot, i) => {
         const route = idleRoutes[i];

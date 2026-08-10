@@ -10,7 +10,7 @@ import {
   type SpecialistPatch,
 } from '../client/central-integrations/configuration';
 import { provisionWorkspaceOffice } from '../client/central-integrations/preset';
-import type { OfficeSeatId } from '../client/central-integrations/specialist-seats';
+import type { FixedOfficeSeatId, OfficeSeatId } from '../client/central-integrations/specialist-seats';
 import type { VerticalId } from '../client/central-integrations/specialist-verticals';
 import type { OfficeViewer } from '../client/central-integrations/types';
 
@@ -90,6 +90,7 @@ export type OfficeConfigurationCommandInput =
   | { type: 'update_office'; expectedRevision: number; displayName: string }
   | { type: 'update_specialist'; expectedRevision: number; agentId: OfficeSeatId; patch: SpecialistPatch }
   | { type: 'reset_specialist'; expectedRevision: number; agentId: OfficeSeatId }
+  | { type: 'update_core_seat_name'; expectedRevision: number; agentId: FixedOfficeSeatId; name: string | null }
   | { type: 'apply_vertical'; expectedRevision: number; verticalId: VerticalId | null }
   | { type: 'publish'; expectedRevision: number }
   | { type: 'restore_revision'; expectedRevision: number; revision: number };
