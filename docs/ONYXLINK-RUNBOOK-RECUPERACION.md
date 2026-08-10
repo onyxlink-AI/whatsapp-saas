@@ -34,6 +34,10 @@ La aplicación oficial no depende del ordenador:
 
 ## 3. Qué debe estar guardado antes de una emergencia
 
+La copia externa automática de base de datos y Storage se configura y verifica
+según `docs/ONYXLINK-BACKUP-EXTERNO-AUTOMATICO.md`. El disco externo ya no es la
+única copia independiente de los datos de cliente.
+
 Guardar en un gestor de contraseñas empresarial, nunca en GitHub, correo sin
 cifrar ni este documento:
 

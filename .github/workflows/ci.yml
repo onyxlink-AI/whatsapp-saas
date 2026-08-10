@@ -56,6 +56,9 @@ jobs:
       - name: Preflight local de Board
         run: npm run preflight:board
 
+      - name: Seguridad y flujo de backup con datos ficticios
+        run: npm run backup:test
+
       - name: Typecheck
         run: npm run typecheck
 

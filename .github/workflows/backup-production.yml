@@ -1,0 +1,89 @@
+name: Copia externa cifrada de producción
+
+on:
+  schedule:
+    # 02:20 UTC. Permanece inactivo hasta BACKUP_ENABLED=true.
+    - cron: "20 2 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: onyxlink-backup-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    if: vars.BACKUP_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    environment: backup-production
+
+    steps:
+      - name: Descargar scripts versionados
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.111.0
+
+      - name: Instalar herramientas de transferencia y PostgreSQL
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends rclone postgresql-client
+
+      - name: Comprobar backup físico de Supabase
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          result="$(supabase backups list --project-ref "${{ secrets.PRODUCTION_SUPABASE_PROJECT_REF }}")"
+          echo "$result" | jq -e '(.walg_enabled == true) and ([.backups[] | select(.status == "COMPLETED")] | length > 0)' > /dev/null
+
+      - name: Crear snapshot externo cifrado e inmutable por ruta
+        id: create
+        env:
+          BACKUP_RUN_ENABLED: "true"
+          BACKUP_CONFIRMATION: ONYXLINK_BACKUP_PRODUCTION
+          SUPABASE_DB_URL: ${{ secrets.PRODUCTION_SUPABASE_DB_URL }}
+          SUPABASE_S3_ENDPOINT: ${{ secrets.PRODUCTION_SUPABASE_S3_ENDPOINT }}
+          SUPABASE_S3_REGION: ${{ secrets.PRODUCTION_SUPABASE_S3_REGION }}
+          SUPABASE_S3_ACCESS_KEY_ID: ${{ secrets.PRODUCTION_SUPABASE_S3_ACCESS_KEY_ID }}
+          SUPABASE_S3_SECRET_ACCESS_KEY: ${{ secrets.PRODUCTION_SUPABASE_S3_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          RCLONE_CRYPT_PASSWORD: ${{ secrets.RCLONE_CRYPT_PASSWORD }}
+          RCLONE_CRYPT_PASSWORD2: ${{ secrets.RCLONE_CRYPT_PASSWORD2 }}
+        run: npm run backup:create
+
+      - name: Revalidar el snapshot desde cero
+        env:
+          BACKUP_SNAPSHOT_PATH: ${{ steps.create.outputs.snapshot_path }}
+          SUPABASE_S3_ENDPOINT: ${{ secrets.PRODUCTION_SUPABASE_S3_ENDPOINT }}
+          SUPABASE_S3_REGION: ${{ secrets.PRODUCTION_SUPABASE_S3_REGION }}
+          SUPABASE_S3_ACCESS_KEY_ID: ${{ secrets.PRODUCTION_SUPABASE_S3_ACCESS_KEY_ID }}
+          SUPABASE_S3_SECRET_ACCESS_KEY: ${{ secrets.PRODUCTION_SUPABASE_S3_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          RCLONE_CRYPT_PASSWORD: ${{ secrets.RCLONE_CRYPT_PASSWORD }}
+          RCLONE_CRYPT_PASSWORD2: ${{ secrets.RCLONE_CRYPT_PASSWORD2 }}
+        run: npm run backup:verify
+
+      - name: Informe sin datos sensibles
+        run: |
+          echo "## Copia externa completada" >> "$GITHUB_STEP_SUMMARY"
+          echo "Snapshot: \`${{ steps.create.outputs.snapshot_path }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Objetos de Storage verificados: ${{ steps.create.outputs.storage_objects }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "No se ha publicado ningún artefacto en GitHub Actions." >> "$GITHUB_STEP_SUMMARY"
+

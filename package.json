@@ -11,8 +11,12 @@
     "test": "vitest run",
     "test:ci": "vitest run --no-file-parallelism",
     "test:watch": "vitest",
-    "validate": "npm run typecheck && npm run lint && npm run test:ci && npm run build && git diff --check",
+    "validate": "npm run typecheck && npm run lint && npm run backup:test && npm run test:ci && npm run build && git diff --check",
     "preflight:board": "tsx scripts/whiteboard-scene-preflight.ts",
+    "backup:create": "bash scripts/backup/create-production-backup.sh",
+    "backup:verify": "bash scripts/backup/verify-production-backup.sh",
+    "backup:restore-kit": "bash scripts/backup/prepare-restore-kit.sh",
+    "backup:test": "bash scripts/backup/test-backup-scripts.sh",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed"
   },

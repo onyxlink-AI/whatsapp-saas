@@ -59,6 +59,14 @@ supabase/.temp
 # Filled cron SQL with the real CRON_SECRET — generated post-deploy, never commit
 supabase/cron/*.filled.sql
 
+# Backup/restore workspaces — customer data must never enter Git
+/backup-work/
+/restore-work/
+*.backup
+*.dump
+*.sql.gz
+*.tar.gz.enc
+
 # Playwright
 /test-results/
 /playwright-report/

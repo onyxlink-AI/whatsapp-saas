@@ -15,6 +15,10 @@ Desde el primer cliente real, cualquier despliegue debe cumplir además
 `docs/ONYXLINK-PROTOCOLO-ACTUALIZACIONES-SIN-DOWNTIME.md`, especialmente el
 patrón compatible **expandir → convivir → retirar**.
 
+La protección automática de base de datos y archivos se rige por
+`docs/ONYXLINK-BACKUP-EXTERNO-AUTOMATICO.md`. Una ejecución verde solo cuenta
+como copia confirmada cuando existe el marcador cifrado `COMPLETED`.
+
 ## 2. Prerrequisitos
 
 - Acceso autorizado al repositorio y a la rama de trabajo.
