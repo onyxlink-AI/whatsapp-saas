@@ -51,7 +51,7 @@ jobs:
         run: |
           echo "NEXT_PUBLIC_APP_URL=http://127.0.0.1:3000" >> "$GITHUB_ENV"
           echo "ENCRYPTION_KEY=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=" >> "$GITHUB_ENV"
-          echo "ENCRYPTION_KEY_VERSION=1" >> "$GITHUB_ENV"
+          echo "ENCRYPTION_KEY_VERSION=v1" >> "$GITHUB_ENV"
 
       - name: Preflight local de Board
         run: npm run preflight:board

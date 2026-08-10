@@ -93,6 +93,23 @@ Crear secrets:
 - `VERCEL_ORG_ID`
 - `VERCEL_PROJECT_ID`
 
+> **Formato obligatorio de `STAGING_ENCRYPTION_KEY_VERSION` y
+> `PRODUCTION_ENCRYPTION_KEY_VERSION`:** siempre `v1`, `v2`, etc. — con la
+> `v` delante. `src/shared/lib/crypto.ts` valida el sufijo de versión de
+> cada valor cifrado contra `v\d+`; un valor sin la `v` (`1`, `2`...) hace
+> que `decryptCredentials` no reconozca el cifrado propio y lo trate como
+> texto plano heredado, dejando la credencial sin descifrar en silencio.
+> Nunca configurar estas variables como `1`, `2`, etc.
+>
+> Cambiar de versión (por ejemplo tras rotar `ENCRYPTION_KEY`) exige
+> mantener la compatibilidad con los datos ya cifrados con la versión
+> anterior: `crypto.ts` etiqueta cada ciphertext con la versión vigente en
+> el momento de cifrarlo, así que las credenciales antiguas siguen
+> necesitando la clave con la que se cifraron hasta que se vuelvan a
+> cifrar con la nueva. No sustituir `ENCRYPTION_KEY`/`_VERSION` sin un plan
+> de recifrado o sin conservar la clave anterior accesible para descifrar
+> lo existente.
+
 Los valores se copian desde Bitwarden directamente a GitHub; nunca pasan por
 chat, archivos temporales o commits.
 
