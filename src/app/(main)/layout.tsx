@@ -143,10 +143,12 @@ export default async function MainLayout({
     );
   }
 
-  // La rama "whatsapp sin gestión" ya no es alcanzable: la matriz de
-  // paquetes (§2.2) garantiza que whatsapp_gestion/suite siempre implican
-  // gestión — Oportunidades ya quedó cubierta arriba en el bloque
-  // hasGestion para cualquier workspace con paquete comercial activo.
+  // "WhatsApp sin Gestión" SÍ es alcanzable desde whatsapp_oficina (Paquete
+  // 4) — pero el nav ya lo maneja bien sin ninguna rama nueva:
+  // Oportunidades/Clientes/Proyectos/Mi equipo/Contenido solo se añaden
+  // arriba dentro del bloque `if (hasGestion)`, así que un workspace
+  // whatsapp_oficina (hasGestion=false) simplemente no los ve, exactamente
+  // el comportamiento deseado.
 
   if (hasWhatsappAgent && hasVoiceAgent) {
     navItems.push({
@@ -285,7 +287,7 @@ export default async function MainLayout({
               <GlobalSearchLauncher
                 workspaceId={activeId}
                 hasGestion={hasGestion}
-                hasPipeline={hasWhatsappAgent || hasGestion}
+                hasPipeline={hasGestion}
               />
             )}
             {activeId && <HelpAssistantLauncher workspaceId={activeId} />}

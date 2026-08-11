@@ -36,7 +36,21 @@ describe("resolveHelpAssistantTier", () => {
     });
     expect(result).toEqual({
       tier: "oficina",
-      label: "Gestión + Oficina Virtual",
+      label: "Oficina Virtual",
+      weeklyLimit: 150,
+    });
+  });
+
+  it("returns oficina (150/semana) también para whatsapp_oficina (WhatsApp + Oficina, SIN Gestión) — label sin 'Gestión +' porque sería engañoso aquí", () => {
+    const result = resolveHelpAssistantTier({
+      hasGestion: false,
+      hasWhatsappAgent: true,
+      hasOfficeVirtual: true,
+      hasWhiteboard: true,
+    });
+    expect(result).toEqual({
+      tier: "oficina",
+      label: "Oficina Virtual",
       weeklyLimit: 150,
     });
   });

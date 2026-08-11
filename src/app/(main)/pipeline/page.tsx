@@ -49,7 +49,14 @@ export default async function PipelinePage({
 
   const entitlements = resolveEntitlements(workspaceFlagsRow);
 
-  if (entitlements.package === "none") {
+  // Pipeline es un recurso de Gestión (igual que Clientes/Proyectos/Contenido/
+  // Mi equipo, que ya usan hasGestion) — antes solo comprobaba
+  // `package !== "none"`, un resto de cuando todo paquete no-"none" incluía
+  // Gestión por definición. Con whatsapp_oficina (WhatsApp + Oficina Virtual
+  // SIN Gestión) eso dejó de ser cierto: sin este fix, ese paquete podía
+  // entrar a /pipeline por URL directa y crear/editar negocios pese a no
+  // tener Gestión contratada.
+  if (!entitlements.hasGestion) {
     return <PlanGate message="Tu cuenta todavía no tiene ningún plan activo. Pregúntale a tu gestor de Onyxlink." />;
   }
 

@@ -4,7 +4,10 @@ import type { PackageCapabilities } from "@/features/entitlements/resolve";
 const TIER_TABLE: Record<HelpAssistantTier, HelpAssistantTierInfo> = {
   gestion: { tier: "gestion", label: "Onyxlink Gestión", weeklyLimit: 30 },
   completo: { tier: "completo", label: "Panel completo", weeklyLimit: 70 },
-  oficina: { tier: "oficina", label: "Gestión + Oficina Virtual", weeklyLimit: 150 },
+  // Label sin "Gestión +": whatsapp_oficina (WhatsApp + Oficina Virtual, sin
+  // Gestión) también alcanza este tier vía hasOfficeVirtual, y el prefijo
+  // sería engañoso para ese paquete.
+  oficina: { tier: "oficina", label: "Oficina Virtual", weeklyLimit: 150 },
 };
 
 /**

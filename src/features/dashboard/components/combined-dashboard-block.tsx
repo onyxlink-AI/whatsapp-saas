@@ -1,10 +1,11 @@
 "use client";
 
-// Dashboard combinado — WhatsApp + Gestión (§4.3), con Oficina Virtual
-// añadida encima para Suite (§4.4). Los 3 paquetes comerciales no-"none"
-// se reducen a 2 formas reales de dashboard porque whatsapp_gestion y
-// suite SIEMPRE incluyen Gestión (matriz §2.2) — no existe un caso
-// "solo WhatsApp sin Gestión" que atender por separado.
+// Dashboard combinado — cualquier paquete con Agente de WhatsApp
+// (whatsapp_gestion, whatsapp_oficina o suite). `gestion` es nullable: solo
+// whatsapp_gestion y suite la traen, whatsapp_oficina (WhatsApp + Oficina
+// Virtual SIN Gestión) no — cada uso de `gestion` de aquí en adelante debe
+// tratarla como opcional, igual que ya se trata `office` (solo presente en
+// suite/whatsapp_oficina).
 
 import Link from "next/link";
 import {
@@ -47,11 +48,12 @@ interface Props {
   whatsappStatus: WhatsappDashboardState;
   /** Solo usuarios con rol manager/admin ven el onboarding accionable de pending_setup; el resto ve una nota neutra. */
   canConfigureWhatsapp: boolean;
+  /** Null en whatsapp_oficina (WhatsApp + Oficina Virtual, sin Gestión). */
   gestion: {
     metrics: GestionMetrics;
     upcomingAgenda: UpcomingAgendaItem[];
     stalledDeals: StalledDeal[];
-  };
+  } | null;
   /** Solo presente en Suite. */
   office: { configuredCount: number } | null;
   addons: {
@@ -85,7 +87,7 @@ function formatDueDate(iso: string): string {
 export function CombinedDashboardBlock({ whatsapp, whatsappStatus, canConfigureWhatsapp, gestion, office, addons }: Props) {
   const whatsappReady = whatsappStatus.status !== "pending_setup";
   const needsHandoff = whatsappReady && whatsapp.metrics.handoffPending > 0;
-  const needsAttention = needsHandoff || gestion.metrics.tasksOverdue > 0;
+  const needsAttention = needsHandoff || (gestion?.metrics.tasksOverdue ?? 0) > 0;
   const hasMessageVolume = whatsappReady && whatsapp.messageVolume.some((p) => p.inbound > 0 || p.outbound > 0);
   const hasConversationStates = whatsappReady && whatsapp.conversationStates.some((r) => r.count > 0);
 
@@ -177,7 +179,7 @@ export function CombinedDashboardBlock({ whatsapp, whatsappStatus, canConfigureW
               <PriorityRow icon={CheckCircle2} title="Sin conversaciones esperando a una persona" description="No hay ninguna derivación pendiente." tone="success" />
             ))}
 
-            {gestion.metrics.tasksOverdue > 0 && (
+            {gestion && gestion.metrics.tasksOverdue > 0 && (
               <PriorityRow
                 icon={AlertTriangle}
                 title={`${gestion.metrics.tasksOverdue} tarea${gestion.metrics.tasksOverdue === 1 ? "" : "s"} vencida${gestion.metrics.tasksOverdue === 1 ? "" : "s"}`}
@@ -197,15 +199,15 @@ export function CombinedDashboardBlock({ whatsapp, whatsappStatus, canConfigureW
               />
             )}
 
-            {gestion.stalledDeals.map((deal) => (
+            {gestion?.stalledDeals.map((deal) => (
               <PriorityRow key={deal.id} icon={Workflow} title={deal.title} description="Oportunidad sin movimiento reciente." tone="warning" href="/pipeline" />
             ))}
 
-            {gestion.upcomingAgenda.slice(0, 2).map((item) => (
+            {gestion?.upcomingAgenda.slice(0, 2).map((item) => (
               <PriorityRow key={item.id} icon={CalendarClock} title={item.title} description={`Agenda — ${formatDueDate(item.due_at)}`} tone="primary" href="/proyectos?view=agenda" />
             ))}
 
-            {gestion.metrics.contentPendingCount > 0 && (
+            {gestion && gestion.metrics.contentPendingCount > 0 && (
               <PriorityRow
                 icon={Lightbulb}
                 title={`${gestion.metrics.contentPendingCount} contenido${gestion.metrics.contentPendingCount === 1 ? "" : "s"} pendiente${gestion.metrics.contentPendingCount === 1 ? "" : "s"}`}
@@ -224,8 +226,8 @@ export function CombinedDashboardBlock({ whatsapp, whatsappStatus, canConfigureW
           </div>
           <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
             {whatsappReady && <QuickAction href="/inbox" icon={MessageCircle} title="Ver conversaciones" description="Revisa mensajes y derivaciones." />}
-            <QuickAction href="/proyectos?view=tasks" icon={Plus} title="Crear tarea" description="Añade un pendiente." />
-            <QuickAction href="/pipeline" icon={Workflow} title="Revisar ventas" description="Continúa las oportunidades abiertas." />
+            {gestion && <QuickAction href="/proyectos?view=tasks" icon={Plus} title="Crear tarea" description="Añade un pendiente." />}
+            {gestion && <QuickAction href="/pipeline" icon={Workflow} title="Revisar ventas" description="Continúa las oportunidades abiertas." />}
             {office && <QuickAction href="/oficina-virtual" icon={Bot} title="Abrir la oficina" description="Consulta tu equipo digital." />}
             {!office && <QuickAction href="/settings" icon={Settings2} title="Configurar agentes" description="Ajusta cómo responde tu equipo." />}
           </div>
@@ -246,16 +248,20 @@ export function CombinedDashboardBlock({ whatsapp, whatsappStatus, canConfigureW
             <KpiCard index={1} label="🗨️ Chats abiertos" value={whatsapp.metrics.activeConversations.toLocaleString("es")} helper="Conversaciones abiertas." icon={Users} tone="primary" href="/inbox" />
           </>
         )}
-        <KpiCard
-          index={2}
-          label="✅ Tareas pendientes"
-          value={gestion.metrics.tasksPending.toLocaleString("es")}
-          helper={gestion.metrics.tasksOverdue > 0 ? `${gestion.metrics.tasksOverdue} vencidas` : "Ninguna vencida"}
-          icon={ListChecks}
-          tone={gestion.metrics.tasksOverdue > 0 ? "warning" : "neutral"}
-          href="/proyectos?view=tasks"
-        />
-        <KpiCard index={3} label="💼 Oportunidades abiertas" value={gestion.metrics.dealsOpenCount.toLocaleString("es")} helper={formatCurrency(gestion.metrics.dealsOpenValue)} icon={Workflow} href="/pipeline" />
+        {gestion && (
+          <>
+            <KpiCard
+              index={2}
+              label="✅ Tareas pendientes"
+              value={gestion.metrics.tasksPending.toLocaleString("es")}
+              helper={gestion.metrics.tasksOverdue > 0 ? `${gestion.metrics.tasksOverdue} vencidas` : "Ninguna vencida"}
+              icon={ListChecks}
+              tone={gestion.metrics.tasksOverdue > 0 ? "warning" : "neutral"}
+              href="/proyectos?view=tasks"
+            />
+            <KpiCard index={3} label="💼 Oportunidades abiertas" value={gestion.metrics.dealsOpenCount.toLocaleString("es")} helper={formatCurrency(gestion.metrics.dealsOpenValue)} icon={Workflow} href="/pipeline" />
+          </>
+        )}
       </section>
 
       {(hasMessageVolume || hasConversationStates) && (

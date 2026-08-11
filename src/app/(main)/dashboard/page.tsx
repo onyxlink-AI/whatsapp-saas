@@ -17,6 +17,7 @@ import { resolveDashboardCapabilities } from "@/features/dashboard/services/capa
 import { ROLE_RANK, type WorkspaceRole } from "@/lib/auth/workspace-access";
 import { GestionDashboardBlock } from "@/features/dashboard/components/gestion-dashboard-block";
 import { CombinedDashboardBlock } from "@/features/dashboard/components/combined-dashboard-block";
+import { OfficeDashboardBlock } from "@/features/dashboard/components/office-dashboard-block";
 import { PlanGate } from "@/components/plan-gate";
 
 export const dynamic = "force-dynamic";
@@ -108,9 +109,19 @@ export default async function DashboardPage() {
     );
   }
 
-  // variant === "combined" (whatsapp_gestion | suite) — ambos incluyen
-  // Gestión siempre (matriz §2.2), así que el bloque combinado es el mismo
-  // en los dos; Suite solo añade el resumen de Oficina.
+  if (capabilities.variant === "office") {
+    // Paquete 6 (oficina, solo): sin WhatsApp ni Gestión — ni GestionDashboardBlock
+    // ni CombinedDashboardBlock encajan (ambos asumen al menos una de las
+    // dos), por eso su propio bloque mínimo.
+    const officeSummary = await getOfficeVirtualDashboardSummary(membership.workspace_id);
+    return <OfficeDashboardBlock office={officeSummary} addons={addons} />;
+  }
+
+  // variant === "combined" (whatsapp_gestion | whatsapp | whatsapp_oficina |
+  // suite) — los 4 tienen WhatsApp, pero solo whatsapp_gestion y suite
+  // incluyen Gestión, y solo whatsapp_oficina/suite incluyen Oficina Virtual
+  // — las 3 queries de Gestión y el bloque correspondiente del panel solo se
+  // piden/muestran cuando entitlements.hasGestion es true.
   const [
     whatsappMetrics,
     recentConversations,
@@ -125,9 +136,9 @@ export default async function DashboardPage() {
     getRecentConversations(membership.workspace_id, 5),
     getMessageVolumeSeries(membership.workspace_id, 14),
     getConversationStateBreakdown(membership.workspace_id),
-    getGestionMetrics(membership.workspace_id),
-    getUpcomingAgendaItems(membership.workspace_id),
-    getStalledDeals(membership.workspace_id),
+    entitlements.hasGestion ? getGestionMetrics(membership.workspace_id) : Promise.resolve(null),
+    entitlements.hasGestion ? getUpcomingAgendaItems(membership.workspace_id) : Promise.resolve([]),
+    entitlements.hasGestion ? getStalledDeals(membership.workspace_id) : Promise.resolve([]),
     capabilities.showOfficeSummary ? getOfficeVirtualDashboardSummary(membership.workspace_id) : Promise.resolve(null),
   ]);
 
@@ -152,7 +163,7 @@ export default async function DashboardPage() {
       }}
       whatsappStatus={whatsappStatus}
       canConfigureWhatsapp={canConfigureWhatsapp}
-      gestion={{ metrics: gestionMetrics, upcomingAgenda, stalledDeals }}
+      gestion={gestionMetrics ? { metrics: gestionMetrics, upcomingAgenda, stalledDeals } : null}
       office={officeSummary}
       addons={addons}
     />

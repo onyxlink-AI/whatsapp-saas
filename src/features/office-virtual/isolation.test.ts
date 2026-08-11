@@ -28,14 +28,19 @@ const ADMIN_B = { actorId: 'admin-b@workspace-b.test', role: 'workspace_admin' a
 
 describe('office_virtual_enabled access gate', () => {
   // Fase 2: isOfficeVirtualEnabled ahora deriva de product_package
-  // (resolveEntitlements) — solo el paquete Suite concede Oficina Virtual.
-  it('denies access when product_package is missing, null, or not "suite" — only "suite" grants it', () => {
+  // (resolveEntitlements) — "suite", "whatsapp_oficina" (Paquete 4) y
+  // "oficina" (Paquete 6, solo Oficina Virtual) son los únicos que conceden
+  // Oficina Virtual.
+  it('denies access when product_package is missing, null, o sin hasOfficeVirtual', () => {
     expect(isOfficeVirtualEnabled(undefined)).toBe(false);
     expect(isOfficeVirtualEnabled(null)).toBe(false);
     expect(isOfficeVirtualEnabled({ product_package: null })).toBe(false);
     expect(isOfficeVirtualEnabled({ product_package: 'none' })).toBe(false);
     expect(isOfficeVirtualEnabled({ product_package: 'gestion' })).toBe(false);
     expect(isOfficeVirtualEnabled({ product_package: 'whatsapp_gestion' })).toBe(false);
+    expect(isOfficeVirtualEnabled({ product_package: 'whatsapp' })).toBe(false);
+    expect(isOfficeVirtualEnabled({ product_package: 'oficina' })).toBe(true);
+    expect(isOfficeVirtualEnabled({ product_package: 'whatsapp_oficina' })).toBe(true);
     expect(isOfficeVirtualEnabled({ product_package: 'suite' })).toBe(true);
   });
 });

@@ -98,13 +98,31 @@ describe("assertHelpActionAccess — matriz exacta por paquete", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("whatsapp_oficina: sin escritura pese a tener WhatsApp — no tiene Gestión (Paquete 4), actionsEnabled=true", async () => {
+    workspacesMaybeSingle.mockResolvedValue({ data: { product_package: "whatsapp_oficina", help_assistant_actions_enabled: true }, error: null });
+    const result = await assertHelpActionAccess(ctx, "content");
+    expect(result).toEqual({ ok: false, reason: "plan_not_included" });
+  });
+
   it("suite: escritura concedida con actionsEnabled=true", async () => {
     workspacesMaybeSingle.mockResolvedValue({ data: { product_package: "suite", help_assistant_actions_enabled: true }, error: null });
     const result = await assertHelpActionAccess(ctx, "content");
     expect(result.ok).toBe(true);
   });
 
-  it.each(["none", "gestion", "whatsapp_gestion", "suite"])(
+  it("whatsapp (Paquete 5, solo WhatsApp): sin escritura — no tiene Gestión, actionsEnabled=true", async () => {
+    workspacesMaybeSingle.mockResolvedValue({ data: { product_package: "whatsapp", help_assistant_actions_enabled: true }, error: null });
+    const result = await assertHelpActionAccess(ctx, "content");
+    expect(result).toEqual({ ok: false, reason: "plan_not_included" });
+  });
+
+  it("oficina (Paquete 6, solo Oficina Virtual): sin escritura — no tiene Gestión, actionsEnabled=true", async () => {
+    workspacesMaybeSingle.mockResolvedValue({ data: { product_package: "oficina", help_assistant_actions_enabled: true }, error: null });
+    const result = await assertHelpActionAccess(ctx, "content");
+    expect(result).toEqual({ ok: false, reason: "plan_not_included" });
+  });
+
+  it.each(["none", "gestion", "whatsapp_gestion", "whatsapp_oficina", "whatsapp", "oficina", "suite"])(
     "kill switch apagado: ninguna escritura en el paquete %s",
     async (pkg) => {
       workspacesMaybeSingle.mockResolvedValue({ data: { product_package: pkg, help_assistant_actions_enabled: false }, error: null });

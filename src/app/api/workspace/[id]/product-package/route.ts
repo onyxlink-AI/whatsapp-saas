@@ -3,15 +3,17 @@ import { createClient as createSbClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { logAudit } from "@/features/audit/services/audit-log";
 import { readJsonBody, requireSuperAdmin } from "@/lib/auth/workspace-access";
-import { PACKAGE_LABELS, type ProductPackage } from "@/features/entitlements/resolve";
+import { PACKAGE_LABELS, PRODUCT_PACKAGES, type ProductPackage } from "@/features/entitlements/resolve";
 
 // Fase 2 (docs/CLAUDE-ARQUITECTURA-PAQUETES-NAVEGACION-IA-ASISTENTE.md §2.4):
 // mismo esqueleto que team-chat-enabled/route.ts — requireSuperAdmin(),
 // una única llamada RPC atómica, auditoría con el jsonb que la función
 // devuelve (estado anterior y nuevo).
 
+// Derivado de PRODUCT_PACKAGES (no una lista repetida a mano) para que este
+// enum no pueda quedar desincronizado de resolve.ts si se añade otro paquete.
 const patchSchema = z.object({
-  package: z.enum(["none", "gestion", "whatsapp_gestion", "suite"]),
+  package: z.enum(PRODUCT_PACKAGES as [ProductPackage, ...ProductPackage[]]),
 });
 
 function serviceClient() {

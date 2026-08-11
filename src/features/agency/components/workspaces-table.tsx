@@ -46,6 +46,9 @@ const PACKAGE_TIER_META: Record<
   none: { label: "Sin paquete", className: "border-border bg-muted/40 text-muted-foreground" },
   gestion: { label: "Paquete 1 · Gestión", className: "border-primary/25 bg-primary/[0.08] text-primary" },
   whatsapp_gestion: { label: "Paquete 2 · Gestión + WhatsApp", className: "border-primary/30 bg-primary/[0.12] text-primary" },
+  whatsapp_oficina: { label: "Paquete 4 · WhatsApp + Oficina Virtual", className: "border-amber-500/30 bg-amber-500/[0.10] text-amber-600 dark:text-amber-400" },
+  whatsapp: { label: "Paquete 5 · Solo WhatsApp", className: "border-sky-500/30 bg-sky-500/[0.10] text-sky-600 dark:text-sky-400" },
+  oficina: { label: "Paquete 6 · Solo Oficina Virtual", className: "border-violet-500/30 bg-violet-500/[0.10] text-violet-600 dark:text-violet-400" },
   suite: { label: "Paquete 3 · Suite completa", className: "border-[hsl(var(--electric-lime))]/40 bg-[hsl(var(--electric-lime))]/10 text-foreground" },
 };
 

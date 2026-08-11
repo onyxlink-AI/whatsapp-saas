@@ -21,9 +21,17 @@
  * flag independiente, gestionado aparte.
  */
 
-export type ProductPackage = "none" | "gestion" | "whatsapp_gestion" | "suite";
+export type ProductPackage = "none" | "gestion" | "whatsapp_gestion" | "whatsapp" | "oficina" | "whatsapp_oficina" | "suite";
 
-export const PRODUCT_PACKAGES: readonly ProductPackage[] = ["none", "gestion", "whatsapp_gestion", "suite"];
+export const PRODUCT_PACKAGES: readonly ProductPackage[] = [
+  "none",
+  "gestion",
+  "whatsapp_gestion",
+  "whatsapp",
+  "oficina",
+  "whatsapp_oficina",
+  "suite",
+];
 
 export interface PackageCapabilities {
   hasGestion: boolean;
@@ -40,11 +48,18 @@ export interface WorkspaceEntitlements extends PackageCapabilities {
 
 // Matriz definitiva (§2.2, con las dos decisiones confirmadas por el
 // usuario: chatbot_enabled fuera del sistema de paquetes, Board incluido
-// automáticamente en los 3 paquetes no-"none").
+// automáticamente en todo paquete no-"none"). whatsapp_oficina (Paquete 4)
+// es el único que da WhatsApp/Oficina SIN Gestión — deliberado: existe
+// justo para clientes que no quieren Gestión. whatsapp (Paquete 5) y
+// oficina (Paquete 6) van un paso más allá: cada capacidad puede venderse
+// completamente sola.
 export const PACKAGE_MATRIX: Record<ProductPackage, PackageCapabilities> = {
   none: { hasGestion: false, hasWhatsappAgent: false, hasOfficeVirtual: false, hasWhiteboard: false },
   gestion: { hasGestion: true, hasWhatsappAgent: false, hasOfficeVirtual: false, hasWhiteboard: true },
   whatsapp_gestion: { hasGestion: true, hasWhatsappAgent: true, hasOfficeVirtual: false, hasWhiteboard: true },
+  whatsapp: { hasGestion: false, hasWhatsappAgent: true, hasOfficeVirtual: false, hasWhiteboard: true },
+  oficina: { hasGestion: false, hasWhatsappAgent: false, hasOfficeVirtual: true, hasWhiteboard: true },
+  whatsapp_oficina: { hasGestion: false, hasWhatsappAgent: true, hasOfficeVirtual: true, hasWhiteboard: true },
   suite: { hasGestion: true, hasWhatsappAgent: true, hasOfficeVirtual: true, hasWhiteboard: true },
 };
 
@@ -52,6 +67,9 @@ export const PACKAGE_LABELS: Record<ProductPackage, string> = {
   none: "Sin paquete",
   gestion: "Gestión",
   whatsapp_gestion: "WhatsApp + Gestión",
+  whatsapp: "Solo WhatsApp",
+  oficina: "Solo Oficina Virtual",
+  whatsapp_oficina: "WhatsApp + Oficina Virtual",
   suite: "Suite",
 };
 
@@ -85,10 +103,19 @@ export function resolveEntitlements(workspace: { product_package?: string | null
 // action-tools/index.ts a partir de dos booleanos sueltos
 // (gestionEnabled && whatsappAgentEnabled), ahora derivado del paquete.
 // actionsEnabled sigue siendo el kill switch operativo de superadmin,
-// independiente del paquene — un paquete comercial correcto nunca basta
+// independiente del paquete — un paquete comercial correcto nunca basta
 // por sí solo si el superadmin lo ha desactivado.
+//
+// Por capacidad, no por nombre de paquete (fix hecho al añadir
+// whatsapp_oficina): la versión anterior comprobaba `package !== "none" &&
+// package !== "gestion"`, una lista negra de nombres que daba `true` para
+// CUALQUIER paquete que no fuera esos dos — incluido whatsapp_oficina, que
+// no tiene Gestión y por tanto no debe tener tools de Clientes/Pipeline/
+// Proyectos (no hay pantalla donde ver esas escrituras). Para los 4
+// paquetes que ya existían el resultado es idéntico; para whatsapp_oficina
+// ahora da `false`, correcto.
 export function canUseAssistantActions(actionsEnabled: boolean, entitlements: WorkspaceEntitlements): boolean {
-  return actionsEnabled && entitlements.package !== "none" && entitlements.package !== "gestion";
+  return actionsEnabled && entitlements.hasGestion && entitlements.hasWhatsappAgent;
 }
 
 /** Capacidades que se pierden al pasar de `from` a `to` — para el diálogo de confirmación de downgrade. */

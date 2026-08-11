@@ -41,7 +41,7 @@ export interface WorkspaceWithStats {
    * en vez de dejar una fila sin clasificar, y la mutación atómica es la
    * única vía para cambiar de paquete desde esta fase.
    */
-  package_tier: "none" | "gestion" | "whatsapp_gestion" | "suite";
+  package_tier: "none" | "gestion" | "whatsapp_gestion" | "whatsapp" | "oficina" | "whatsapp_oficina" | "suite";
 }
 
 export type UseCase = "setter" | "soporte" | "agendamiento" | "general";

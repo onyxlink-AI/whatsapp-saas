@@ -28,6 +28,27 @@ describe("resolveDashboardCapabilities", () => {
     expect(caps.showOfficeSummary).toBe(true);
   });
 
+  it("variant 'combined' for whatsapp_oficina (WhatsApp + Oficina, sin Gestión), WITH office summary", () => {
+    // Paquete 4: variant sigue siendo 'combined' porque tiene WhatsApp —
+    // el consumidor (dashboard/page.tsx) es quien debe omitir el bloque de
+    // Gestión cuando hasGestion es false, no la selección de variant.
+    const caps = resolveDashboardCapabilities(resolveEntitlements({ product_package: "whatsapp_oficina" }), NO_ADDONS);
+    expect(caps.variant).toBe("combined");
+    expect(caps.showOfficeSummary).toBe(true);
+  });
+
+  it("variant 'combined' for whatsapp (Paquete 5, solo WhatsApp), without office summary", () => {
+    const caps = resolveDashboardCapabilities(resolveEntitlements({ product_package: "whatsapp" }), NO_ADDONS);
+    expect(caps.variant).toBe("combined");
+    expect(caps.showOfficeSummary).toBe(false);
+  });
+
+  it("variant 'office' for oficina (Paquete 6, solo Oficina Virtual) — ni 'gestion' ni 'combined' encajan sin WhatsApp ni Gestión", () => {
+    const caps = resolveDashboardCapabilities(resolveEntitlements({ product_package: "oficina" }), NO_ADDONS);
+    expect(caps.variant).toBe("office");
+    expect(caps.showOfficeSummary).toBe(true);
+  });
+
   it("only shows add-on widgets when the add-on is actually configured, regardless of package", () => {
     const caps = resolveDashboardCapabilities(resolveEntitlements({ product_package: "gestion" }), {
       teamChatEnabled: true,

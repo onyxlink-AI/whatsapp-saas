@@ -9,7 +9,7 @@ export interface DashboardAddonState {
   hasVapiAssistant: boolean;
 }
 
-export type DashboardVariant = "none" | "gestion" | "combined";
+export type DashboardVariant = "none" | "gestion" | "combined" | "office";
 
 export interface DashboardCapabilities {
   variant: DashboardVariant;
@@ -22,8 +22,22 @@ export function resolveDashboardCapabilities(
   entitlements: WorkspaceEntitlements,
   addons: DashboardAddonState,
 ): DashboardCapabilities {
+  // Orden importa: hasWhatsappAgent primero (cualquier paquete con WhatsApp
+  // usa el bloque combinado, tenga o no Gestión — combined ya trata
+  // `gestion`/`office` como opcionales), luego hasGestion (Paquete 1),
+  // y por último hasOfficeVirtual solo (Paquete 6: oficina, sin WhatsApp ni
+  // Gestión) — el único caso que ninguno de los otros dos bloques sabe
+  // renderizar. Todo paquete no-"none" tiene al menos una capacidad, así
+  // que esta cadena siempre resuelve a algo distinto de "none" cuando
+  // package !== "none".
   const variant: DashboardVariant =
-    entitlements.package === "none" ? "none" : entitlements.hasWhatsappAgent ? "combined" : "gestion";
+    entitlements.package === "none"
+      ? "none"
+      : entitlements.hasWhatsappAgent
+        ? "combined"
+        : entitlements.hasGestion
+          ? "gestion"
+          : "office";
 
   return {
     variant,

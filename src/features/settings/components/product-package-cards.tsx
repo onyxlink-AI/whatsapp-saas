@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, Boxes, FolderKanban, MessageCircle, Network } from "lucide-react";
+import { CheckCircle2, Boxes, FolderKanban, MessageCircle, MessageSquare, Building2, Briefcase, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -12,15 +12,17 @@ import { PACKAGE_MATRIX, PACKAGE_LABELS, lostCapabilities, type ProductPackage }
 // una tarjeta por paquete, un solo botón "Activar paquete", mismo patrón de
 // saving/toast que team-chat-toggle.tsx. La mutación es atómica en el
 // servidor (set_workspace_product_package) — aquí solo se pide confirmación
-// visual antes de un downgrade, el cálculo de qué se pierde es puro
+// visual antes de perder algo, el cálculo de qué se pierde es puro
 // (lostCapabilities), sin ida y vuelta al servidor.
-const PACKAGE_ORDER: ProductPackage[] = ["none", "gestion", "whatsapp_gestion", "suite"];
-const PACKAGE_WEIGHT: Record<ProductPackage, number> = { none: 0, gestion: 1, whatsapp_gestion: 2, suite: 3 };
+const PACKAGE_ORDER: ProductPackage[] = ["none", "gestion", "whatsapp_gestion", "whatsapp", "oficina", "whatsapp_oficina", "suite"];
 
 const PACKAGE_ICON: Record<ProductPackage, typeof Boxes> = {
   none: Boxes,
   gestion: FolderKanban,
   whatsapp_gestion: MessageCircle,
+  whatsapp: MessageSquare,
+  oficina: Building2,
+  whatsapp_oficina: Briefcase,
   suite: Network,
 };
 
@@ -28,6 +30,9 @@ const PACKAGE_DESCRIPTIONS: Record<ProductPackage, string> = {
   none: "Sin ningún producto activo todavía.",
   gestion: "Clientes, Proyectos, Agenda, Anotaciones, Board y Contenido.",
   whatsapp_gestion: "Todo Gestión, más el Agente de WhatsApp y Conversaciones.",
+  whatsapp: "Solo el Agente de WhatsApp y Conversaciones, sin Gestión ni Oficina.",
+  oficina: "Solo Oficina Virtual, sin Gestión ni Agente de WhatsApp.",
+  whatsapp_oficina: "Agente de WhatsApp y Oficina Virtual, sin Gestión.",
   suite: "Todo WhatsApp + Gestión, más Oficina Virtual.",
 };
 
@@ -76,10 +81,13 @@ export function ProductPackageCards({ workspaceId, initialPackage }: Props) {
 
   function handleActivate(target: ProductPackage) {
     if (target === current || saving) return;
-    // Downgrade: pide confirmación con lo que deja de estar accesible antes
-    // de mutar nada — nunca se ejecuta el cambio sin que el superadmin vea
-    // primero qué se pierde.
-    if (PACKAGE_WEIGHT[target] < PACKAGE_WEIGHT[current]) {
+    // Pide confirmación siempre que el cambio pierda alguna capacidad —
+    // por capacidades (lostCapabilities), no por un peso lineal: con
+    // whatsapp_oficina un cambio puede GANAR WhatsApp/Oficina y PERDER
+    // Gestión al mismo tiempo, algo que un simple "más alto/más bajo" no
+    // puede representar. Nunca se ejecuta el cambio sin que el superadmin
+    // vea primero qué se pierde.
+    if (lostCapabilities(current, target).length > 0) {
       setPendingTarget(target);
       return;
     }

@@ -167,6 +167,37 @@ describe("buildActionTools plan gating", () => {
     expect(Object.keys(tools)).toHaveLength(0);
   });
 
+  it("whatsapp (Paquete 5, solo WhatsApp) is the informational assistant too — no write tools despite WhatsApp+kill switch on", () => {
+    const { tools } = buildActionTools(
+      ctx,
+      { package: "whatsapp", gestionEnabled: false, whatsappAgentEnabled: true, officeVirtualEnabled: false, hasVoiceAgent: false, whiteboardEnabled: true },
+      true,
+    );
+    expect(Object.keys(tools)).toHaveLength(0);
+  });
+
+  it("oficina (Paquete 6, solo Oficina Virtual) is the informational assistant too — no write tools despite Oficina+kill switch on", () => {
+    const { tools } = buildActionTools(
+      ctx,
+      { package: "oficina", gestionEnabled: false, whatsappAgentEnabled: false, officeVirtualEnabled: true, hasVoiceAgent: false, whiteboardEnabled: true },
+      true,
+    );
+    expect(Object.keys(tools)).toHaveLength(0);
+  });
+
+  it("whatsapp_oficina (Paquete 4: WhatsApp + Oficina Virtual, SIN Gestión) is the informational assistant too — no write tools despite WhatsApp+Oficina+kill switch all on", () => {
+    // Regression del fix de canUseAssistantActions() (capacidad, no lista
+    // negra de nombres): antes de ese fix, este contexto habría devuelto
+    // las mismas tools que whatsapp_gestion por error, dando escrituras de
+    // Clientes/Pipeline/Proyectos a un workspace sin Gestión contratada.
+    const { tools } = buildActionTools(
+      ctx,
+      { package: "whatsapp_oficina", gestionEnabled: false, whatsappAgentEnabled: true, officeVirtualEnabled: true, hasVoiceAgent: false, whiteboardEnabled: true },
+      true,
+    );
+    expect(Object.keys(tools)).toHaveLength(0);
+  });
+
   it("kill switch off (actionsEnabled=false) means no write tools even on Suite", () => {
     const { tools } = buildActionTools(
       ctx,
