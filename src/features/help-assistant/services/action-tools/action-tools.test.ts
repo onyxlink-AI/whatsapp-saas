@@ -170,7 +170,7 @@ describe("buildActionTools plan gating", () => {
   it("whatsapp (Paquete 5, solo WhatsApp) is the informational assistant too — no write tools despite WhatsApp+kill switch on", () => {
     const { tools } = buildActionTools(
       ctx,
-      { package: "whatsapp", gestionEnabled: false, whatsappAgentEnabled: true, officeVirtualEnabled: false, hasVoiceAgent: false, whiteboardEnabled: true },
+      { package: "whatsapp", gestionEnabled: false, whatsappAgentEnabled: true, officeVirtualEnabled: false, hasVoiceAgent: false, whiteboardEnabled: false },
       true,
     );
     expect(Object.keys(tools)).toHaveLength(0);
@@ -179,7 +179,7 @@ describe("buildActionTools plan gating", () => {
   it("oficina (Paquete 6, solo Oficina Virtual) is the informational assistant too — no write tools despite Oficina+kill switch on", () => {
     const { tools } = buildActionTools(
       ctx,
-      { package: "oficina", gestionEnabled: false, whatsappAgentEnabled: false, officeVirtualEnabled: true, hasVoiceAgent: false, whiteboardEnabled: true },
+      { package: "oficina", gestionEnabled: false, whatsappAgentEnabled: false, officeVirtualEnabled: true, hasVoiceAgent: false, whiteboardEnabled: false },
       true,
     );
     expect(Object.keys(tools)).toHaveLength(0);
@@ -192,7 +192,7 @@ describe("buildActionTools plan gating", () => {
     // Clientes/Pipeline/Proyectos a un workspace sin Gestión contratada.
     const { tools } = buildActionTools(
       ctx,
-      { package: "whatsapp_oficina", gestionEnabled: false, whatsappAgentEnabled: true, officeVirtualEnabled: true, hasVoiceAgent: false, whiteboardEnabled: true },
+      { package: "whatsapp_oficina", gestionEnabled: false, whatsappAgentEnabled: true, officeVirtualEnabled: true, hasVoiceAgent: false, whiteboardEnabled: false },
       true,
     );
     expect(Object.keys(tools)).toHaveLength(0);

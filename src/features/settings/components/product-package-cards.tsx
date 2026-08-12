@@ -39,8 +39,9 @@ const PACKAGE_DESCRIPTIONS: Record<ProductPackage, string> = {
 function packageIncludes(pkg: ProductPackage): string[] {
   const caps = PACKAGE_MATRIX[pkg];
   const items: string[] = [];
-  if (caps.hasGestion) items.push("Clientes, Proyectos, Agenda, Anotaciones, Contenido");
-  if (caps.hasWhiteboard) items.push("Board");
+  // Board va siempre junto a Gestión (hasWhiteboard === hasGestion) — una
+  // sola línea, no dos.
+  if (caps.hasGestion) items.push("Clientes, Proyectos, Agenda, Anotaciones, Contenido y Board");
   if (caps.hasWhatsappAgent) items.push("Agente de WhatsApp y Conversaciones");
   if (caps.hasOfficeVirtual) items.push("Oficina Virtual");
   if (items.length === 0) items.push("Ningún producto");

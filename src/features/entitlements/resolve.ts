@@ -46,20 +46,23 @@ export interface WorkspaceEntitlements extends PackageCapabilities {
   defaultRoute: string;
 }
 
-// Matriz definitiva (§2.2, con las dos decisiones confirmadas por el
-// usuario: chatbot_enabled fuera del sistema de paquetes, Board incluido
-// automáticamente en todo paquete no-"none"). whatsapp_oficina (Paquete 4)
-// es el único que da WhatsApp/Oficina SIN Gestión — deliberado: existe
-// justo para clientes que no quieren Gestión. whatsapp (Paquete 5) y
-// oficina (Paquete 6) van un paso más allá: cada capacidad puede venderse
-// completamente sola.
+// Matriz definitiva (§2.2, con las decisiones confirmadas por el usuario).
+// whatsapp_oficina (Paquete 4) es el único que da WhatsApp/Oficina SIN
+// Gestión — deliberado: existe justo para clientes que no quieren Gestión.
+// whatsapp (Paquete 5) y oficina (Paquete 6) van un paso más allá: cada
+// capacidad puede venderse completamente sola.
+//
+// Board vive DENTRO de Gestión (decisión revisada): hasWhiteboard es
+// siempre igual a hasGestion, nunca independiente — antes se concedía
+// automáticamente a todo paquete no-"none", pero el usuario pidió
+// explícitamente que sin Gestión tampoco haya Board, sin excepción.
 export const PACKAGE_MATRIX: Record<ProductPackage, PackageCapabilities> = {
   none: { hasGestion: false, hasWhatsappAgent: false, hasOfficeVirtual: false, hasWhiteboard: false },
   gestion: { hasGestion: true, hasWhatsappAgent: false, hasOfficeVirtual: false, hasWhiteboard: true },
   whatsapp_gestion: { hasGestion: true, hasWhatsappAgent: true, hasOfficeVirtual: false, hasWhiteboard: true },
-  whatsapp: { hasGestion: false, hasWhatsappAgent: true, hasOfficeVirtual: false, hasWhiteboard: true },
-  oficina: { hasGestion: false, hasWhatsappAgent: false, hasOfficeVirtual: true, hasWhiteboard: true },
-  whatsapp_oficina: { hasGestion: false, hasWhatsappAgent: true, hasOfficeVirtual: true, hasWhiteboard: true },
+  whatsapp: { hasGestion: false, hasWhatsappAgent: true, hasOfficeVirtual: false, hasWhiteboard: false },
+  oficina: { hasGestion: false, hasWhatsappAgent: false, hasOfficeVirtual: true, hasWhiteboard: false },
+  whatsapp_oficina: { hasGestion: false, hasWhatsappAgent: true, hasOfficeVirtual: true, hasWhiteboard: false },
   suite: { hasGestion: true, hasWhatsappAgent: true, hasOfficeVirtual: true, hasWhiteboard: true },
 };
 
@@ -123,9 +126,10 @@ export function lostCapabilities(from: ProductPackage, to: ProductPackage): stri
   const before = PACKAGE_MATRIX[from];
   const after = PACKAGE_MATRIX[to];
   const lost: string[] = [];
-  if (before.hasGestion && !after.hasGestion) lost.push("Clientes, Proyectos, Agenda, Anotaciones y Contenido");
+  // Board va siempre junto a Gestión (hasWhiteboard === hasGestion en toda
+  // la matriz) — un solo mensaje, no dos líneas redundantes.
+  if (before.hasGestion && !after.hasGestion) lost.push("Clientes, Proyectos, Agenda, Anotaciones, Contenido y Board");
   if (before.hasWhatsappAgent && !after.hasWhatsappAgent) lost.push("Agente de WhatsApp y Conversaciones");
   if (before.hasOfficeVirtual && !after.hasOfficeVirtual) lost.push("Oficina Virtual");
-  if (before.hasWhiteboard && !after.hasWhiteboard) lost.push("Board");
   return lost;
 }

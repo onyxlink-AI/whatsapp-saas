@@ -178,7 +178,7 @@ describe("set_workspace_product_package — Postgres/REST reales", () => {
       gestion_enabled: true,
       whatsapp_agent_enabled: false,
       office_virtual_enabled: false,
-      whiteboard_enabled: true, // Board incluido automáticamente (decisión aprobada)
+      whiteboard_enabled: true, // Board vive dentro de Gestión (decisión revisada)
     });
 
     const { error: wgErr } = await db.rpc("set_workspace_product_package", { p_workspace_id: EMPRESA_A, p_package: "whatsapp_gestion" });
@@ -198,7 +198,7 @@ describe("set_workspace_product_package — Postgres/REST reales", () => {
       gestion_enabled: false,
       whatsapp_agent_enabled: true,
       office_virtual_enabled: false,
-      whiteboard_enabled: true,
+      whiteboard_enabled: false, // sin Gestión, sin Board
     });
 
     const { error: ofErr } = await db.rpc("set_workspace_product_package", { p_workspace_id: EMPRESA_A, p_package: "oficina" });
@@ -208,7 +208,7 @@ describe("set_workspace_product_package — Postgres/REST reales", () => {
       gestion_enabled: false,
       whatsapp_agent_enabled: false,
       office_virtual_enabled: true,
-      whiteboard_enabled: true,
+      whiteboard_enabled: false, // sin Gestión, sin Board
     });
 
     const { error: woErr } = await db.rpc("set_workspace_product_package", { p_workspace_id: EMPRESA_A, p_package: "whatsapp_oficina" });
@@ -218,7 +218,7 @@ describe("set_workspace_product_package — Postgres/REST reales", () => {
       gestion_enabled: false,
       whatsapp_agent_enabled: true,
       office_virtual_enabled: true,
-      whiteboard_enabled: true,
+      whiteboard_enabled: false, // sin Gestión, sin Board
     });
 
     const { data: suiteResult, error: suiteErr } = await db.rpc("set_workspace_product_package", { p_workspace_id: EMPRESA_A, p_package: "suite" });
@@ -403,7 +403,7 @@ describe("set_workspace_product_package — Postgres/REST reales", () => {
       });
     });
 
-    it("whatsapp: solo WhatsApp y Board, SIN Gestión ni Oficina (Paquete 5)", async (ctx) => {
+    it("whatsapp: solo WhatsApp, SIN Gestión, Oficina NI Board (Paquete 5)", async (ctx) => {
       if (!reachable) return ctx.skip();
       await db.rpc("set_workspace_product_package", { p_workspace_id: EMPRESA_A, p_package: "whatsapp" });
       expect(await snapshot(EMPRESA_A)).toMatchObject({
@@ -411,11 +411,11 @@ describe("set_workspace_product_package — Postgres/REST reales", () => {
         gestion_enabled: false,
         whatsapp_agent_enabled: true,
         office_virtual_enabled: false,
-        whiteboard_enabled: true,
+        whiteboard_enabled: false,
       });
     });
 
-    it("oficina: solo Oficina Virtual y Board, SIN Gestión ni WhatsApp (Paquete 6)", async (ctx) => {
+    it("oficina: solo Oficina Virtual, SIN Gestión, WhatsApp NI Board (Paquete 6)", async (ctx) => {
       if (!reachable) return ctx.skip();
       await db.rpc("set_workspace_product_package", { p_workspace_id: EMPRESA_A, p_package: "oficina" });
       expect(await snapshot(EMPRESA_A)).toMatchObject({
@@ -423,11 +423,11 @@ describe("set_workspace_product_package — Postgres/REST reales", () => {
         gestion_enabled: false,
         whatsapp_agent_enabled: false,
         office_virtual_enabled: true,
-        whiteboard_enabled: true,
+        whiteboard_enabled: false,
       });
     });
 
-    it("whatsapp_oficina: WhatsApp, Oficina y Board, SIN Gestión (Paquete 4)", async (ctx) => {
+    it("whatsapp_oficina: WhatsApp y Oficina, SIN Gestión NI Board (Paquete 4)", async (ctx) => {
       if (!reachable) return ctx.skip();
       await db.rpc("set_workspace_product_package", { p_workspace_id: EMPRESA_A, p_package: "whatsapp_oficina" });
       expect(await snapshot(EMPRESA_A)).toMatchObject({
@@ -435,7 +435,7 @@ describe("set_workspace_product_package — Postgres/REST reales", () => {
         gestion_enabled: false,
         whatsapp_agent_enabled: true,
         office_virtual_enabled: true,
-        whiteboard_enabled: true,
+        whiteboard_enabled: false,
       });
     });
 
