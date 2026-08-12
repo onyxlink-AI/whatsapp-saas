@@ -79,30 +79,66 @@ function chatbotPorts(): ChatbotServicePorts {
 const STATUS_ORDER = ["queued", "sent", "delivered", "read"] as const;
 type OrderedStatus = (typeof STATUS_ORDER)[number];
 type MessageStatus = OrderedStatus | "failed";
+type StatusMessage = {
+  id: string;
+  status: MessageStatus | null;
+  wamid: string | null;
+  meta: Record<string, unknown> | null;
+};
 
-async function handleStatusUpdate(
+export async function handleStatusUpdate(
   supabase: ReturnType<typeof svc>,
-  wamid: string,
-  newStatus: string,
+  statusData: {
+    id?: string;
+    wamid?: string;
+    status: string;
+    errorCode?: string;
+    errorMessage?: string;
+  },
 ): Promise<void> {
-  const { data: msg } = await supabase
-    .from("messages")
-    .select("id, status")
-    .eq("wamid", wamid)
-    .single();
+  const { id: ycloudId, wamid, status: newStatus, errorCode, errorMessage } =
+    statusData;
+  let msg: StatusMessage | null = null;
+
+  if (wamid) {
+    const { data } = await supabase
+      .from("messages")
+      .select("id, status, wamid, meta")
+      .eq("wamid", wamid)
+      .maybeSingle();
+    msg = data as StatusMessage | null;
+  }
+
+  // Enqueued messages often receive their WhatsApp `wamid` asynchronously.
+  // dispatch.ts stores the synchronous YCloud id in meta.ycloud_id, so the
+  // first status callback must be able to correlate by either identifier.
+  if (!msg && ycloudId) {
+    const { data } = await supabase
+      .from("messages")
+      .select("id, status, wamid, meta")
+      .eq("meta->>ycloud_id", ycloudId)
+      .maybeSingle();
+    msg = data as StatusMessage | null;
+  }
 
   // Message not found — can happen for outbound we didn't track
   if (!msg) return;
 
-  const current = msg.status as MessageStatus | null;
+  const current = msg.status;
+  const patch: Record<string, unknown> = {};
+
+  if (wamid && !msg.wamid) {
+    patch.wamid = wamid;
+  }
 
   // 'failed' is terminal — always apply regardless of current state
   if (newStatus === "failed") {
-    await supabase
-      .from("messages")
-      .update({ status: "failed" })
-      .eq("id", msg.id);
-    return;
+    patch.status = "failed";
+    patch.meta = {
+      ...(msg.meta ?? {}),
+      ycloud_error_code: errorCode || undefined,
+      ycloud_error_message: errorMessage || undefined,
+    };
   }
 
   // For ordered statuses: only advance, never go back
@@ -112,10 +148,11 @@ async function handleStatusUpdate(
   const newIdx = STATUS_ORDER.indexOf(newStatus as OrderedStatus);
 
   if (newIdx > currentIdx) {
-    await supabase
-      .from("messages")
-      .update({ status: newStatus })
-      .eq("id", msg.id);
+    patch.status = newStatus;
+  }
+
+  if (Object.keys(patch).length > 0) {
+    await supabase.from("messages").update(patch).eq("id", msg.id);
   }
   // else: same or lower status — ignore (monotonic guarantee)
 }
@@ -217,10 +254,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // WH-02: monotonic status updates — only reached after signature verification.
     if (isStatusUpdate) {
       const statusData = (
-        body as { whatsappMessage?: { wamid?: string; status?: string } }
+        body as {
+          whatsappMessage?: {
+            id?: string;
+            wamid?: string;
+            status?: string;
+            errorCode?: string;
+            errorMessage?: string;
+          };
+        }
       ).whatsappMessage;
-      if (statusData?.wamid && statusData?.status) {
-        await handleStatusUpdate(supabase, statusData.wamid, statusData.status);
+      if (statusData?.status && (statusData.wamid || statusData.id)) {
+        await handleStatusUpdate(supabase, {
+          ...statusData,
+          status: statusData.status,
+        });
       }
       return NextResponse.json({ received: true });
     }
