@@ -4,9 +4,28 @@ import { cn } from "@/lib/utils";
 
 interface StatusIconProps {
   status: MessageStatus | null;
+  meta?: Record<string, unknown> | null;
 }
 
-export function StatusIcon({ status }: StatusIconProps) {
+function failureLabel(meta: Record<string, unknown> | null | undefined): string {
+  const code =
+    typeof meta?.ycloud_error_code === "string"
+      ? meta.ycloud_error_code.trim()
+      : "";
+  const detail =
+    typeof meta?.ycloud_error_message === "string"
+      ? meta.ycloud_error_message.trim()
+      : typeof meta?.error === "string"
+        ? meta.error.trim()
+        : "";
+
+  if (code && detail) return `Fallido (${code}): ${detail}`;
+  if (detail) return `Fallido: ${detail}`;
+  if (code) return `Fallido (${code})`;
+  return "Fallido. Consulta el estado del mensaje en YCloud.";
+}
+
+export function StatusIcon({ status, meta }: StatusIconProps) {
   if (!status) return null;
 
   switch (status) {
@@ -39,11 +58,18 @@ export function StatusIcon({ status }: StatusIconProps) {
         />
       );
     case "failed":
+      const label = failureLabel(meta);
       return (
-        <AlertCircle
-          className={cn("h-3 w-3 shrink-0 text-destructive")}
-          aria-label="Fallido"
-        />
+        <span
+          className="inline-flex cursor-help"
+          title={label}
+          aria-label={label}
+        >
+          <AlertCircle
+            className={cn("h-3 w-3 shrink-0 text-destructive")}
+            aria-hidden="true"
+          />
+        </span>
       );
     default:
       return null;
