@@ -28,7 +28,30 @@ export async function isSignupOpen(): Promise<boolean> {
   return (count ?? 0) === 0;
 }
 
-/** Promotes the bootstrap user (first registration) to agency super admin. */
+/**
+ * Promotes the bootstrap user (first registration) to agency super admin.
+ *
+ * TAREA 1B: writes is_super_admin AND platform_role atomically in the same
+ * UPDATE — leaving only is_super_admin set (the pre-1B behavior) would mint
+ * a super admin who passes requireSuperAdmin() but, before this task's fix,
+ * could fail requirePlatformStaff()/is_platform_staff() elsewhere, an
+ * inconsistent half-promoted account. Fails loudly (throws) rather than
+ * swallowing an error or a zero-row match — this is the ONLY account
+ * creation path that grants platform access, so silently leaving someone
+ * partially promoted (or not promoted at all while signup already reports
+ * success) is worse than a hard failure the caller must handle.
+ */
 export async function markAsSuperAdmin(userId: string): Promise<void> {
-  await admin().from("users").update({ is_super_admin: true }).eq("id", userId);
+  const { data, error } = await admin()
+    .from("users")
+    .update({ is_super_admin: true, platform_role: "super_admin" })
+    .eq("id", userId)
+    .select("id");
+
+  if (error) {
+    throw new Error(`markAsSuperAdmin: failed to promote user ${userId}: ${error.message}`);
+  }
+  if (!data || data.length === 0) {
+    throw new Error(`markAsSuperAdmin: no user row matched id ${userId} — promotion did not apply`);
+  }
 }

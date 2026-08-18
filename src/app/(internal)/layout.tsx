@@ -1,14 +1,13 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
 import { LogOut, ShieldCheck } from "lucide-react";
+import { getPlatformAccess } from "@/lib/auth/platform-access";
 import { createClient } from "@/lib/supabase/server";
 import {
   getActiveWorkspace,
   getDefaultRouteForWorkspace,
 } from "@/features/workspace/services/active-workspace";
 import { logout } from "@/features/auth/services/actions";
-import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
   AppMobileNavigation,
@@ -16,26 +15,29 @@ import {
   type AppNavItem,
 } from "@/components/app-navigation";
 
-export default async function AgencyLayout({
+// TAREA 2 — zona interna de OnyxLink ("Dirección"), separada a propósito
+// del layout (agency) existente: (agency) protege operaciones exclusivas de
+// super_admin (Empresas, aprovisionamiento, credenciales) y NO debe
+// ampliarse para dar cabida a internal_admin. Este layout usa
+// getPlatformAccess() (la resolución equivalente segura que permite el
+// encargo cuando no se puede usar requirePlatformStaff() — pensado para
+// Server Actions/rutas API, no para páginas, que necesitan redirect() en
+// vez de una NextResponse) y NUNCA depende de que el usuario tenga un
+// workspace activo: un internal_admin puede no pertenecer a ninguno.
+export default async function InternalLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const access = await getPlatformAccess();
 
-  if (!user) redirect("/login");
+  if (!access) redirect("/login");
 
-  const { data: userRow } = await supabase
-    .from("users")
-    .select("is_super_admin")
-    .eq("id", user.id)
-    .single();
-
-  if (!userRow?.is_super_admin) {
-    const membership = await getActiveWorkspace(supabase, user.id);
+  if (!access.isPlatformStaff) {
+    // Igual que (agency)/layout.tsx: a un cliente rechazado se le manda a
+    // su propio destino por defecto, nunca a un callejón sin salida.
+    const supabase = await createClient();
+    const membership = await getActiveWorkspace(supabase, access.userId);
     redirect(
       membership
         ? await getDefaultRouteForWorkspace(supabase, membership.workspace_id)
@@ -43,48 +45,32 @@ export default async function AgencyLayout({
     );
   }
 
+  const isSuperAdmin = access.isSuperAdmin;
+
   const navItems: AppNavItem[] = [
-    {
-      href: "/workspaces",
-      label: "Empresas",
-      icon: "companies",
-      section: "Administración",
-      mobilePrimary: true,
-    },
-    // TAREA 2: enlace añadido al panel de superadmin ya existente, sin
-    // tocar la comprobación is_super_admin de arriba — este layout entero
-    // sigue siendo exclusivo de super_admin, igual que antes.
     {
       href: "/direccion",
       label: "Dirección",
       icon: "direction",
-      section: "Administración",
-    },
-    {
-      href: "/dashboard",
-      label: "Volver al inicio",
-      shortLabel: "Inicio",
-      icon: "dashboard",
-      section: "Aplicación",
-      mobilePrimary: true,
-    },
-    {
-      href: "/inbox",
-      label: "Conversaciones",
-      shortLabel: "Mensajes",
-      icon: "messages",
-      section: "Aplicación",
-      mobilePrimary: true,
-    },
-    {
-      href: "/settings",
-      label: "Ajustes de empresa",
-      shortLabel: "Ajustes",
-      icon: "settings",
-      section: "Aplicación",
+      section: "Interno",
       mobilePrimary: true,
     },
   ];
+
+  // "No permitir a internal_admin entrar en /workspaces": no basta con no
+  // mostrar el enlace aquí (eso es solo UX) — /workspaces sigue protegido
+  // por su propia comprobación is_super_admin en (agency)/layout.tsx,
+  // ajena a este layout y sin tocar. Este condicional es exclusivamente
+  // sobre qué ve cada rol, no la barrera de seguridad real.
+  if (isSuperAdmin) {
+    navItems.push({
+      href: "/workspaces",
+      label: "Empresas",
+      icon: "companies",
+      section: "Interno",
+      mobilePrimary: true,
+    });
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -99,15 +85,15 @@ export default async function AgencyLayout({
             priority
           />
           <p className="mt-1 text-[9px] font-medium uppercase tracking-[0.18em] text-white/30">
-            Agency Console
+            Dirección
           </p>
         </div>
 
         <div className="mx-3 mb-6 flex items-center gap-3 rounded-xl border border-primary/25 bg-primary/15 px-3 py-3 text-white">
           <ShieldCheck className="h-5 w-5 text-[#A0DCDB]" aria-hidden="true" />
           <div>
-            <p className="text-xs font-semibold">Panel de administración</p>
-            <p className="text-[10px] text-white/45">Solo para OnyxLink</p>
+            <p className="text-xs font-semibold">Zona interna</p>
+            <p className="text-[10px] text-white/45">Solo personal de Onyxlink</p>
           </div>
         </div>
 
@@ -116,11 +102,13 @@ export default async function AgencyLayout({
         <div className="border-t border-white/10 p-3">
           <div className="mb-2 flex items-center gap-3 rounded-lg px-3 py-2">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-white">
-              {(user.email?.[0] ?? "O").toUpperCase()}
+              {(access.email[0] ?? "O").toUpperCase()}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-xs font-medium text-white/80">{user.email}</p>
-              <p className="text-[10px] text-white/35">Superadministrador</p>
+              <p className="truncate text-xs font-medium text-white/80">{access.email}</p>
+              <p className="text-[10px] text-white/35">
+                {isSuperAdmin ? "Superadministrador" : "Administrador interno"}
+              </p>
             </div>
           </div>
           <form action={logout}>
@@ -137,7 +125,7 @@ export default async function AgencyLayout({
 
       <div className="flex min-h-screen flex-col lg:pl-64">
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/70 bg-background/85 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
-          <Link href="/workspaces" className="app-sidebar rounded-lg px-3 py-2 lg:hidden">
+          <div className="lg:hidden">
             <Image
               src="/brand/onyxlink-logo.png"
               alt="OnyxLink"
@@ -146,18 +134,21 @@ export default async function AgencyLayout({
               className="h-auto w-28"
               priority
             />
-          </Link>
+          </div>
           <div className="hidden items-center gap-2 lg:flex">
             <ShieldCheck className="h-4 w-4 text-primary" aria-hidden="true" />
-            <span className="text-xs font-semibold text-foreground">Administración OnyxLink</span>
-            <span className="text-xs text-muted-foreground">· Empresas y productos</span>
+            <span className="text-xs font-semibold text-foreground">Dirección OnyxLink</span>
           </div>
           <div className="ml-auto flex items-center gap-1.5">
             <ThemeToggle />
             <form action={logout} className="lg:hidden">
-              <Button type="submit" variant="ghost" size="icon" aria-label="Cerrar sesión">
+              <button
+                type="submit"
+                aria-label="Cerrar sesión"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
                 <LogOut className="h-4 w-4" aria-hidden="true" />
-              </Button>
+              </button>
             </form>
           </div>
         </header>

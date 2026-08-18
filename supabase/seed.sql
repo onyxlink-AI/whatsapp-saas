@@ -101,9 +101,16 @@ ON CONFLICT (provider_id, provider) DO NOTHING;
 -- public.users profiles
 -- ---------------------------------------------------------------------------
 
-INSERT INTO public.users (id, full_name, email, is_active, is_super_admin) VALUES
-  ('94ede212-a935-4259-a0e9-5a1547422477', 'Super Admin', 'superadmin@onyxlink.local', TRUE, TRUE),
-  ('8a0684ce-05ee-4741-a26c-5131df1924ba', 'Cliente Empresa A', 'cliente@empresaa.local', TRUE, FALSE)
+-- platform_role va junto a is_super_admin en el fixture del superadmin
+-- (TAREA 1 — 20260817140000_platform_role_staff_separation.sql): en
+-- producción, esa migración hace el backfill sobre filas ya existentes,
+-- pero un `supabase db reset` local aplica las migraciones ANTES de este
+-- seed, así que no hay ninguna fila que backfillear todavía — sin fijarlo
+-- aquí, el superadmin local quedaría con is_super_admin=true pero
+-- platform_role=NULL, inconsistente con lo que produce la migración real.
+INSERT INTO public.users (id, full_name, email, is_active, is_super_admin, platform_role) VALUES
+  ('94ede212-a935-4259-a0e9-5a1547422477', 'Super Admin', 'superadmin@onyxlink.local', TRUE, TRUE, 'super_admin'),
+  ('8a0684ce-05ee-4741-a26c-5131df1924ba', 'Cliente Empresa A', 'cliente@empresaa.local', TRUE, FALSE, NULL)
 ON CONFLICT (id) DO NOTHING;
 
 -- ---------------------------------------------------------------------------

@@ -86,50 +86,13 @@ export async function requireWorkspaceMember(
   return { ok: true, userId: user.id, role };
 }
 
-type SuperAdminOk = { ok: true; userId: string; email: string };
-
-/**
- * Authenticates the caller and verifies they are a platform super admin
- * (users.is_super_admin) — NOT just a workspace "admin" member. The agency
- * super admin who provisions a client is deliberately added as a workspace
- * "admin" member too (see agency-actions.ts) so RLS-scoped reads/writes work
- * for them, which means workspace role alone can't tell an Onyxlink operator
- * apart from the client's own admin user. Use this instead of
- * `requireWorkspaceMember({ minRole: "admin" })` for anything that must stay
- * agency-only regardless of the caller's role inside that workspace — e.g.
- * toggling a paid add-on the client shouldn't be able to self-activate.
- */
-export async function requireSuperAdmin(): Promise<SuperAdminOk | MemberFail> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return {
-      ok: false,
-      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-    };
-  }
-
-  const { data } = await supabase
-    .from("users")
-    .select("is_super_admin")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (!data?.is_super_admin) {
-    return {
-      ok: false,
-      response: NextResponse.json(
-        { error: "Esta función solo la puede activar Onyxlink" },
-        { status: 403 },
-      ),
-    };
-  }
-
-  return { ok: true, userId: user.id, email: user.email ?? user.id };
-}
+// TAREA 1 (separación segura entre administradores internos y clientes):
+// requireSuperAdmin() ahora vive en platform-access.ts, la capa de
+// autorización de plataforma centralizada (junto con requirePlatformStaff()
+// y getPlatformAccess()) — reexportado aquí sin cambiar su forma ni su ruta
+// de import para no tocar los ~26 archivos que ya hacen
+// `import { requireSuperAdmin } from "@/lib/auth/workspace-access"`.
+export { requireSuperAdmin } from "@/lib/auth/platform-access";
 
 type JsonOk<T> = { ok: true; body: T };
 type JsonFail = { ok: false; response: NextResponse };

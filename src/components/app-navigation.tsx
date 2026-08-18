@@ -6,6 +6,7 @@ import {
   Bot,
   Building2,
   Clapperboard,
+  Compass,
   FolderKanban,
   Kanban,
   LayoutDashboard,
@@ -16,6 +17,7 @@ import {
   PenTool,
   Phone,
   Settings,
+  Target,
   Users,
   Users2,
   type LucideIcon,
@@ -45,7 +47,9 @@ export type AppNavIcon =
   | "office"
   | "chatbot"
   | "settings"
-  | "companies";
+  | "companies"
+  | "direction"
+  | "goals";
 
 export interface AppNavItem {
   href: string;
@@ -71,6 +75,8 @@ const ICONS: Record<AppNavIcon, LucideIcon> = {
   chatbot: Bot,
   settings: Settings,
   companies: Building2,
+  direction: Compass,
+  goals: Target,
 };
 
 function isItemActive(pathname: string, href: string) {
