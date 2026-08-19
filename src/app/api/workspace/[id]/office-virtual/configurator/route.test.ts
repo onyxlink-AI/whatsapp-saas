@@ -34,6 +34,28 @@ beforeEach(() => {
 });
 
 describe('GET /api/workspace/[id]/office-virtual/configurator — superadmin only, full data', () => {
+  it('rejects an unauthenticated request with 401 before loading any configuration', async () => {
+    // Mirrors requireSuperAdmin()'s real "no session" shape (platform-access.ts)
+    // — distinct from the "authenticated but not superadmin" 403 case below.
+    // This route.ok===false branch used to only be proven end-to-end by a
+    // live HTTP fetch in rls-helper-privileges.test.ts; that depended on an
+    // external app/domain being reachable, so the real route-level assertion
+    // now lives here instead, fully deterministic via the same mocking the
+    // rest of this file already uses.
+    requireSuperAdmin.mockResolvedValue({
+      ok: false,
+      response: new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }),
+    });
+
+    const res = await GET(new NextRequest('http://localhost/api/workspace/empresa-a/office-virtual/configurator'), params('empresa-a'));
+    const body = await res.json();
+
+    expect(res.status).toBe(401);
+    expect(body).toEqual({ error: 'Unauthorized' });
+    expect(loadOrProvisionOfficeConfiguration).not.toHaveBeenCalled();
+    expect(resolveRealIntegrationStatuses).not.toHaveBeenCalled();
+  });
+
   it('rejects a non-superadmin before loading any configuration', async () => {
     requireSuperAdmin.mockResolvedValue({
       ok: false,
