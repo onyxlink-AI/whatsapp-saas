@@ -45,11 +45,26 @@ loadDotEnvLocal();
 // though the stack was in fact coming up correctly seconds later. Poll with
 // retries for up to POLL_TIMEOUT_MS instead of a single attempt, so a slow
 // boot is waited out rather than misread as "not running".
+//
+// Deliberately scoped to Postgres/Supabase only — this file used to also
+// poll NEXT_PUBLIC_APP_URL and fetch a live Next.js app's API route, but
+// that made the result depend on whatever happened to be listening at that
+// URL rather than on the candidate under test: in plain `npm run validate`
+// nothing is listening there, so it silently skipped; in the staging/
+// production release workflows that variable points at a real public
+// domain, so a stray 404 from an unrelated or not-yet-deployed page was
+// misread as "app reachable" and asserted against — divorced from Vitest
+// entirely, breaking deterministically depending on DNS/deploy timing
+// outside this test's control. The equivalent HTTP check now lives as an
+// explicit post-deploy smoke test in staging.yml/production.yml, which
+// queries the exact deployment URL just created — see those workflows for
+// "queda exactamente HTTP 401". The route-level authorization behavior
+// itself (no session -> 401, no config loaded) is covered directly in
+// src/app/api/workspace/[id]/office-virtual/configurator/route.test.ts.
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:54321';
 const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
 
 const SUPERADMIN_EMAIL = 'superadmin@onyxlink.local';
 const SUPERADMIN_PASSWORD = 'TestLocal123!';
@@ -64,7 +79,6 @@ const NON_SUPERADMIN_EMAIL = 'cliente@empresaa.local';
 const NON_SUPERADMIN_PASSWORD = 'TestLocal123!';
 
 let supabaseReachable = false;
-let appReachable = false;
 let authClient: SupabaseClient | null = null;
 let nonSuperAdminClient: SupabaseClient | null = null;
 
@@ -81,24 +95,14 @@ async function pollUntilReachable(check: () => Promise<boolean>): Promise<boolea
 }
 
 beforeAll(async () => {
-  [supabaseReachable, appReachable] = await Promise.all([
-    pollUntilReachable(async () => {
-      try {
-        const r = await fetch(`${SUPABASE_URL}/rest/v1/`, { headers: { apikey: ANON_KEY } });
-        return r.status < 500;
-      } catch {
-        return false;
-      }
-    }),
-    pollUntilReachable(async () => {
-      try {
-        const r = await fetch(`${APP_URL}/login`);
-        return r.status < 500;
-      } catch {
-        return false;
-      }
-    }),
-  ]);
+  supabaseReachable = await pollUntilReachable(async () => {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/`, { headers: { apikey: ANON_KEY } });
+      return r.status < 500;
+    } catch {
+      return false;
+    }
+  });
 }, POLL_TIMEOUT_MS + 5_000);
 
 afterAll(async () => {
@@ -219,17 +223,5 @@ describe('auth_workspace_ids() / auth_has_role() privilege boundary', () => {
     // Seeded locally: at least "Empresa A" and "Empresa B" — service_role
     // (BYPASSRLS) must see both, unlike the authenticated check above.
     expect((data ?? []).length).toBeGreaterThanOrEqual(2);
-  });
-});
-
-describe('Oficina Virtual Configurador routes after the privilege hardening', () => {
-  it('stays reachable and still rejects unauthenticated requests cleanly (no 500 from a broken grant)', async (ctx) => {
-    if (!appReachable) return ctx.skip();
-
-    const r = await fetch(`${APP_URL}/api/workspace/00000000-0000-0000-0000-000000000000/office-virtual/configurator`);
-    // No session cookie sent: must be an auth rejection, never a 500 —
-    // a 500 here would mean the grant/revoke changes broke the route
-    // before it even gets to evaluate who's calling it.
-    expect(r.status).toBe(401);
   });
 });
