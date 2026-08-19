@@ -93,6 +93,24 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Staging desplegado en: $url" >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Comprobar que el secret de bypass de Vercel existe
+        # Los deployments de Preview de este proyecto tienen activada la
+        # protección SSO de Vercel (Deployment Protection): sin este bypass,
+        # CUALQUIER petición sin sesión de Vercel — incluida la del smoke
+        # test — recibe un 302 hacia vercel.com/sso-api antes de llegar
+        # siquiera a Next.js, disfrazando cualquier resultado real de la
+        # aplicación. Se comprueba en un paso propio, sin imprimir el valor
+        # en ningún caso, para fallar con un mensaje claro si falta el
+        # secret en vez de con un 401-vs-302 confuso más adelante.
+        env:
+          BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          if [ -z "$BYPASS_SECRET" ]; then
+            echo "Falta STAGING_VERCEL_AUTOMATION_BYPASS_SECRET en el Environment staging." >&2
+            exit 1
+          fi
+          echo "STAGING_VERCEL_AUTOMATION_BYPASS_SECRET está configurado."
+
       - name: Smoke test de autorización del deployment recién creado
         # Consulta el deployment EXACTO que el paso anterior acaba de crear
         # (steps.deploy.outputs.url) — nunca staging.onyxlinkpanel.com, que
@@ -101,20 +119,36 @@ jobs:
         # src/lib/auth/rls-helper-privileges.test.ts): un smoke test HTTP de
         # un deployment real pertenece al propio despliegue, no a `npm run
         # validate`, que se ejecuta ANTES de que exista ningún deployment.
+        #
+        # La cabecera x-vercel-protection-bypass viaja SOLO como header HTTP
+        # — nunca en la URL, nunca en un echo/log — para que no quede
+        # expuesta en la salida del workflow ni en ningún artefacto.
         shell: bash
+        env:
+          BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |
           url="${{ steps.deploy.outputs.url }}"
-          curl --fail --show-error --silent --retry 5 --retry-delay 5 "$url/login" > /dev/null
+          curl --fail --show-error --silent --retry 5 --retry-delay 5 \
+            -H "x-vercel-protection-bypass: $BYPASS_SECRET" \
+            "$url/login" > /dev/null
 
-          # Sin cookies ni cabecera de autorización: debe rechazarse con
-          # exactamente 401 (nunca 404 de una ruta inexistente, nunca 500 de
-          # un grant roto, nunca una redirección inesperada).
-          configurator_code="$(curl --output /dev/null --silent --write-out '%{http_code}' "$url/api/workspace/00000000-0000-0000-0000-000000000000/office-virtual/configurator")"
+          # Sin cookies ni cabecera de autorización DE LA APLICACIÓN: debe
+          # rechazarse con exactamente 401 (nunca 404 de una ruta
+          # inexistente, nunca 500 de un grant roto, nunca una redirección
+          # inesperada — ni la de Next.js ni la SSO de Vercel, que el header
+          # de arriba ya evita).
+          configurator_code="$(curl --output /dev/null --silent --write-out '%{http_code}' \
+            -H "x-vercel-protection-bypass: $BYPASS_SECRET" \
+            "$url/api/workspace/00000000-0000-0000-0000-000000000000/office-virtual/configurator")"
+          if [ "$configurator_code" = "302" ]; then
+            echo "Recibido 302 pese al bypass: probablemente sigue siendo la protección SSO de Vercel, no la app. Revisa STAGING_VERCEL_AUTOMATION_BYPASS_SECRET y Deployment Protection en Vercel." >&2
+            exit 1
+          fi
           if [ "$configurator_code" != "401" ]; then
             echo "Esperaba HTTP 401 sin sesión en $url/api/workspace/.../office-virtual/configurator, recibido $configurator_code" >&2
             exit 1
           fi
-          echo "Smoke test de autorización correcto: 401 sin sesión en $url"
+          echo "Smoke test de autorización correcto: 401 sin sesión en $url (petición confirmada hasta Next.js, no interceptada por Vercel)"
 
       - name: Detener Supabase local si un paso anterior falló
         if: always()
