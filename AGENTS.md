@@ -12,6 +12,11 @@ repositorio.
   `docs/ONYXLINK-PROTOCOLO-CIERRE.md`.
 - Para trabajos de instalación o publicación en tiendas, lee además
   `docs/ONYXLINK-PWA-ESCRITORIO-Y-TIENDAS.md`.
+- Para continuar el panel interno Dirección, lee obligatoriamente
+  `docs/ONYXLINK-DIRECCION-CONTINUIDAD.md` antes de planificar o implementar.
+- Mientras el backup externo R2 siga pendiente, toda publicación debe leer
+  `docs/ONYXLINK-PUBLICACION-TEMPORAL-SIN-R2.md`. No conservar esta excepción
+  después de cumplir su criterio de retirada.
 - Conserva todos los cambios previos del usuario y separa el alcance propio.
 
 ## Seguridad

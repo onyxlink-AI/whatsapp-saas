@@ -8,6 +8,11 @@ definición de terminado.
 Para cualquier tarea de PWA, instalación en ordenadores/móviles o publicación
 en tiendas, lee también `docs/ONYXLINK-PWA-ESCRITORIO-Y-TIENDAS.md`.
 
+Para cualquier trabajo del panel Dirección, lee obligatoriamente
+`docs/ONYXLINK-DIRECCION-CONTINUIDAD.md`. Mientras el backup externo R2 siga
+pendiente, antes de publicar lee también
+`docs/ONYXLINK-PUBLICACION-TEMPORAL-SIN-R2.md` y aplica sus reglas de parada.
+
 Para dar de alta un cliente nuevo que vaya a usar la Agenda real (citas,
 Google Calendar, Zoom), lee también
 `docs/ONYXLINK-CHECKLIST-CLIENTE-NUEVO-AGENDA-CALENDARIO.md`.
