@@ -17,6 +17,9 @@ repositorio.
 - Mientras el backup externo R2 siga pendiente, toda publicación debe leer
   `docs/ONYXLINK-PUBLICACION-TEMPORAL-SIN-R2.md`. No conservar esta excepción
   después de cumplir su criterio de retirada.
+- Ante cualquier error de Supabase, antes de modificar Auth, RLS, Storage,
+  Realtime, credenciales o backups, lee
+  `docs/ONYXLINK-RUNBOOK-SUPABASE-INCIDENTES.md`.
 - Conserva todos los cambios previos del usuario y separa el alcance propio.
 
 ## Seguridad

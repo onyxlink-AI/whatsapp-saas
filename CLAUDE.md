@@ -13,6 +13,10 @@ Para cualquier trabajo del panel Dirección, lee obligatoriamente
 pendiente, antes de publicar lee también
 `docs/ONYXLINK-PUBLICACION-TEMPORAL-SIN-R2.md` y aplica sus reglas de parada.
 
+Ante cualquier error de Supabase, antes de cambiar Auth, RLS, Storage,
+Realtime, credenciales o backups, lee
+`docs/ONYXLINK-RUNBOOK-SUPABASE-INCIDENTES.md`.
+
 Para dar de alta un cliente nuevo que vaya a usar la Agenda real (citas,
 Google Calendar, Zoom), lee también
 `docs/ONYXLINK-CHECKLIST-CLIENTE-NUEVO-AGENDA-CALENDARIO.md`.
