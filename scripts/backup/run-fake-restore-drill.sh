@@ -77,13 +77,40 @@ clear_inherited_production_vars() {
 }
 
 # --- Barrera: cualquier endpoint usado debe ser local o el contenedor ficticio esperado. ---
+# Los endpoints MinIO se comparan por IGUALDAD EXACTA (sin comodin tras el
+# puerto): deben ser literalmente http://127.0.0.1:9000 o http://127.0.0.1:9010,
+# nunca un prefijo que pudiera casar con otra cosa. La URL de Postgres si
+# necesita comodines para el usuario/contrasena y el nombre de base de datos.
 assert_local_endpoint() {
   local label="$1" url="$2"
+  case "$label" in
+    SUPABASE_S3_ENDPOINT)
+      [[ "$url" == "http://127.0.0.1:${MINIO_ORIGIN_S3_PORT}" ]] || die "$label no coincide exactamente con http://127.0.0.1:${MINIO_ORIGIN_S3_PORT}: $url"
+      return 0
+      ;;
+    R2_ENDPOINT)
+      [[ "$url" == "http://127.0.0.1:${MINIO_VAULT_S3_PORT}" ]] || die "$label no coincide exactamente con http://127.0.0.1:${MINIO_VAULT_S3_PORT}: $url"
+      return 0
+      ;;
+  esac
   case "$url" in
-    http://127.0.0.1:"$MINIO_ORIGIN_S3_PORT"* | http://127.0.0.1:"$MINIO_VAULT_S3_PORT"*) ;;
     postgresql://*@127.0.0.1:"$ORIGIN_DB_PORT"/* | postgresql://*@127.0.0.1:"$DEST_DB_PORT"/*) ;;
     *) die "$label no apunta a un endpoint local/ficticio esperado: $url" ;;
   esac
+}
+
+# --- Barrera: los contenedores deben publicar sus puertos SOLO en loopback. ---
+# docker run ya los vincula con el prefijo 127.0.0.1: explicito; esto lo
+# reconfirma leyendo el binding real que Docker aplico, para detectar
+# cualquier deriva (por ejemplo si alguien quita el prefijo en el futuro).
+assert_loopback_only_ports() {
+  local container="$1"
+  local output
+  output="$(docker port "$container")"
+  if printf '%s\n' "$output" | grep -qE '0\.0\.0\.0|\[::\]'; then
+    die "El contenedor $container publica algun puerto fuera de 127.0.0.1: $output"
+  fi
+  log "$container: puertos confirmados solo en 127.0.0.1 ($(printf '%s' "$output" | tr '\n' ' '))"
 }
 
 cleanup() {
@@ -260,8 +287,10 @@ verify_vault_opacity() {
 
   local object_count
   object_count="$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).length)' "$raw_listing")"
-  [[ "$object_count" -gt 0 ]] || die "El listado raw del vault esta vacio: no se puede confirmar opacidad sobre nada"
-  log "Listado raw contiene $object_count objetos"
+  # Minimo esperado: database.tar.gz, los 3 archivos ficticios, manifest.json
+  # y COMPLETED = 6 objetos raw. Menos que eso significa que algo no se subio.
+  [[ "$object_count" -ge 6 ]] || die "El listado raw del vault tiene menos de 6 objetos (database.tar.gz + 3 archivos + manifest.json + COMPLETED): $object_count"
+  log "Listado raw contiene $object_count objetos (>= 6 esperados)"
 
   local forbidden_names=(
     "$FAKE_SNAPSHOT_ID" "manifest.json" "COMPLETED" "database.tar.gz"
@@ -293,8 +322,8 @@ verify_vault_opacity() {
 
   local downloaded_count
   downloaded_count="$(find "$download_dir" -type f | wc -l | tr -d ' ')"
-  [[ "$downloaded_count" -gt 0 ]] || die "La descarga raw del vault no contiene ningun archivo: no se puede confirmar opacidad sobre nada"
-  log "Descarga raw contiene $downloaded_count archivos"
+  [[ "$downloaded_count" -eq "$object_count" ]] || die "La descarga raw ($downloaded_count archivos) no coincide con el listado raw ($object_count objetos)"
+  log "Descarga raw contiene $downloaded_count archivos, igual al listado raw"
 
   local content_forbidden=(
     "contenido-ficticio" "ficticio-uno" "ficticio-dos" "ficticio-tres"
@@ -317,9 +346,12 @@ main() {
   clear_inherited_production_vars
 
   log "Fase 1/9: arrancando Postgres de origen (${PG_IMAGE})"
-  docker run -d --name ensayo-pg-origen -p "${ORIGIN_DB_PORT}:5432" \
+  # Publicado exclusivamente en loopback: 127.0.0.1:<puerto>, nunca en todas
+  # las interfaces (0.0.0.0) ni en IPv6 comodin ([::]).
+  docker run -d --name ensayo-pg-origen -p "127.0.0.1:${ORIGIN_DB_PORT}:5432" \
     -e POSTGRES_PASSWORD="$PG_PASSWORD" -e POSTGRES_USER=postgres -e POSTGRES_DB=postgres \
     "$PG_IMAGE" >/dev/null
+  assert_loopback_only_ports ensayo-pg-origen
   mkdir -p "$WORKDIR"
   extract_pg_client_tools
   wait_for_postgres "$ORIGIN_DB_PORT" "Postgres origen"
@@ -328,12 +360,17 @@ main() {
   seed_fake_database_rows
 
   log "Fase 2/9: arrancando los dos MinIO ficticios (${MINIO_IMAGE})"
-  docker run -d --name ensayo-minio-origen -p "${MINIO_ORIGIN_S3_PORT}:9000" -p "${MINIO_ORIGIN_CONSOLE_PORT}:9001" \
+  # Publicados exclusivamente en loopback, igual que los Postgres.
+  docker run -d --name ensayo-minio-origen \
+    -p "127.0.0.1:${MINIO_ORIGIN_S3_PORT}:9000" -p "127.0.0.1:${MINIO_ORIGIN_CONSOLE_PORT}:9001" \
     -e "MINIO_ROOT_USER=${MINIO_ORIGIN_USER}" -e "MINIO_ROOT_PASSWORD=${MINIO_ORIGIN_PASS}" \
     "$MINIO_IMAGE" server /data --console-address ":9001" >/dev/null
-  docker run -d --name ensayo-minio-vault -p "${MINIO_VAULT_S3_PORT}:9000" -p "${MINIO_VAULT_CONSOLE_PORT}:9001" \
+  assert_loopback_only_ports ensayo-minio-origen
+  docker run -d --name ensayo-minio-vault \
+    -p "127.0.0.1:${MINIO_VAULT_S3_PORT}:9000" -p "127.0.0.1:${MINIO_VAULT_CONSOLE_PORT}:9001" \
     -e "MINIO_ROOT_USER=${MINIO_VAULT_USER}" -e "MINIO_ROOT_PASSWORD=${MINIO_VAULT_PASS}" \
     "$MINIO_IMAGE" server /data --console-address ":9001" >/dev/null
+  assert_loopback_only_ports ensayo-minio-vault
   wait_for_minio "$MINIO_ORIGIN_S3_PORT" "MinIO origen"
   wait_for_minio "$MINIO_VAULT_S3_PORT" "MinIO vault"
 
@@ -389,9 +426,11 @@ main() {
     npm run backup:restore-kit)
 
   log "Fase 8/9: arrancando Postgres destino (misma imagen y digest que el origen) y restaurando"
-  docker run -d --name ensayo-pg-destino -p "${DEST_DB_PORT}:5432" \
+  # Publicado exclusivamente en loopback, igual que el resto de contenedores.
+  docker run -d --name ensayo-pg-destino -p "127.0.0.1:${DEST_DB_PORT}:5432" \
     -e POSTGRES_PASSWORD="$PG_PASSWORD" -e POSTGRES_USER=postgres -e POSTGRES_DB=postgres \
     "$PG_IMAGE" >/dev/null
+  assert_loopback_only_ports ensayo-pg-destino
   wait_for_postgres "$DEST_DB_PORT" "Postgres destino"
   verify_postgres_identity "$DEST_DB_PORT" "Postgres destino"
   local dest_url="postgresql://postgres:${PG_PASSWORD}@127.0.0.1:${DEST_DB_PORT}/postgres"
