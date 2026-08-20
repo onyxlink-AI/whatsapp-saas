@@ -416,7 +416,7 @@ main() {
   # Publicado exclusivamente en loopback: 127.0.0.1:<puerto>, nunca en todas
   # las interfaces (0.0.0.0) ni en IPv6 comodin ([::]).
   docker run -d --name ensayo-pg-origen -p "127.0.0.1:${ORIGIN_DB_PORT}:5432" \
-    -e POSTGRES_PASSWORD="$PG_PASSWORD" -e POSTGRES_USER=postgres -e POSTGRES_DB=postgres \
+    -e POSTGRES_PASSWORD="$PG_PASSWORD" -e POSTGRES_DB=postgres \
     "$PG_IMAGE" >/dev/null
   assert_loopback_only_ports ensayo-pg-origen
   mkdir -p "$WORKDIR"
@@ -495,7 +495,7 @@ main() {
   log "Fase 8/9: arrancando Postgres destino (misma imagen y digest que el origen) y restaurando"
   # Publicado exclusivamente en loopback, igual que el resto de contenedores.
   docker run -d --name ensayo-pg-destino -p "127.0.0.1:${DEST_DB_PORT}:5432" \
-    -e POSTGRES_PASSWORD="$PG_PASSWORD" -e POSTGRES_USER=postgres -e POSTGRES_DB=postgres \
+    -e POSTGRES_PASSWORD="$PG_PASSWORD" -e POSTGRES_DB=postgres \
     "$PG_IMAGE" >/dev/null
   assert_loopback_only_ports ensayo-pg-destino
   wait_for_postgres "$DEST_DB_PORT" "Postgres destino" ensayo-pg-destino
