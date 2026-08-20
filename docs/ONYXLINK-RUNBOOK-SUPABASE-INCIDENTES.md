@@ -1,9 +1,12 @@
 # OnyxLink — Runbook vivo de incidencias de Supabase
 
-**Estado:** operativo y versionado  
-**Última actualización:** 20 de agosto de 2026  
+**Estado:** operativo y versionado
+
+**Última actualización:** 20 de agosto de 2026
+
 **Ámbito:** Auth, API Gateway, PostgREST/RLS, PostgreSQL, Storage, Realtime,
-Dashboard, CLI, Management API y backups  
+Dashboard, CLI, Management API y backups
+
 **Propietario:** OnyxLink
 
 ## 1. Objetivo
@@ -264,13 +267,16 @@ Fuentes:
 
 ### INC-SUPABASE-2026-08-20 — 401 al comprobar backups
 
-**Estado:** pendiente de respuesta de Supabase Support.  
+**Estado:** pendiente de respuesta de Supabase Support.
+
 **Impacto:** bloquea la primera copia externa real; la aplicación de producción
-continúa operativa.  
+continúa operativa.
+
 **Evidencia propia (nivel A):** dos ejecuciones separadas fallaron en el primer
 paso de solo lectura con `401 Unauthorized` en `supabase backups list`. Los
 pasos `backup:create` y `backup:verify` no se ejecutaron, R2 no recibió objetos y
-`BACKUP_ENABLED` terminó en `false`.  
+`BACKUP_ENABLED` terminó en `false`.
+
 **Acción actual:** no rotar ni volver a probar PAT mientras soporte analiza el
 caso. Conservar run IDs en el ticket, no en este documento público si incorporan
 información sensible.
