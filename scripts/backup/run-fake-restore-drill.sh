@@ -144,13 +144,39 @@ wait_for_minio() {
   die "$label no respondio tras agotar los intentos de health check (60s)"
 }
 
+# Muchas imagenes de Postgres basadas en Debian exponen pg_dump/pg_restore/
+# psql/pg_isready como symlinks (mecanismo update-alternatives). `docker cp`
+# copia symlinks tal cual, sin seguirlos: el enlace copiado apunta a una ruta
+# que solo existe dentro del contenedor y queda "colgando" en el host. Esta
+# funcion resuelve la ruta final DENTRO del contenedor antes de copiar, para
+# copiar siempre el archivo real, nunca un enlace.
+resolve_container_binary_path() {
+  local bin="$1"
+  local located resolved
+  located="$(docker exec ensayo-pg-origen sh -c "command -v '$bin'" 2>/dev/null || true)"
+  [[ -n "$located" ]] || die "No se encontro $bin dentro del contenedor de origen (command -v vacio)"
+  resolved="$(docker exec ensayo-pg-origen sh -c "readlink -f '$located'" 2>/dev/null || true)"
+  [[ -n "$resolved" ]] || die "readlink -f no pudo resolver la ruta final de $bin dentro del contenedor"
+  [[ "$resolved" == /* ]] || die "La ruta resuelta de $bin no es absoluta: '$resolved'"
+  docker exec ensayo-pg-origen sh -c "[ -f '$resolved' ] && [ -x '$resolved' ]" \
+    || die "La ruta resuelta de $bin no es un archivo ejecutable dentro del contenedor: $resolved"
+  printf '%s' "$resolved"
+}
+
 extract_pg_client_tools() {
   log "Extrayendo pg_dump/pg_restore/psql/pg_isready del contenedor de origen"
   mkdir -p "$PGCLIENT_DIR"
-  local bin path
+  local bin resolved_path
   for bin in pg_dump pg_restore psql pg_isready; do
-    path="$(docker exec ensayo-pg-origen which "$bin")"
-    docker cp "ensayo-pg-origen:${path}" "$PGCLIENT_DIR/$bin"
+    resolved_path="$(resolve_container_binary_path "$bin")"
+    docker cp "ensayo-pg-origen:${resolved_path}" "$PGCLIENT_DIR/$bin"
+
+    # Comprobar en el HOST el resultado de la copia, sin asumir que resolver
+    # la ruta dentro del contenedor basta para garantizar un archivo regular.
+    [[ -f "$PGCLIENT_DIR/$bin" ]] || die "$bin no se copio como archivo regular al host"
+    [[ ! -L "$PGCLIENT_DIR/$bin" ]] || die "$bin se copio como enlace simbolico en el host (deberia ser el archivo real)"
+    [[ -s "$PGCLIENT_DIR/$bin" ]] || die "$bin se copio vacio al host"
+
     chmod +x "$PGCLIENT_DIR/$bin"
   done
 
