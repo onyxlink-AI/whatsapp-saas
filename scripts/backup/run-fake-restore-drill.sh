@@ -113,6 +113,29 @@ assert_loopback_only_ports() {
   log "$container: puertos confirmados solo en 127.0.0.1 ($(printf '%s' "$output" | tr '\n' ' '))"
 }
 
+# Diagnostico de un contenedor que no responde, para dejar de estar ciegos
+# ante fallos como "Postgres origen no respondio tras agotar los intentos".
+# Deliberadamente NO usa `docker inspect ... Config.Env`: solo estado del
+# contenedor y sus logs. Los logs son de contenedores exclusivamente
+# ficticios con credenciales falsas (ver constantes al inicio del script),
+# nunca de infraestructura real.
+dump_container_diagnostics() {
+  local container="$1" label="$2"
+  log "Diagnostico de $label ($container):"
+  local state
+  state="$(docker inspect --format \
+    'Status={{.State.Status}} Running={{.State.Running}} ExitCode={{.State.ExitCode}} OOMKilled={{.State.OOMKilled}} Error={{.State.Error}}' \
+    "$container" 2>&1 || true)"
+  printf '[ensayo][diagnostico] %s\n' "$state"
+  printf '[ensayo][diagnostico] ---- docker logs --tail 200 (%s) ----\n' "$container"
+  docker logs --tail 200 "$container" 2>&1 || true
+  printf '[ensayo][diagnostico] ---- fin logs (%s) ----\n' "$container"
+}
+
+container_is_running() {
+  [[ "$(docker inspect --format '{{.State.Running}}' "$1" 2>/dev/null || printf 'false')" == "true" ]]
+}
+
 cleanup() {
   log "Limpieza: solo contenedores y carpetas creados por este ensayo"
   docker rm -f ensayo-pg-origen ensayo-pg-destino ensayo-minio-origen ensayo-minio-vault >/dev/null 2>&1 || true
@@ -121,26 +144,44 @@ cleanup() {
 }
 
 wait_for_postgres() {
-  local port="$1" label="$2" i
+  local port="$1" label="$2" container="$3" i
+  local last_output=""
   for i in $(seq 1 30); do
-    if PGPASSWORD="$PG_PASSWORD" pg_isready -h 127.0.0.1 -p "$port" -U postgres >/dev/null 2>&1; then
+    if last_output="$(PGPASSWORD="$PG_PASSWORD" pg_isready -h 127.0.0.1 -p "$port" -U postgres 2>&1)"; then
       log "$label listo (puerto $port)"
       return 0
     fi
+    if ! container_is_running "$container"; then
+      log "$label: ultima salida de pg_isready: $last_output"
+      log "$label: el contenedor $container ya no esta en ejecucion, diagnosticando antes de fallar"
+      dump_container_diagnostics "$container" "$label"
+      die "$label se detuvo antes de aceptar conexiones (ver diagnostico anterior)"
+    fi
     sleep 2
   done
+  log "$label: ultima salida de pg_isready tras agotar los intentos: $last_output"
+  dump_container_diagnostics "$container" "$label"
   die "$label no respondio tras agotar los intentos de pg_isready (60s)"
 }
 
 wait_for_minio() {
-  local port="$1" label="$2" i
+  local port="$1" label="$2" container="$3" i
+  local last_output=""
   for i in $(seq 1 30); do
-    if curl -fsS "http://127.0.0.1:${port}/minio/health/live" >/dev/null 2>&1; then
+    if last_output="$(curl -fsS "http://127.0.0.1:${port}/minio/health/live" 2>&1)"; then
       log "$label listo (puerto $port)"
       return 0
     fi
+    if ! container_is_running "$container"; then
+      log "$label: ultima salida del health check: $last_output"
+      log "$label: el contenedor $container ya no esta en ejecucion, diagnosticando antes de fallar"
+      dump_container_diagnostics "$container" "$label"
+      die "$label se detuvo antes de responder al health check (ver diagnostico anterior)"
+    fi
     sleep 2
   done
+  log "$label: ultima salida del health check tras agotar los intentos: $last_output"
+  dump_container_diagnostics "$container" "$label"
   die "$label no respondio tras agotar los intentos de health check (60s)"
 }
 
@@ -380,7 +421,7 @@ main() {
   assert_loopback_only_ports ensayo-pg-origen
   mkdir -p "$WORKDIR"
   extract_pg_client_tools
-  wait_for_postgres "$ORIGIN_DB_PORT" "Postgres origen"
+  wait_for_postgres "$ORIGIN_DB_PORT" "Postgres origen" ensayo-pg-origen
   verify_postgres_identity "$ORIGIN_DB_PORT" "Postgres origen"
   smoke_test_pg_client_tools
   seed_fake_database_rows
@@ -397,8 +438,8 @@ main() {
     -e "MINIO_ROOT_USER=${MINIO_VAULT_USER}" -e "MINIO_ROOT_PASSWORD=${MINIO_VAULT_PASS}" \
     "$MINIO_IMAGE" server /data --console-address ":9001" >/dev/null
   assert_loopback_only_ports ensayo-minio-vault
-  wait_for_minio "$MINIO_ORIGIN_S3_PORT" "MinIO origen"
-  wait_for_minio "$MINIO_VAULT_S3_PORT" "MinIO vault"
+  wait_for_minio "$MINIO_ORIGIN_S3_PORT" "MinIO origen" ensayo-minio-origen
+  wait_for_minio "$MINIO_VAULT_S3_PORT" "MinIO vault" ensayo-minio-vault
 
   log "Fase 3/9: creando buckets y subiendo 3 archivos ficticios"
   create_fake_storage_files
@@ -457,7 +498,7 @@ main() {
     -e POSTGRES_PASSWORD="$PG_PASSWORD" -e POSTGRES_USER=postgres -e POSTGRES_DB=postgres \
     "$PG_IMAGE" >/dev/null
   assert_loopback_only_ports ensayo-pg-destino
-  wait_for_postgres "$DEST_DB_PORT" "Postgres destino"
+  wait_for_postgres "$DEST_DB_PORT" "Postgres destino" ensayo-pg-destino
   verify_postgres_identity "$DEST_DB_PORT" "Postgres destino"
   local dest_url="postgresql://postgres:${PG_PASSWORD}@127.0.0.1:${DEST_DB_PORT}/postgres"
   psql -v ON_ERROR_STOP=1 "$dest_url" -f "$WORKDIR/kit/database/roles.sql"
