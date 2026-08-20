@@ -1,0 +1,66 @@
+name: Ensayo integro de backup y restauracion (ficticio, aislado)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ensayo-restauracion:
+    name: Ensayo real de backup + restore con infraestructura ficticia
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    env:
+      # Version+digest fijados. Ver el PR para el origen exacto de cada valor
+      # (Docker Hub, consultado en modo solo lectura, sin pull de producción).
+      ENSAYO_PG_IMAGE: supabase/postgres:17.6.1.165@sha256:2d9b76f84fe086da090dac9b3c75518240d3099c85d54b4def282a4e14f2f04d
+      ENSAYO_MINIO_IMAGE: minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+
+    steps:
+      - name: Descargar el commit exacto
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependencias reproducibles
+        run: npm ci
+
+      - name: Supabase CLI
+        uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1
+        with:
+          version: 2.111.0
+
+      - name: Descargar e instalar rclone (version y checksum fijados, sin curl | bash)
+        run: |
+          set -euo pipefail
+          version="v1.75.0"
+          expected_sha256="aa2804e08f48250e71009c727124b6341cd0288465804a9a09d14663cabafbaa"
+          zip="rclone-${version}-linux-amd64.zip"
+          curl -fsSL -o "$zip" "https://downloads.rclone.org/${version}/${zip}"
+          echo "${expected_sha256}  ${zip}" | sha256sum -c -
+          unzip -q "$zip"
+          sudo install -m 755 "rclone-${version}-linux-amd64/rclone" /usr/local/bin/rclone
+          rm -rf "$zip" "rclone-${version}-linux-amd64"
+          rclone version
+
+      - name: Pre-descargar las imagenes fijadas por digest (Postgres y MinIO)
+        run: |
+          docker pull "$ENSAYO_PG_IMAGE"
+          docker pull "$ENSAYO_MINIO_IMAGE"
+
+      - name: Ejecutar el ensayo integro (todo local, sin producción)
+        run: bash scripts/backup/run-fake-restore-drill.sh
+
+      - name: Limpieza final de seguridad (por si el script no llegó al trap)
+        if: always()
+        run: |
+          docker rm -f ensayo-pg-origen ensayo-pg-destino ensayo-minio-origen ensayo-minio-vault 2>/dev/null || true
+          rm -rf ensayo-restore
