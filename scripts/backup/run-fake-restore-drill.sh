@@ -6,14 +6,13 @@
 #
 # No lee ni usa ningun secret real. No se conecta a Supabase, R2 ni Vercel
 # reales. Disenado para invocarse solo desde
-# .github/workflows/backup-restore-drill-fake.yml, en un runner efimero.
+# .github/workflows/backup-restore-drill-fake.yml, en un runner efimero de
+# GitHub Actions (lo comprueba explicitamente antes de tocar nada).
 
 set -Eeuo pipefail
 umask 077
 
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
-WORKDIR="${GITHUB_WORKSPACE:-$REPO_ROOT}/ensayo-restore"
-PGCLIENT_DIR="$WORKDIR/pgclient-bin"
 
 readonly ORIGIN_DB_PORT=55432
 readonly DEST_DB_PORT=55433
@@ -37,8 +36,25 @@ PG_IMAGE="${ENSAYO_PG_IMAGE:?falta ENSAYO_PG_IMAGE (imagen+digest de Postgres fi
 MINIO_IMAGE="${ENSAYO_MINIO_IMAGE:?falta ENSAYO_MINIO_IMAGE (imagen+digest de MinIO fijados en el workflow)}"
 readonly PG_IMAGE MINIO_IMAGE
 
+# Se calculan dentro de assert_runtime_environment, una vez confirmado que
+# RUNNER_TEMP existe. No son readonly porque su valor depende de esa comprobacion.
+WORKDIR=""
+PGCLIENT_DIR=""
+
 log() { printf '[ensayo] %s\n' "$*"; }
 die() { printf '[ensayo][ERROR] %s\n' "$*" >&2; exit 1; }
+
+# --- Barrera: solo se ejecuta dentro de un runner real de GitHub Actions. ---
+# Se comprueba ANTES de registrar el trap de limpieza: si esto falla, no se ha
+# creado ni arrancado nada todavia, asi que no hay nada que borrar.
+assert_runtime_environment() {
+  [[ "${GITHUB_ACTIONS:-}" == "true" ]] || die "Este script solo debe ejecutarse dentro de GitHub Actions (GITHUB_ACTIONS debe ser exactamente 'true')"
+  [[ -n "${GITHUB_WORKSPACE:-}" ]] || die "Falta GITHUB_WORKSPACE"
+  [[ -n "${RUNNER_TEMP:-}" ]] || die "Falta RUNNER_TEMP"
+  WORKDIR="${RUNNER_TEMP}/ensayo-restore"
+  PGCLIENT_DIR="$WORKDIR/pgclient-bin"
+  log "Entorno de ejecucion verificado: GITHUB_ACTIONS=true, GITHUB_WORKSPACE y RUNNER_TEMP presentes"
+}
 
 # --- Barrera: ninguna variable que pudiera venir de produccion sobrevive. ---
 clear_inherited_production_vars() {
@@ -73,14 +89,14 @@ assert_local_endpoint() {
 cleanup() {
   log "Limpieza: solo contenedores y carpetas creados por este ensayo"
   docker rm -f ensayo-pg-origen ensayo-pg-destino ensayo-minio-origen ensayo-minio-vault >/dev/null 2>&1 || true
-  rm -rf -- "$WORKDIR"
+  [[ -n "$WORKDIR" ]] && rm -rf -- "$WORKDIR"
+  return 0
 }
-trap cleanup EXIT
 
 wait_for_postgres() {
   local port="$1" label="$2" i
   for i in $(seq 1 30); do
-    if PGPASSWORD="$PG_PASSWORD" "$PGCLIENT_DIR/pg_isready" -h 127.0.0.1 -p "$port" -U postgres >/dev/null 2>&1; then
+    if PGPASSWORD="$PG_PASSWORD" pg_isready -h 127.0.0.1 -p "$port" -U postgres >/dev/null 2>&1; then
       log "$label listo (puerto $port)"
       return 0
     fi
@@ -118,6 +134,28 @@ extract_pg_client_tools() {
     [[ -z "$missing" ]] || die "Bibliotecas dinamicas ausentes para $bin: $missing"
   done
   log "Bibliotecas dinamicas resueltas para los 4 binarios"
+
+  # A partir de aqui, el resto del script (y create-production-backup.sh,
+  # que exige pg_dump con backup_require_command) resuelve estos binarios
+  # via PATH, no por ruta completa.
+  export PATH="$PGCLIENT_DIR:$PATH"
+  for bin in pg_dump pg_restore psql pg_isready; do
+    local resolved
+    resolved="$(command -v "$bin")"
+    [[ "$resolved" == "$PGCLIENT_DIR/$bin" ]] || die "$bin no resuelve exactamente dentro de PGCLIENT_DIR (resuelto: $resolved)"
+  done
+  log "PATH actualizado: pg_dump/pg_restore/psql/pg_isready resuelven exactamente en $PGCLIENT_DIR"
+}
+
+verify_postgres_identity() {
+  local port="$1" label="$2"
+  local url="postgresql://postgres:${PG_PASSWORD}@127.0.0.1:${port}/postgres"
+  local current_user_value current_db_value
+  current_user_value="$(psql -v ON_ERROR_STOP=1 -tAc "select current_user" "$url")"
+  current_db_value="$(psql -v ON_ERROR_STOP=1 -tAc "select current_database()" "$url")"
+  [[ "$current_user_value" == "postgres" ]] || die "$label: current_user inesperado: '$current_user_value'"
+  [[ "$current_db_value" == "postgres" ]] || die "$label: current_database() inesperada: '$current_db_value'"
+  log "$label: identidad verificada (current_user=postgres, current_database()=postgres)"
 }
 
 smoke_test_pg_client_tools() {
@@ -125,22 +163,22 @@ smoke_test_pg_client_tools() {
   local url="postgresql://postgres:${PG_PASSWORD}@127.0.0.1:${ORIGIN_DB_PORT}/postgres"
   local dump="$WORKDIR/smoke.dump"
 
-  "$PGCLIENT_DIR/psql" -v ON_ERROR_STOP=1 "$url" -c \
+  psql -v ON_ERROR_STOP=1 "$url" -c \
     "create schema ensayo_smoke; create table ensayo_smoke.t (v text); insert into ensayo_smoke.t values ('smoke-ok');"
-  "$PGCLIENT_DIR/pg_dump" --format=custom --no-owner --no-acl --schema=ensayo_smoke --file="$dump" "$url"
-  "$PGCLIENT_DIR/psql" -v ON_ERROR_STOP=1 "$url" -c "drop schema ensayo_smoke cascade;"
-  "$PGCLIENT_DIR/pg_restore" --no-owner --no-acl -d "$url" "$dump"
+  pg_dump --format=custom --no-owner --no-acl --schema=ensayo_smoke --file="$dump" "$url"
+  psql -v ON_ERROR_STOP=1 "$url" -c "drop schema ensayo_smoke cascade;"
+  pg_restore --no-owner --no-acl -d "$url" "$dump"
 
   local result
-  result="$("$PGCLIENT_DIR/psql" -v ON_ERROR_STOP=1 -tAc "select v from ensayo_smoke.t" "$url")"
+  result="$(psql -v ON_ERROR_STOP=1 -tAc "select v from ensayo_smoke.t" "$url")"
   [[ "$result" == "smoke-ok" ]] || die "Smoke test fallido: se esperaba 'smoke-ok', se obtuvo '$result'"
-  "$PGCLIENT_DIR/psql" -v ON_ERROR_STOP=1 "$url" -c "drop schema ensayo_smoke cascade;"
+  psql -v ON_ERROR_STOP=1 "$url" -c "drop schema ensayo_smoke cascade;"
   log "Smoke test superado: los binarios extraidos funcionan end-to-end"
 }
 
 seed_fake_database_rows() {
   local url="postgresql://postgres:${PG_PASSWORD}@127.0.0.1:${ORIGIN_DB_PORT}/postgres"
-  "$PGCLIENT_DIR/psql" -v ON_ERROR_STOP=1 "$url" -c "
+  psql -v ON_ERROR_STOP=1 "$url" -c "
     create table ensayo_backup_demo (
       id uuid primary key default gen_random_uuid(),
       etiqueta text not null
@@ -164,18 +202,27 @@ create_buckets_and_upload_fixtures() {
   source "$REPO_ROOT/scripts/backup/common.sh"
   backup_configure_rclone
 
-  rclone mkdir "supabase:${FAKE_BUCKET_ORIGIN}"
-  rclone mkdir "r2raw:${FAKE_BUCKET_VAULT}"
+  # common.sh fija NO_CHECK_BUCKET=true para el uso normal (evita llamadas
+  # HeadBucket/CreateBucket de mas cuando el bucket ya existe). Para esta
+  # creacion inicial ficticia se anula solo para el "mkdir", sin tocar
+  # common.sh ni el resto de operaciones.
+  RCLONE_CONFIG_SUPABASE_NO_CHECK_BUCKET=false rclone mkdir "supabase:${FAKE_BUCKET_ORIGIN}"
+  RCLONE_CONFIG_R2RAW_NO_CHECK_BUCKET=false rclone mkdir "r2raw:${FAKE_BUCKET_VAULT}"
+
+  rclone lsd "supabase:" | grep -q " ${FAKE_BUCKET_ORIGIN}$" || die "El bucket de origen no existe tras rclone mkdir: $FAKE_BUCKET_ORIGIN"
+  rclone lsd "r2raw:" | grep -q " ${FAKE_BUCKET_VAULT}$" || die "El bucket del vault no existe tras rclone mkdir: $FAKE_BUCKET_VAULT"
+  log "Ambos buckets confirmados existentes: $FAKE_BUCKET_ORIGIN, $FAKE_BUCKET_VAULT"
+
   rclone copy "$WORKDIR/ficticios" "supabase:${FAKE_BUCKET_ORIGIN}"
-  log "Buckets ficticios creados y 3 archivos ficticios subidos al origen"
+  log "3 archivos ficticios subidos al bucket de origen"
 }
 
 compare_restored_rows() {
   local origin_url="postgresql://postgres:${PG_PASSWORD}@127.0.0.1:${ORIGIN_DB_PORT}/postgres"
   local dest_url="postgresql://postgres:${PG_PASSWORD}@127.0.0.1:${DEST_DB_PORT}/postgres"
   local origin_rows dest_rows dest_count
-  origin_rows="$("$PGCLIENT_DIR/psql" -v ON_ERROR_STOP=1 -tAc "select etiqueta from ensayo_backup_demo order by etiqueta" "$origin_url")"
-  dest_rows="$("$PGCLIENT_DIR/psql" -v ON_ERROR_STOP=1 -tAc "select etiqueta from ensayo_backup_demo order by etiqueta" "$dest_url")"
+  origin_rows="$(psql -v ON_ERROR_STOP=1 -tAc "select etiqueta from ensayo_backup_demo order by etiqueta" "$origin_url")"
+  dest_rows="$(psql -v ON_ERROR_STOP=1 -tAc "select etiqueta from ensayo_backup_demo order by etiqueta" "$dest_url")"
   [[ "$origin_rows" == "$dest_rows" ]] || die "Filas restauradas distintas del origen. Origen=[$origin_rows] Destino=[$dest_rows]"
   dest_count="$(printf '%s\n' "$dest_rows" | grep -c .)"
   [[ "$dest_count" -eq 3 ]] || die "Se esperaban exactamente 3 filas restauradas, se obtuvieron $dest_count"
@@ -207,7 +254,14 @@ verify_completed_marker_and_dump_files() {
 verify_vault_opacity() {
   log "Comprobando opacidad del vault cifrado (vista raw, sin pasar por rclone crypt)"
   local raw_listing="$WORKDIR/vault-raw-listing.json"
-  rclone lsjson "r2raw:${FAKE_BUCKET_VAULT}" --recursive > "$raw_listing"
+  # --files-only evita que entradas de directorio (sin contenido que
+  # comprobar) generen falsos fallos en las comprobaciones siguientes.
+  rclone lsjson "r2raw:${FAKE_BUCKET_VAULT}" --recursive --files-only > "$raw_listing"
+
+  local object_count
+  object_count="$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).length)' "$raw_listing")"
+  [[ "$object_count" -gt 0 ]] || die "El listado raw del vault esta vacio: no se puede confirmar opacidad sobre nada"
+  log "Listado raw contiene $object_count objetos"
 
   local forbidden_names=(
     "$FAKE_SNAPSHOT_ID" "manifest.json" "COMPLETED" "database.tar.gz"
@@ -237,6 +291,11 @@ verify_vault_opacity() {
   mkdir -p "$download_dir"
   rclone copy "r2raw:${FAKE_BUCKET_VAULT}" "$download_dir" --fast-list
 
+  local downloaded_count
+  downloaded_count="$(find "$download_dir" -type f | wc -l | tr -d ' ')"
+  [[ "$downloaded_count" -gt 0 ]] || die "La descarga raw del vault no contiene ningun archivo: no se puede confirmar opacidad sobre nada"
+  log "Descarga raw contiene $downloaded_count archivos"
+
   local content_forbidden=(
     "contenido-ficticio" "ficticio-uno" "ficticio-dos" "ficticio-tres"
     "onyxlink-backup-v1" "snapshotId" "CREATE TABLE" "INSERT INTO" "-- dump"
@@ -253,14 +312,18 @@ verify_vault_opacity() {
 }
 
 main() {
+  assert_runtime_environment
+  trap cleanup EXIT
   clear_inherited_production_vars
 
   log "Fase 1/9: arrancando Postgres de origen (${PG_IMAGE})"
   docker run -d --name ensayo-pg-origen -p "${ORIGIN_DB_PORT}:5432" \
-    -e POSTGRES_PASSWORD="$PG_PASSWORD" "$PG_IMAGE" >/dev/null
+    -e POSTGRES_PASSWORD="$PG_PASSWORD" -e POSTGRES_USER=postgres -e POSTGRES_DB=postgres \
+    "$PG_IMAGE" >/dev/null
   mkdir -p "$WORKDIR"
   extract_pg_client_tools
   wait_for_postgres "$ORIGIN_DB_PORT" "Postgres origen"
+  verify_postgres_identity "$ORIGIN_DB_PORT" "Postgres origen"
   smoke_test_pg_client_tools
   seed_fake_database_rows
 
@@ -310,8 +373,11 @@ main() {
     BACKUP_SNAPSHOT_ID="$FAKE_SNAPSHOT_ID" \
     npm run backup:create)
 
-  log "Fase 6/9: ejecutando backup:verify real"
-  (cd "$REPO_ROOT" && BACKUP_SNAPSHOT_PATH="$FAKE_SNAPSHOT_PATH" npm run backup:verify)
+  log "Fase 6/9: ejecutando backup:verify real (incluyendo la rama de Storage en vivo)"
+  (cd "$REPO_ROOT" && \
+    BACKUP_SNAPSHOT_PATH="$FAKE_SNAPSHOT_PATH" \
+    BACKUP_VERIFY_LIVE_STORAGE=true \
+    npm run backup:verify)
 
   log "Fase 7/9: preparando el restore kit real (incluyendo Storage)"
   (cd "$REPO_ROOT" && \
@@ -324,12 +390,14 @@ main() {
 
   log "Fase 8/9: arrancando Postgres destino (misma imagen y digest que el origen) y restaurando"
   docker run -d --name ensayo-pg-destino -p "${DEST_DB_PORT}:5432" \
-    -e POSTGRES_PASSWORD="$PG_PASSWORD" "$PG_IMAGE" >/dev/null
+    -e POSTGRES_PASSWORD="$PG_PASSWORD" -e POSTGRES_USER=postgres -e POSTGRES_DB=postgres \
+    "$PG_IMAGE" >/dev/null
   wait_for_postgres "$DEST_DB_PORT" "Postgres destino"
+  verify_postgres_identity "$DEST_DB_PORT" "Postgres destino"
   local dest_url="postgresql://postgres:${PG_PASSWORD}@127.0.0.1:${DEST_DB_PORT}/postgres"
-  "$PGCLIENT_DIR/psql" -v ON_ERROR_STOP=1 "$dest_url" -f "$WORKDIR/kit/database/roles.sql"
-  "$PGCLIENT_DIR/psql" -v ON_ERROR_STOP=1 "$dest_url" -f "$WORKDIR/kit/database/schema.sql"
-  "$PGCLIENT_DIR/psql" -v ON_ERROR_STOP=1 "$dest_url" -f "$WORKDIR/kit/database/data.sql"
+  psql -v ON_ERROR_STOP=1 "$dest_url" -f "$WORKDIR/kit/database/roles.sql"
+  psql -v ON_ERROR_STOP=1 "$dest_url" -f "$WORKDIR/kit/database/schema.sql"
+  psql -v ON_ERROR_STOP=1 "$dest_url" -f "$WORKDIR/kit/database/data.sql"
 
   log "Fase 9/9: comparaciones y prueba de opacidad"
   compare_restored_rows

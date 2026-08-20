@@ -63,4 +63,4 @@ jobs:
         if: always()
         run: |
           docker rm -f ensayo-pg-origen ensayo-pg-destino ensayo-minio-origen ensayo-minio-vault 2>/dev/null || true
-          rm -rf ensayo-restore
+          rm -rf "${RUNNER_TEMP}/ensayo-restore"
