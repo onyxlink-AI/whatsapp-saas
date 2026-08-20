@@ -1,9 +1,13 @@
 # Runbook: publicación temporal mientras R2 está pendiente
 
-**Owner:** OnyxLink  
-**Frecuencia:** cuando una versión autorizada deba llegar a producción  
-**Última actualización:** 20/08/2026  
-**Última ejecución:** 20/08/2026  
+**Owner:** OnyxLink
+
+**Frecuencia:** cuando una versión autorizada deba llegar a producción
+
+**Última actualización:** 20/08/2026
+
+**Última ejecución:** 20/08/2026
+
 **Estado:** temporal y activo hasta cumplir la salida indicada en la sección 10
 
 ## 1. Propósito

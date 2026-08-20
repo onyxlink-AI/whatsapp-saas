@@ -1,8 +1,11 @@
 # Continuidad del proyecto Dirección de OnyxLink
 
-**Propietario:** Dirección de OnyxLink  
-**Última actualización:** 20/08/2026  
-**Repositorio:** `onyxlink-AI/whatsapp-saas`  
+**Propietario:** Dirección de OnyxLink
+
+**Última actualización:** 20/08/2026
+
+**Repositorio:** `onyxlink-AI/whatsapp-saas`
+
 **Acceso funcional:** exclusivamente `internal_admin` y `super_admin`; nunca clientes
 
 ## 1. Propósito y uso en conversaciones nuevas
