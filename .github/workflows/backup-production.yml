@@ -35,10 +35,10 @@ jobs:
         with:
           version: 2.111.0
 
-      - name: Instalar herramientas de transferencia y PostgreSQL
+      - name: Instalar herramienta de transferencia
         run: |
           sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends rclone postgresql-client
+          sudo apt-get install --yes --no-install-recommends rclone
 
       - name: Comprobar backup físico de Supabase
         env:
