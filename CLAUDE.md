@@ -9,13 +9,17 @@ Para cualquier tarea de PWA, instalación en ordenadores/móviles o publicación
 en tiendas, lee también `docs/ONYXLINK-PWA-ESCRITORIO-Y-TIENDAS.md`.
 
 Para cualquier trabajo del panel Dirección, lee obligatoriamente
-`docs/ONYXLINK-DIRECCION-CONTINUIDAD.md`. Mientras el backup externo R2 siga
-pendiente, antes de publicar lee también
-`docs/ONYXLINK-PUBLICACION-TEMPORAL-SIN-R2.md` y aplica sus reglas de parada.
+`docs/ONYXLINK-DIRECCION-CONTINUIDAD.md`. La excepción temporal descrita en
+`docs/ONYXLINK-PUBLICACION-TEMPORAL-SIN-R2.md` ya no aplica: la primera copia
+externa real quedó completada y verificada el 21/08/2026.
 
 Ante cualquier error de Supabase, antes de cambiar Auth, RLS, Storage,
 Realtime, credenciales o backups, lee
 `docs/ONYXLINK-RUNBOOK-SUPABASE-INCIDENTES.md`.
+
+Para reconstruir, verificar o restaurar el backup externo cifrado de R2, lee
+obligatoriamente `docs/ONYXLINK-RECUPERACION-MAESTRA-BACKUP-R2.md` antes de
+tocar credenciales, GitHub Environments, Supabase Production o Cloudflare.
 
 Para dar de alta un cliente nuevo que vaya a usar la Agenda real (citas,
 Google Calendar, Zoom), lee también

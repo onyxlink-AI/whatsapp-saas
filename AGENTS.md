@@ -14,12 +14,16 @@ repositorio.
   `docs/ONYXLINK-PWA-ESCRITORIO-Y-TIENDAS.md`.
 - Para continuar el panel interno Dirección, lee obligatoriamente
   `docs/ONYXLINK-DIRECCION-CONTINUIDAD.md` antes de planificar o implementar.
-- Mientras el backup externo R2 siga pendiente, toda publicación debe leer
-  `docs/ONYXLINK-PUBLICACION-TEMPORAL-SIN-R2.md`. No conservar esta excepción
-  después de cumplir su criterio de retirada.
+- La excepción temporal de publicación sin R2 ya no aplica: la primera copia
+  externa real quedó completada y verificada el 21/08/2026. No usar
+  `docs/ONYXLINK-PUBLICACION-TEMPORAL-SIN-R2.md` como procedimiento vigente.
 - Ante cualquier error de Supabase, antes de modificar Auth, RLS, Storage,
   Realtime, credenciales o backups, lee
   `docs/ONYXLINK-RUNBOOK-SUPABASE-INCIDENTES.md`.
+- Para reconstruir, verificar o restaurar el backup externo cifrado de R2, lee
+  obligatoriamente
+  `docs/ONYXLINK-RECUPERACION-MAESTRA-BACKUP-R2.md` antes de tocar credenciales,
+  GitHub Environments, Supabase Production o Cloudflare.
 - Conserva todos los cambios previos del usuario y separa el alcance propio.
 
 ## Seguridad
