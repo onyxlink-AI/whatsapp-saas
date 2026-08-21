@@ -2,7 +2,7 @@
 
 **Estado:** operativo y versionado
 
-**Última actualización:** 20 de agosto de 2026
+**Última actualización:** 21 de agosto de 2026
 
 **Ámbito:** Auth, API Gateway, PostgREST/RLS, PostgreSQL, Storage, Realtime,
 Dashboard, CLI, Management API y backups
@@ -86,7 +86,9 @@ rotar credenciales, reiniciar el proyecto o desplegar.
 | Síntoma | Causas frecuentes | Primera acción segura | No hacer |
 |---|---|---|---|
 | 401 `Invalid Refresh Token` | cookie/token antiguo, sesión revocada, desajuste SSR, incidencia JWT | probar sesión nueva/incógnito, revisar Auth y API Gateway, estado oficial | rotar claves globales o borrar usuarios |
-| 401 en Management API/backups | PAT inválido, revocado, cuenta/organización incorrecta o permiso `backups_read` | probar el PAT contra identidad/Management API sin mostrarlo y abrir soporte con run ID | repetir el workflow indefinidamente |
+| 401 en Management API/backups | PAT inválido/caducado, cuenta u organización incorrecta o permiso `backups_read` ausente | probar una única llamada de lectura con el PAT sin mostrarlo y confirmar su último uso/caducidad | repetir el workflow indefinidamente |
+| 401 al escribir en Cloudflare R2 | endpoint con ruta de bucket o pareja Access Key ID/Secret Access Key incorrecta | usar el endpoint de cuenta sin bucket y dos credenciales del mismo token R2, limitado al bucket | usar `Token value` como clave S3 o rotar credenciales no relacionadas |
+| 501 seguido de `immutable file modified` en R2 | cliente S3/rclone antiguo completa el upload pero falla en una operación posterior compatible solo parcialmente | comprobar la versión real del runner y usar una versión moderna fijada por checksum | reintentar sobre una ruta inmutable ya parcialmente escrita |
 | 403 `new row violates row-level security` | `auth.uid()` no coincide, rol equivocado, `WITH CHECK` ausente, ruta incorrecta | inspeccionar rol/claims y política exacta; reproducir con sesión real | desactivar RLS en producción |
 | `permission denied for table/schema` | falta `GRANT`, esquema no expuesto, ownership | revisar grants y rol efectivo | asumir que siempre es RLS |
 | Auth 500 / `Database error querying schema` | trigger, constraint, NULL manual, permisos/ownership de `auth.*` | revisar Auth y Postgres logs con timestamp/request ID | editar o borrar filas de `auth.users` a ciegas |
@@ -265,21 +267,47 @@ Fuentes:
 
 ## 7. Registro activo de OnyxLink
 
-### INC-SUPABASE-2026-08-20 — 401 al comprobar backups
+### INC-SUPABASE-2026-08-20 — primera copia externa de producción
 
-**Estado:** pendiente de respuesta de Supabase Support.
+**Estado:** resuelta el 21 de agosto de 2026.
 
-**Impacto:** bloquea la primera copia externa real; la aplicación de producción
-continúa operativa.
+**Impacto:** la aplicación de producción permaneció operativa. Los fallos
+afectaron exclusivamente al workflow de la primera copia externa; ningún intento
+fallido recibió el marcador `COMPLETED`.
 
-**Evidencia propia (nivel A):** dos ejecuciones separadas fallaron en el primer
-paso de solo lectura con `401 Unauthorized` en `supabase backups list`. Los
-pasos `backup:create` y `backup:verify` no se ejecutaron, R2 no recibió objetos y
+**Causas confirmadas (evidencia propia, nivel A):**
+
+1. Los PAT iniciales de Supabase estaban caducados y el token fino necesitaba
+   permiso de lectura de backups. El PAT nuevo se validó primero mediante
+   `supabase backups list`; el workflow fuerza `--output json` antes de pasarlo a
+   `jq`.
+2. La URL de PostgreSQL necesitaba la contraseña vigente, percent-encoded dentro
+   de la URI del Session Pooler. Una actualización de secret mediante pipe de
+   PowerShell llegó vacía; se corrigió desde la interfaz de GitHub y el workflow
+   valida que la variable no esté vacía.
+3. Ubuntu aportaba `pg_dump 16` para un servidor PostgreSQL 17. El dump forense
+   quedó fijado a la imagen oficial PostgreSQL 17.6 de Supabase por digest.
+4. R2 requiere el endpoint de cuenta sin añadir el bucket y una pareja
+   `Access Key ID`/`Secret Access Key` del mismo token R2. El campo `Token value`
+   no es una credencial S3. El token definitivo usa `Object Read & Write` y está
+   limitado a `onyxlink-backups-production`.
+5. `apt` instalaba `rclone 1.60.1`. Esa versión escribía el objeto pero recibía
+   HTTP 501 en una operación posterior; el reintento con `--immutable` encontraba
+   el objeto parcial y abortaba. Se sustituyó por `rclone 1.75.0`, descargado con
+   versión y SHA-256 fijados.
+
+**Validación final:** workflow
+[32463038193](https://github.com/onyxlink-AI/whatsapp-saas/actions/runs/32463038193),
+SHA `9cac97a26664be05f1df39bddb1197748015fcc3`, resultado `success`.
+El snapshot `daily/20260821T082502Z` se creó cifrado, recibió `COMPLETED`, se
+descargó de nuevo desde R2 y pasó checksum y validación del archivo. Se verificó
+un objeto de Supabase Storage, no se publicó ningún artifact en GitHub Actions y
 `BACKUP_ENABLED` terminó en `false`.
 
-**Acción actual:** no rotar ni volver a probar PAT mientras soporte analiza el
-caso. Conservar run IDs en el ticket, no en este documento público si incorporan
-información sensible.
+**Regla operativa derivada:** antes de un backup completo, comprobar versión de
+las herramientas y acceso de lectura de Supabase/R2. Un snapshot incompleto no
+se reintenta sobre la misma ruta; se usa un identificador nuevo y solo se declara
+válido cuando existe `COMPLETED` y `backup:verify` termina correctamente.
 
 ### Incidencia oficial simultánea: rechazos JWT
 
