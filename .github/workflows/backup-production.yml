@@ -35,10 +35,18 @@ jobs:
         with:
           version: 2.111.0
 
-      - name: Instalar herramienta de transferencia
+      - name: Instalar rclone (version y checksum fijados)
         run: |
-          sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends rclone
+          set -euo pipefail
+          version="v1.75.0"
+          expected_sha256="aa2804e08f48250e71009c727124b6341cd0288465804a9a09d14663cabafbaa"
+          zip="rclone-${version}-linux-amd64.zip"
+          curl -fsSL -o "$zip" "https://downloads.rclone.org/${version}/${zip}"
+          echo "${expected_sha256}  ${zip}" | sha256sum -c -
+          unzip -q "$zip"
+          sudo install -m 755 "rclone-${version}-linux-amd64/rclone" /usr/local/bin/rclone
+          rm -rf "$zip" "rclone-${version}-linux-amd64"
+          rclone version
 
       - name: Comprobar backup físico de Supabase
         env:
