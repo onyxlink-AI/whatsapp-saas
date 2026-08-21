@@ -20,23 +20,42 @@ done
 printf '%s\n' '-- dump ficticio sin datos reales' > "$file"
 FAKE
 
-cat > "$test_root/bin/pg_dump" <<'FAKE'
+cat > "$test_root/bin/docker" <<'FAKE'
 #!/usr/bin/env bash
 set -Eeuo pipefail
-file=""
+[[ "${1:-}" == "run" ]]
+shift
+host_dir=""
+container_file=""
+saw_host_network=false
+saw_pg_dump=false
 while [[ $# -gt 0 ]]; do
-  if [[ "$1" == "--file" ]]; then
-    file="$2"
-    shift 2
-  elif [[ "$1" == --file=* ]]; then
-    file="${1#--file=}"
-    shift
-  else
-    shift
-  fi
+  case "$1" in
+    --network)
+      [[ "${2:-}" == "host" ]]
+      saw_host_network=true
+      shift 2
+      ;;
+    --volume)
+      host_dir="${2%:/backup}"
+      shift 2
+      ;;
+    --entrypoint)
+      [[ "${2:-}" == "pg_dump" ]]
+      saw_pg_dump=true
+      shift 2
+      ;;
+    --file=/backup/*)
+      container_file="${1#--file=/backup/}"
+      shift
+      ;;
+    *) shift ;;
+  esac
 done
-[[ -n "$file" ]]
-printf 'dump-binario-ficticio\n' > "$file"
+[[ "$saw_host_network" == true ]]
+[[ "$saw_pg_dump" == true ]]
+[[ -n "$host_dir" && -n "$container_file" ]]
+printf 'dump-binario-ficticio\n' > "$host_dir/$container_file"
 FAKE
 
 cat > "$test_root/bin/pg_restore" <<'FAKE'
@@ -153,13 +172,13 @@ monthly_output="$("$SCRIPT_DIR/create-production-backup.sh" 2>&1)"
 export BACKUP_SNAPSHOT_PATH=monthly/2026-09/20260901T120000Z
 "$SCRIPT_DIR/verify-production-backup.sh" >/dev/null
 
-# A third-party binary may print the DSN on failure; it must never reach logs.
-cat > "$test_root/bin/pg_dump" <<'FAKE'
+# A third-party container may print the DSN on failure; it must never reach logs.
+cat > "$test_root/bin/docker" <<'FAKE'
 #!/usr/bin/env bash
 printf 'fallo contra %s\n' "$SUPABASE_DB_URL" >&2
 exit 1
 FAKE
-chmod 700 "$test_root/bin/pg_dump"
+chmod 700 "$test_root/bin/docker"
 export BACKUP_SNAPSHOT_ID=20261010T120000Z
 export BACKUP_TIER=daily
 if "$SCRIPT_DIR/create-production-backup.sh" >"$test_root/sensitive-error.log" 2>&1; then

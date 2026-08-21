@@ -10,7 +10,7 @@ source "$SCRIPT_DIR/common.sh"
 [[ "${BACKUP_RUN_ENABLED:-}" == "true" ]] || backup_die "Backup desactivado (BACKUP_RUN_ENABLED)"
 [[ "${BACKUP_CONFIRMATION:-}" == "ONYXLINK_BACKUP_PRODUCTION" ]] || backup_die "Falta la confirmación cerrada del backup"
 
-for command_name in supabase pg_dump rclone tar sha256sum node; do
+for command_name in supabase docker rclone tar sha256sum node; do
   backup_require_command "$command_name"
 done
 backup_require_env SUPABASE_DB_URL
@@ -47,7 +47,18 @@ backup_run_sensitive "No se pudieron exportar los datos" "$workspace/data-dump.l
 
 # Additional forensic archive. It is not the primary restore path, but preserves
 # schemas outside the normal Supabase logical export for incident analysis.
-backup_run_sensitive "No se pudo crear el dump forense" "$workspace/full-dump.log" pg_dump --format=custom --no-owner --no-acl --file "$database_dir/full-database.dump" "$SUPABASE_DB_URL"
+# ubuntu-latest currently installs pg_dump 16, while hosted Supabase projects may
+# run PostgreSQL 17. Use the same PostgreSQL 17 image family as the pinned CLI so
+# the forensic client matches the current hosted major. The amd64 digest is immutable.
+postgres_image="public.ecr.aws/supabase/postgres:17.6.1.156@sha256:665efa7e234a3c324718fd2b7fbbaaaf7263f2565bc2e8fce8555c4def4c4985"
+backup_run_sensitive "No se pudo crear el dump forense" "$workspace/full-dump.log" \
+  docker run --rm --network host \
+    --volume "$database_dir:/backup" \
+    --entrypoint pg_dump \
+    "$postgres_image" \
+    --format=custom --no-owner --no-acl \
+    --file=/backup/full-database.dump \
+    "$SUPABASE_DB_URL"
 
 tar -czf "$workspace/database.tar.gz" -C "$database_dir" .
 database_sha="$(sha256sum "$workspace/database.tar.gz" | cut -d' ' -f1)"
