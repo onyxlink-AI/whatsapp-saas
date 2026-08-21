@@ -44,8 +44,15 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
-          result="$(supabase backups list --project-ref "${{ secrets.PRODUCTION_SUPABASE_PROJECT_REF }}")"
-          echo "$result" | jq -e '(.walg_enabled == true) and ([.backups[] | select(.status == "COMPLETED")] | length > 0)' > /dev/null
+          result="$(supabase --output json backups list --project-ref "${{ secrets.PRODUCTION_SUPABASE_PROJECT_REF }}")"
+          if ! jq -e '
+            type == "object"
+            and (.walg_enabled == true)
+            and ([.backups[]? | select(.status == "COMPLETED")] | length > 0)
+          ' <<< "$result" > /dev/null; then
+            echo "Supabase no devolvió un backup físico COMPLETED en formato JSON válido." >&2
+            exit 1
+          fi
 
       - name: Crear snapshot externo cifrado e inmutable por ruta
         id: create
