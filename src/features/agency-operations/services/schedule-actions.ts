@@ -106,6 +106,51 @@ export async function listScheduleBlocks(): Promise<ActionResult<AgencyScheduleB
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// listScheduleResponsibles — TAREA 4B, para el selector de responsable del
+// formulario. Únicamente personal interno ACTIVO (internal_admin,
+// super_admin, o el superadministrador legado is_super_admin=true) —
+// asignaciones NUEVAS solo pueden ir a alguien activo; conservar un
+// responsable histórico ya inactivo en un bloque existente es cosa de
+// updateScheduleBlock (TAREA 4A.1), no de este listado.
+//
+// Reutiliza public.users y la política RLS "users_select_staff_directory"
+// (20260818094500_agency_goals.sql) — el mismo directorio que
+// listPlatformStaffUsers() de Objetivos usa, pero como acción independiente:
+// esta además filtra por is_active, que Objetivos no necesita. No se toca
+// listPlatformStaffUsers ni goal-actions.ts.
+// ──────────────────────────────────────────────────────────────────────────────
+export async function listScheduleResponsibles(): Promise<ActionResult<AgencyScheduleResponsible[]>> {
+  const auth = await requirePlatformStaff();
+  if (!auth.ok) return { ok: false, error: "No autorizado" };
+
+  const supabase = await createClient();
+  // TAREA 4B.1: is_active=true se filtra YA en la consulta (menos filas
+  // transferidas, coherente con "solo activos" en el propio SQL) — el
+  // filtro en memoria de abajo se conserva como segunda barrera defensiva,
+  // nunca se confía en un único punto de verdad para esta condición.
+  const { data, error } = await supabase
+    .from("users")
+    .select("id, full_name, is_super_admin, platform_role, is_active")
+    .eq("is_active", true)
+    .order("full_name", { ascending: true });
+
+  if (error) {
+    console.error("[listScheduleResponsibles] Supabase error:", error.message);
+    return { ok: false, error: "Error al cargar el personal interno" };
+  }
+
+  const staff = (
+    (data ?? []) as { id: string; full_name: string; is_super_admin: boolean; platform_role: string | null; is_active: boolean }[]
+  ).filter(
+    (row) =>
+      row.is_active === true &&
+      (row.platform_role === "internal_admin" || row.platform_role === "super_admin" || row.is_super_admin === true),
+  );
+
+  return { ok: true, data: staff.map((row) => ({ id: row.id, full_name: row.full_name })) };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // createScheduleBlock
 // ──────────────────────────────────────────────────────────────────────────────
 export async function createScheduleBlock(input: ScheduleBlockCreateInput): Promise<ActionResult<{ id: string }>> {

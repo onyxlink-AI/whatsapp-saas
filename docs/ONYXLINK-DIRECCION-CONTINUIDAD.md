@@ -2,7 +2,7 @@
 
 **Propietario:** Dirección de OnyxLink
 
-**Última actualización:** 20/08/2026
+**Última actualización:** 21/08/2026
 
 **Repositorio:** `onyxlink-AI/whatsapp-saas`
 
@@ -79,22 +79,63 @@ Los datos proceden de relaciones de clientes y reuniones introducidas por el
 equipo. Las relaciones conservan el nombre histórico si se elimina el
 workspace. Los estados sin datos no inventan porcentajes ni importes.
 
+### 2.4 Operaciones — implementado y validado localmente, pendiente de publicación
+
+Estado exacto a 21/08/2026: **TAREA 4A/4A.1 y TAREA 4B están implementadas y
+validadas localmente en `feature/direccion-operaciones`.** La validación
+final local ya está terminada:
+
+- 1543/1543 pruebas en verde (`npm run test:ci`, suite serializada), más
+  `typecheck`, `lint` y `build` correctos.
+- Comprobación visual en escritorio (~1440×900) y en móvil (~390×844):
+  cuadrícula, crear/editar/eliminar bloques, formulario y navegación por
+  pestañas de día.
+- Roles verificados: acceso concedido a `internal_admin` y `super_admin`;
+  bloqueo confirmado para clientes, incluidos administradores de workspace
+  (sin tarjeta Operaciones y sin acceso directo a `/direccion/operaciones`).
+
+El cambio tiene un commit local en `feature/direccion-operaciones`. **Sigue
+pendiente la publicación y la verificación posterior en producción —
+Operaciones todavía no está publicada.** No forma parte de la publicación de
+Objetivos/KPI del 20/08/2026 (sección 2, arriba) — esa publicación no
+incluyó ninguna migración ni código de Operaciones.
+
+Ruta prevista una vez publicado: `/direccion/operaciones`.
+
+Aclaración funcional vinculante del propietario: `agency_schedule_blocks` es
+el horario semanal interno de OnyxLink, exclusivamente para que el
+propietario y su socio indiquen a qué hora se conectan y qué trabajo tienen
+previsto. Es una plantilla recurrente de lunes a domingo, una celda por
+hora, sin `workspace_id`. El contenido de cada celda es texto libre — aunque
+describa una tarea o actividad, es únicamente ese texto dentro de esta
+tabla. Nunca crea, actualiza ni se convierte en una fila de `public.tasks`
+ni de `public.agenda_tasks`, no aparece en Gestión y no se sincroniza con
+Google Calendar. Las tareas y el calendario que se venden a los clientes son
+otro producto y otro flujo, completamente separados de este horario interno,
+y este horario nunca reutiliza esa interfaz ni se muestra a clientes.
+
+- **TAREA 4A/4A.1** — modelo de datos, RLS, triggers y Server Actions.
+  Implementado y validado localmente, con commit local; sin publicar.
+- **TAREA 4B** — interfaz: cuadrícula semanal, formulario y tarjeta de
+  Dirección. Implementado y validado localmente (funcional y visualmente),
+  con commit local; sin publicar. Pendiente: publicación y verificación
+  posterior en producción.
+
+La futura TAREA 5 (tareas semanales) no debe presentarse ni construirse como
+una extensión de este horario interno: es una ampliación aparte del módulo
+de tareas ya existente (ver 3.1).
+
 ## 3. Alcance pendiente
 
-### 3.1 Operaciones — siguiente bloque recomendado
+### 3.1 Tareas semanales — pendiente (TAREA 5)
 
-Debe incluir:
-
-- horario interno semanal de lunes a domingo;
-- cuadrícula por horas, de una hora en una hora;
-- selección de bloques que queden marcados por color;
-- texto libre dentro de cada bloque;
-- asignación opcional de personas o responsables internos existentes;
-- edición y eliminación sencillas;
-- tareas semanales integradas en el apartado de tareas ya existente.
-
-No crear un sistema nuevo de tareas diarias: el requisito explícito fue añadir
-solo tareas semanales.
+El horario semanal interno de Operaciones ya está implementado y validado
+localmente, pendiente de publicación (ver 2.4), y permanece deliberadamente
+separado de esta tarea pendiente. Lo que queda es
+una extensión del módulo de tareas ya existente para tareas semanales — no
+del horario interno de Operaciones, no de `agency_schedule_blocks`. No crear
+un sistema nuevo de tareas diarias: el requisito explícito fue añadir solo
+tareas semanales.
 
 ### 3.2 Marketing — calendario interno de contenidos
 
@@ -180,7 +221,7 @@ Regla general: adaptar primero lo que ya exista.
 | Transcripción interna | Dirección → Reuniones |
 | Calendario de contenidos | Marketing → Contenidos |
 | Procedencia del lead | Pipeline de ventas / CRM existente |
-| Tareas semanales | Módulo de tareas existente, visible desde Operaciones si procede |
+| Tareas semanales | Módulo de tareas existente, independiente del horario interno de Operaciones |
 
 No crear un módulo paralelo si oportunidad, proyecto, tarea, contenido o CRM ya
 resuelven la entidad principal.
@@ -189,9 +230,9 @@ resuelven la entidad principal.
 
 Cada tarea debe cerrarse, probarse y auditarse antes de comenzar la siguiente.
 
-1. **TAREA 4 — Auditoría de Operaciones:** modelo existente, UX, RLS y plan.
-2. **TAREA 4B — Horario semanal interno:** base de datos, acciones y cuadrícula.
-3. **TAREA 5 — Tareas semanales:** extensión del módulo de tareas existente.
+1. **TAREA 4 — Auditoría de Operaciones:** modelo existente, UX, RLS y plan. Completada.
+2. **TAREA 4A/4A.1/4B — Horario semanal interno:** base de datos, RLS, acciones e interfaz. Implementado y validado localmente en `feature/direccion-operaciones`, con commit local; pendiente de publicación y verificación en producción (ver 2.4).
+3. **TAREA 5 — Tareas semanales:** extensión del módulo de tareas existente, separada del horario interno de Operaciones.
 4. **TAREA 6 — Calendario interno de contenidos.**
 5. **TAREA 7 — Procedencia del lead en pipeline/CRM.**
 6. **TAREA 8 — Propuestas simples y catálogo interno de precios.**

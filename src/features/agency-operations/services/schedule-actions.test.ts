@@ -39,7 +39,9 @@ function makeQueryBuilder(results: unknown | unknown[]) {
 const createClient = vi.fn();
 vi.mock("@/lib/supabase/server", () => ({ createClient: (...args: unknown[]) => createClient(...args) }));
 
-const { createScheduleBlock, updateScheduleBlock, deleteScheduleBlock, listScheduleBlocks } = await import("./schedule-actions");
+const { createScheduleBlock, updateScheduleBlock, deleteScheduleBlock, listScheduleBlocks, listScheduleResponsibles } = await import(
+  "./schedule-actions"
+);
 
 const STAFF_ID = "11111111-1111-4111-8111-111111111111";
 const BLOCK_ID = "33333333-3333-4333-8333-333333333333";
@@ -88,6 +90,113 @@ describe("autorización — requirePlatformStaff() se comprueba antes de tocar l
     const result = await deleteScheduleBlock(BLOCK_ID);
     expect(result).toEqual({ ok: false, error: "No autorizado" });
     expect(createClient).not.toHaveBeenCalled();
+  });
+
+  it("listScheduleResponsibles rechaza sin llamar a createClient", async () => {
+    mockUnauthorized();
+    const result = await listScheduleResponsibles();
+    expect(result).toEqual({ ok: false, error: "No autorizado" });
+    expect(createClient).not.toHaveBeenCalled();
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// TAREA 4B — listScheduleResponsibles: directorio de responsables ACTIVOS
+// para el selector del formulario. No confundir con listPlatformStaffUsers()
+// de Objetivos (goal-actions.ts) — esa acción no filtra por is_active porque
+// Objetivos no lo necesita; esta sí, y son dos funciones independientes.
+// ──────────────────────────────────────────────────────────────────────────────
+describe("listScheduleResponsibles", () => {
+  const CLIENT_ROW = { id: "c1", full_name: "Cliente Normal", is_super_admin: false, platform_role: null, is_active: true };
+  const INACTIVE_INTERNAL_ROW = { id: "i1", full_name: "Interno Inactivo", is_super_admin: false, platform_role: "internal_admin", is_active: false };
+  const ACTIVE_INTERNAL_ROW = { id: "i2", full_name: "Interno Activo", is_super_admin: false, platform_role: "internal_admin", is_active: true };
+  const ACTIVE_SUPERADMIN_ROW = { id: "s1", full_name: "Super Activo", is_super_admin: false, platform_role: "super_admin", is_active: true };
+  const ACTIVE_LEGACY_ROW = { id: "l1", full_name: "Legado Activo", is_super_admin: true, platform_role: null, is_active: true };
+  const INACTIVE_LEGACY_ROW = { id: "l2", full_name: "Legado Inactivo", is_super_admin: true, platform_role: null, is_active: false };
+
+  it("excluye clientes (platform_role null, is_super_admin false)", async () => {
+    mockStaff();
+    const builder = makeQueryBuilder({ data: [CLIENT_ROW], error: null });
+    createClient.mockResolvedValue({ from: () => builder });
+
+    const result = await listScheduleResponsibles();
+    expect(result).toEqual({ ok: true, data: [] });
+  });
+
+  it("excluye personal inactivo, tanto internal_admin/super_admin como el superadministrador legado", async () => {
+    mockStaff();
+    const builder = makeQueryBuilder({ data: [INACTIVE_INTERNAL_ROW, INACTIVE_LEGACY_ROW], error: null });
+    createClient.mockResolvedValue({ from: () => builder });
+
+    const result = await listScheduleResponsibles();
+    expect(result).toEqual({ ok: true, data: [] });
+  });
+
+  it("incluye internal_admin activo", async () => {
+    mockStaff();
+    const builder = makeQueryBuilder({ data: [ACTIVE_INTERNAL_ROW], error: null });
+    createClient.mockResolvedValue({ from: () => builder });
+
+    const result = await listScheduleResponsibles();
+    expect(result).toEqual({ ok: true, data: [{ id: "i2", full_name: "Interno Activo" }] });
+  });
+
+  it("incluye super_admin activo", async () => {
+    mockStaff();
+    const builder = makeQueryBuilder({ data: [ACTIVE_SUPERADMIN_ROW], error: null });
+    createClient.mockResolvedValue({ from: () => builder });
+
+    const result = await listScheduleResponsibles();
+    expect(result).toEqual({ ok: true, data: [{ id: "s1", full_name: "Super Activo" }] });
+  });
+
+  it("incluye al superadministrador legado activo (is_super_admin=true, platform_role todavía null)", async () => {
+    mockStaff();
+    const builder = makeQueryBuilder({ data: [ACTIVE_LEGACY_ROW], error: null });
+    createClient.mockResolvedValue({ from: () => builder });
+
+    const result = await listScheduleResponsibles();
+    expect(result).toEqual({ ok: true, data: [{ id: "l1", full_name: "Legado Activo" }] });
+  });
+
+  it("ordena por full_name y proyecta únicamente id+full_name, filtrando cliente/inactivo del mismo lote", async () => {
+    mockStaff();
+    const rows = [ACTIVE_INTERNAL_ROW, CLIENT_ROW, ACTIVE_SUPERADMIN_ROW, INACTIVE_INTERNAL_ROW, ACTIVE_LEGACY_ROW];
+    const builder = makeQueryBuilder({ data: rows, error: null });
+    createClient.mockResolvedValue({ from: () => builder });
+
+    const result = await listScheduleResponsibles();
+
+    expect(builder.calls.find((c) => c.method === "order")?.args).toEqual(["full_name", { ascending: true }]);
+    expect(result).toEqual({
+      ok: true,
+      data: [
+        { id: "i2", full_name: "Interno Activo" },
+        { id: "s1", full_name: "Super Activo" },
+        { id: "l1", full_name: "Legado Activo" },
+      ],
+    });
+  });
+
+  // TAREA 4B.1: is_active=true ya se filtra en la propia consulta SQL — el
+  // filtro en memoria de arriba es una segunda barrera, nunca la única.
+  it("filtra is_active=true directamente en la consulta a Supabase (.eq), no solo en memoria", async () => {
+    mockStaff();
+    const builder = makeQueryBuilder({ data: [ACTIVE_INTERNAL_ROW], error: null });
+    createClient.mockResolvedValue({ from: () => builder });
+
+    await listScheduleResponsibles();
+
+    expect(builder.calls.find((c) => c.method === "eq")?.args).toEqual(["is_active", true]);
+  });
+
+  it("devuelve un error comprensible cuando falla la consulta a Supabase", async () => {
+    mockStaff();
+    const builder = makeQueryBuilder({ data: null, error: { message: "db down" } });
+    createClient.mockResolvedValue({ from: () => builder });
+
+    const result = await listScheduleResponsibles();
+    expect(result).toEqual({ ok: false, error: "Error al cargar el personal interno" });
   });
 });
 
