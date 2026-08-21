@@ -12,10 +12,10 @@ interface DireccionCard {
   href?: string;
 }
 
-// TAREA 2/3: Objetivos y KPI ya están construidos — el resto son tarjetas
-// "Próximamente" deliberadamente SIN href, para que no puedan navegar a una
-// ruta inexistente ni a una página vacía (fuera de alcance explícito de
-// esta entrega).
+// TAREA 2/3/4B: Objetivos, KPI y Operaciones ya están construidos — el resto
+// son tarjetas "Próximamente" deliberadamente SIN href, para que no puedan
+// navegar a una ruta inexistente ni a una página vacía (fuera de alcance
+// explícito de esta entrega).
 const CARDS: DireccionCard[] = [
   {
     title: "Objetivos",
@@ -29,7 +29,12 @@ const CARDS: DireccionCard[] = [
     icon: BarChart3,
     href: "/direccion/kpi",
   },
-  { title: "Operaciones", description: "Procesos internos y seguimiento operativo.", icon: Workflow },
+  {
+    title: "Operaciones",
+    description: "Horario semanal interno: a qué hora se conecta el equipo y qué trabajo tiene previsto.",
+    icon: Workflow,
+    href: "/direccion/operaciones",
+  },
   { title: "Comercial", description: "Pipeline y resultados comerciales de la agencia.", icon: TrendingUp },
   { title: "Onboarding de clientes", description: "Puesta en marcha de nuevos clientes.", icon: UserPlus },
   { title: "Reuniones", description: "Actas y seguimiento de reuniones internas.", icon: CalendarClock },
