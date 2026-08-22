@@ -144,6 +144,42 @@ suficiente por sí solo sin PITR o una copia lógica inmediatamente anterior.
 Durante el cambio pueden coexistir funciones de la versión anterior y la nueva.
 Por eso la base de datos debe ser compatible con ambas.
 
+### 7.1 Flujo oficial ya probado en producción real (confirmado 21/08/2026)
+
+La publicación de Operaciones (TAREA 4) ejecutó y confirmó este flujo de
+extremo a extremo mediante `.github/workflows/production.yml`:
+
+1. Staging del SHA candidato exacto (`workflow_dispatch` de `staging.yml`).
+2. CI verde para ese candidato.
+3. Backup físico recuperable confirmado (`COMPLETED`, checksum verificado).
+4. Merge a `main` mediante merge commit.
+5. CI verde del nuevo HEAD de `main`.
+6. Ejecución manual única de `production.yml`, `sha` = HEAD exacto de `main`,
+   `confirmation=PUBLICAR`.
+7. Aprobación humana del Environment `production` (required reviewer, nunca
+   vía API).
+8. Validación, migraciones versionadas, Vercel Production y smoke público
+   dentro del propio workflow.
+9. Smoke autenticado y observación mínima de 15 minutos.
+
+Reglas confirmadas por la implementación real del workflow, no solo teóricas:
+
+- El guard del workflow exige que el `sha` recibido sea exactamente el HEAD
+  de `origin/main`; si no coincide, se detiene antes de tocar nada.
+- Cualquier comando `supabase backups list` usado en un preflight de
+  producción debe solicitar `--output json` explícitamente — sin ese flag, la
+  CLI devuelve una tabla de texto que rompe la validación con `jq` (fallo real
+  observado en el run `32499728415`, corregido en PR #18).
+- Una publicación fallida nunca se reintenta sin diagnosticar la causa
+  primero; los dos bloqueos de la primera publicación (secrets ausentes en el
+  Environment `production`, y después la falta de `--output json`) se
+  diagnosticaron y corrigieron uno a uno antes de volver a intentarlo.
+- Ningún workflow de publicación (`production.yml` ni `staging.yml`) se
+  dispara automáticamente al hacer merge a `main` — ambos son exclusivamente
+  `workflow_dispatch` (`staging.yml` además corre en `schedule`, nunca en
+  `push`). Solo `ci.yml` corre en cada push a `main`, y únicamente valida
+  (typecheck/lint/tests/build), nunca despliega.
+
 ## 8. Smoke test mínimo
 
 - Login y cierre de sesión.

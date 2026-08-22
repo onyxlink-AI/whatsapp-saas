@@ -1,7 +1,13 @@
 # Backup externo automático de OnyxLink
 
-**Estado inicial:** implementado pero desactivado. No activar hasta completar una
-prueba con datos ficticios, configurar R2 y realizar un restore kit verificable.
+**Estado (21/08/2026):** implementado, probado con una copia real de producción
+y verificado — run `32463038193`, snapshot `daily/20260821T082502Z`, marcador
+`COMPLETED`, checksum correcto y revalidación desde cero correcta. La
+automatización diaria sigue **desactivada a propósito**: `BACKUP_ENABLED`
+permanece en `false` hasta una decisión nueva y una revisión del Environment.
+Para el detalle completo de la reconstrucción, inventario de secrets y
+restauración, ver `docs/ONYXLINK-RECUPERACION-MAESTRA-BACKUP-R2.md`, que
+prevalece sobre este documento en caso de contradicción.
 
 ## 1. Qué problema resuelve
 

@@ -2,8 +2,8 @@
 
 **Propietario:** NexorLabs / OnyxLink
 **Frecuencia:** Cuando se sustituya, pierda o averíe el ordenador de desarrollo
-**Última actualización:** 30 de julio de 2026
-**Versión de producción verificada al actualizarlo:** `8a91c6b0cd6806e7f997ba44887ce13104382eec`
+**Última actualización:** 21 de agosto de 2026
+**Versión de producción verificada al actualizarlo:** `cffb80c2be94ff0754670c0f262684dec38e0351`
 
 ## 1. Objetivo
 
@@ -133,8 +133,8 @@ git rev-parse HEAD
 - `origin` apunta a `onyxlink-AI/whatsapp-saas`.
 - La rama es `main`.
 - `git status --short` no devuelve nada.
-- El commit debe ser el último de GitHub. La versión verificada el 30/07/2026
-  era `8a91c6b0cd6806e7f997ba44887ce13104382eec`.
+- El commit debe ser el último de GitHub. La versión verificada el 21/08/2026
+  era `cffb80c2be94ff0754670c0f262684dec38e0351`.
 
 **Si GitHub deniega el acceso:** iniciar sesión con la cuenta autorizada en la
 organización `onyxlink-AI` y revisar el segundo factor.
@@ -188,8 +188,10 @@ que `docker version` muestra tanto Client como Server.
 npx.cmd supabase db reset
 ```
 
-Este comando aplica las **51 migraciones versionadas** y después
-`supabase/seed.sql`.
+Este comando aplica las **88 migraciones versionadas** (recuento verificado en
+`origin/main` el 21/08/2026; el número real crece con cada migración nueva —
+comprobarlo con `ls supabase/migrations | wc -l` si hace falta un valor
+exacto) y después `supabase/seed.sql`.
 
 **Resultado esperado:** finaliza indicando que la base local fue reiniciada y
 sembrada.
@@ -393,7 +395,18 @@ en la nube.
 
 ## 12. Si fuera necesario volver a desplegar
 
-Solo después de validar localmente y confirmar que la rama `main` está limpia:
+**La vía oficial de publicación es `.github/workflows/production.yml`**
+("Publicar producción con aprobación"), disparado manualmente con el SHA
+exacto del HEAD de `main` y la confirmación literal `PUBLICAR`, sujeto a
+aprobación humana del Environment `production` (required reviewer). Ver
+`docs/ONYXLINK-PROTOCOLO-ACTUALIZACIONES-SIN-DOWNTIME.md` para el flujo
+completo probado. Las credenciales que ese workflow necesita viven como
+Environment secrets de `production` en GitHub (11 nombres, recuperables desde
+Bitwarden); nunca se leen ni se copian desde Git.
+
+La secuencia manual de esta sección 12 es exclusivamente una vía de
+emergencia local, para cuando GitHub Actions no esté disponible — no el
+procedimiento normal:
 
 ```powershell
 git checkout main
@@ -505,7 +518,7 @@ Restaurar desde la copia previa o crear una migración correctiva revisada.
 - [ ] Código clonado desde `onyxlink-AI/whatsapp-saas`.
 - [ ] Rama `main` limpia y actualizada.
 - [ ] Docker y Supabase local funcionando.
-- [ ] Las 51 migraciones y el seed se aplican desde cero.
+- [ ] Todas las migraciones versionadas (88 el 21/08/2026) y el seed se aplican desde cero.
 - [ ] `.env.local` usa exclusivamente Supabase local.
 - [ ] TypeScript, lint, pruebas y build pasan.
 - [ ] Accesos por rol comprobados.
@@ -519,3 +532,4 @@ Restaurar desde la copia previa o crear una migración correctiva revisada.
 |---|---|---|
 | 29/07/2026 | Codex / OnyxLink | Primera versión basada en el candidato de producción `7c6d487`. |
 | 30/07/2026 | Codex / OnyxLink | Añadido el protocolo permanente de cierre, GitHub, producción, Supabase, copia externa y Bitwarden. Versión verificada `8a91c6b`. |
+| 21/08/2026 | Claude Code / OnyxLink | Publicación de Operaciones (TAREA 4): `production.yml` reconstruido con sus 11 secrets y corregido (PR #18), primera publicación oficial vía workflow exitosa. Versión verificada `cffb80c2`. Recuento de migraciones actualizado a 88. |
