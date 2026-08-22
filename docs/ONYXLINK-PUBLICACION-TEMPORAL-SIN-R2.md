@@ -8,7 +8,17 @@
 
 **Última ejecución:** 20/08/2026
 
-**Estado:** temporal y activo hasta cumplir la salida indicada en la sección 10
+**Estado: RETIRADO / HISTÓRICO desde el 21/08/2026.** No usar este
+procedimiento para futuras publicaciones. Motivo de la retirada: el
+snapshot cifrado real quedó confirmado como recuperable (run `32463038193`,
+snapshot `daily/20260821T082502Z`, marcador `COMPLETED`, checksum y
+revalidación desde cero correctos), `.github/workflows/production.yml` quedó
+restaurado con sus 11 secrets y corregido (PR #18), y la publicación oficial
+mediante ese workflow se completó con éxito (run `32507838815`). La vía
+oficial de publicación vuelve a ser exclusivamente `production.yml`; ver
+`docs/ONYXLINK-PROTOCOLO-ACTUALIZACIONES-SIN-DOWNTIME.md` §7.1. Este
+documento se conserva íntegro como historial del incidente y de su
+recuperación.
 
 ## 1. Propósito
 
